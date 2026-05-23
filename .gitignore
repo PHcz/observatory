@@ -16,3 +16,12 @@ dist/
 .env.local
 .idea/
 .vscode/
+
+# Phase 1 additions
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+frontend/build/
+frontend/.svelte-kit/
+*.local
+/tmp/
