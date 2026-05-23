@@ -1,4 +1,5 @@
 """INFRA-05: Settings loads from env, validates ranges, fails fast on missing/invalid values."""
+
 from __future__ import annotations
 
 import pytest
@@ -48,9 +49,7 @@ def test_home_lon_above_range_raises(isolated_env: None, monkeypatch: pytest.Mon
         Settings(_env_file=None)
 
 
-def test_mqtt_port_above_range_raises(
-    isolated_env: None, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_mqtt_port_above_range_raises(isolated_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME_LAT", "0.0")
     monkeypatch.setenv("HOME_LON", "0.0")
     monkeypatch.setenv("MQTT_PORT", "70000")
@@ -93,6 +92,4 @@ def test_no_direct_os_environ_in_observatory_package() -> None:
         check=False,
     )
     # grep returns 1 when no matches found — that is the success case.
-    assert result.returncode == 1, (
-        f"Found os.environ.get usage in observatory/:\n{result.stdout}"
-    )
+    assert result.returncode == 1, f"Found os.environ.get usage in observatory/:\n{result.stdout}"

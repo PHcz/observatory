@@ -1,4 +1,5 @@
 """Structured JSON logging via structlog. Call configure_logging() at service start."""
+
 from __future__ import annotations
 
 import logging
