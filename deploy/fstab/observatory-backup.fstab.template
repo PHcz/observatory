@@ -1,0 +1,4 @@
+# observatory-backup
+# To activate: replace XXXX-XXXX with the UUID from `sudo blkid /dev/sda1`,
+# then append this line to /etc/fstab.
+UUID=XXXX-XXXX /mnt/backup vfat defaults,nofail,uid=observatory,gid=observatory,umask=0027 0 0
