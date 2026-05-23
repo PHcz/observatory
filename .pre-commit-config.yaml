@@ -37,11 +37,14 @@ repos:
       - id: ruff-format
         stages: [pre-commit]
 
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.22.1
+  - repo: local
     hooks:
       - id: gitleaks
+        name: gitleaks (secret scanner)
+        entry: gitleaks protect --staged --redact
+        language: system
         stages: [pre-commit]
+        pass_filenames: false
 
   # --- Slow hooks: pre-push only (up to ~30s OK) ---
 
