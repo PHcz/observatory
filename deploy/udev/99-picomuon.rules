@@ -1,0 +1,33 @@
+# Stable /dev/picomuon symlink for the UKRAA PicoMuon cosmic-ray detector.
+#
+# The PicoMuon is built on an RP2040; USB VID 2e8a is the Raspberry Pi
+# Foundation vendor ID, confirmed for all RP2040/RP2350 devices.
+#
+# The product ID (PID) varies by firmware and CANNOT be confirmed without
+# plugging the device in. Phase 1 stages this rule with placeholder XXXX.
+# Phase 2 (Muon Detector) plan owns filling it in.
+#
+# SETUP PROCEDURE (run on the Pi with PicoMuon plugged in):
+#
+#   1. Identify the device's PID:
+#        sudo udevadm info --name=/dev/ttyACM0 --attribute-walk | grep -E 'idVendor|idProduct'
+#      Expected: ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="XXXX"
+#      Record the 4-hex-digit value after idProduct.
+#
+#   2. Replace XXXX below with the actual PID, then reload udev:
+#        sudo cp /opt/observatory/deploy/udev/99-picomuon.rules /etc/udev/rules.d/
+#        sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+#   3. Verify the symlink exists:
+#        ls -la /dev/picomuon
+#      Expected: /dev/picomuon -> ttyACM0 (or similar)
+#
+# If two RP2040 devices are ever plugged in simultaneously, switch to a
+# serial-number-anchored rule (commented variant below).
+
+KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="XXXX", SYMLINK+="picomuon", MODE="0664", GROUP="dialout"
+
+# Alternative (with serial number anchor):
+# KERNEL=="ttyACM[0-9]*", ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="XXXX", \
+#     ATTRS{serial}=="E661XXXXXXXXXXXX", \
+#     SYMLINK+="picomuon", MODE="0664", GROUP="dialout"
