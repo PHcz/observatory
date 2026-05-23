@@ -1,0 +1,12 @@
+[Unit]
+Description=Observatory daily backup timer (03:00 local time)
+Requires=obs-backup.service
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=obs-backup.service
+
+[Install]
+WantedBy=timers.target
