@@ -9,8 +9,9 @@
 #   4. Assert exit code is non-zero (i.e., gitleaks blocked it).
 #   5. Clean up: git reset, rm the file.
 #
-# The test key below matches the gitleaks aws-access-token rule (AKIA[0-9A-Z]{16})
-# but is obviously synthetic and used ONLY in this script's temp-file context.
+# The test key below matches the gitleaks aws-access-token rule
+# (4-letter prefix + 16 alphanumeric chars) but is obviously synthetic and
+# used ONLY in this script's temp-file context.
 #
 # This is destructive to the staging area while running, so it is NOT run by
 # CI or by other tests — invoke manually as part of phase acceptance.
@@ -41,9 +42,10 @@ cleanup() {
 trap cleanup EXIT
 
 # Write the test payload to a file outside the gitleaks allowlist.
-# Splitting the key across shell variable assignment so this script itself
-# doesn't trigger gitleaks' aws-access-token pattern on its own content.
-KEY_PREFIX="AKIA"
+# The four-letter prefix is reconstructed from a base64 blob at runtime so this
+# script's own source does not contain the literal pattern that secret-scanners
+# (including this repo's own pre-commit hook) match on.
+KEY_PREFIX="$(printf 'QUtJQQ==' | base64 -d)"
 KEY_SUFFIX="FAKEKEYFORTEST00"
 printf "fake_aws_access_key_id = %s%s\n" "$KEY_PREFIX" "$KEY_SUFFIX" > "$TMPFILE"
 
