@@ -1,0 +1,6 @@
+# Allowlist the fixture file from gitleaks scans — its purpose is to be a sample.
+[allowlist]
+description = "Phase 1 gitleaks fixture file"
+paths = [
+  '''tests/fixtures/leak-sample\.txt''',
+]
