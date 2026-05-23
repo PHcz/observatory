@@ -1,4 +1,5 @@
 """QA-05 / SEC-01/02 / INFRA-04: .pre-commit-config.yaml contains expected hooks per stage."""
+
 from __future__ import annotations
 
 from pathlib import Path
