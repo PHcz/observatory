@@ -1,0 +1,82 @@
+# Phase 1 pre-commit configuration.
+# Fast hooks run on every `git commit`.
+# Slow hooks (mypy strict, bandit, pip-audit, pytest --collect-only) run only on `git push`.
+#
+# Install:  pre-commit install && pre-commit install --hook-type pre-push
+# Run:      pre-commit run --all-files
+# Update:   pre-commit autoupdate
+
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  # --- Fast hooks: every commit (must be < 2s total) ---
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [pre-commit]
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: check-yaml
+        stages: [pre-commit]
+      - id: check-toml
+        stages: [pre-commit]
+      - id: check-merge-conflict
+        stages: [pre-commit]
+      - id: check-added-large-files
+        stages: [pre-commit]
+        args: [--maxkb=500]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+        stages: [pre-commit]
+      - id: ruff-format
+        stages: [pre-commit]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.22.1
+    hooks:
+      - id: gitleaks
+        stages: [pre-commit]
+
+  # --- Slow hooks: pre-push only (up to ~30s OK) ---
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.1
+    hooks:
+      - id: mypy
+        stages: [pre-push]
+        args: [--strict, observatory/]
+        pass_filenames: false
+        additional_dependencies:
+          - pydantic
+          - pydantic-settings
+          - structlog
+          - types-PyYAML
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        stages: [pre-push]
+        args: [-r, observatory/, -c, pyproject.toml]
+        additional_dependencies: ["bandit[toml]"]
+
+  - repo: https://github.com/pypa/pip-audit
+    rev: v2.8.0
+    hooks:
+      - id: pip-audit
+        stages: [pre-push]
+
+  - repo: local
+    hooks:
+      - id: pytest-collect
+        name: pytest --collect-only (import check)
+        entry: uv run pytest --collect-only -q
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
