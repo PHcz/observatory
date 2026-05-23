@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light only">
+<title>Observatory — Dashboard Sketch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    background: #ffffff;
+    color-scheme: light;
+  }
+
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --text: #111111;
+    --text-secondary: #333333;
+    --text-muted: #5a5a5a;
+    --accent: #6b8e6b;
+    --accent-soft: #5a6b5a;
+    --border: #ebebe8;
+    --border-soft: #f0f0ec;
+    --warn: #c97f3a;
+    --alert: #b8504a;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #ffffff;
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 64px;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 80px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 64px;
+    align-items: end;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-main {}
+
+  .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: var(--accent-soft);
+    margin-bottom: 24px;
+    font-weight: 600;
+  }
+
+  h1.hero {
+    font-size: 180px;
+    font-weight: 300;
+    letter-spacing: -0.065em;
+    line-height: 0.88;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1.hero .unit {
+    font-size: 48px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--accent-soft);
+    margin-left: 12px;
+  }
+
+  .subtitle {
+    font-size: 17px;
+    color: var(--text-secondary);
+    margin-top: 28px;
+    max-width: 480px;
+    line-height: 1.55;
+  }
+
+  .header-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-bottom: 12px;
+  }
+
+  .aside-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .aside-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent-soft);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .aside-value {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 48px;
+    margin-bottom: 80px;
+    padding-bottom: 64px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent-soft);
+    margin-bottom: 18px;
+    font-weight: 600;
+  }
+
+  .stat-value {
+    font-size: 44px;
+    font-weight: 400;
+    letter-spacing: -0.035em;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .stat-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 12px;
+    font-weight: 500;
+  }
+
+  .trend-up { color: var(--accent); font-weight: 700; }
+  .trend-down { color: var(--warn); font-weight: 700; }
+
+  /* Chart sections */
+  .section {
+    margin-bottom: 80px;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .section-meta {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent-soft);
+    font-weight: 600;
+  }
+
+  .section-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+  }
+
+  /* Two-column layout for some sections */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 64px;
+    margin-bottom: 80px;
+  }
+
+  /* Event lists */
+  .event-row {
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    gap: 24px;
+  }
+
+  .event-row:last-child { border-bottom: none; }
+
+  .event-time {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .event-title {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .event-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .event-value {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  .event-value-bold {
+    font-size: 18px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  .magnitude-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mag-small { background: #f0f0ec; color: var(--text-muted); }
+  .mag-mod { background: #f5e8d8; color: var(--warn); }
+  .mag-big { background: #f5dcd8; color: var(--alert); }
+
+  /* Solar / space weather */
+  .solar-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 32px;
+  }
+
+  .solar-card {
+    padding: 24px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .solar-card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent-soft);
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+
+  .solar-card-value {
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .solar-card-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+  }
+
+  /* Kp index bar */
+  .kp-bar {
+    display: flex;
+    gap: 3px;
+    margin-top: 12px;
+    height: 24px;
+  }
+
+  .kp-cell {
+    flex: 1;
+    border-radius: 2px;
+    background: #f0f0ec;
+  }
+
+  .kp-cell.active-low { background: #b8d4b8; }
+  .kp-cell.active-mid { background: #e8c878; }
+  .kp-cell.active-high { background: #d88068; }
+
+  /* Lightning map */
+  .lightning-container {
+    border-top: 1px solid var(--border);
+    padding-top: 32px;
+  }
+
+  .lightning-meta {
+    display: flex;
+    gap: 48px;
+    margin-bottom: 24px;
+  }
+
+  .lightning-stat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lightning-num {
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .lightning-lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent-soft);
+    margin-top: 8px;
+    font-weight: 600;
+  }
+
+  /* Sparkline */
+  .sparkline-wrap {
+    margin-top: 8px;
+    margin-bottom: 6px;
+  }
+
+  /* Aurora banner */
+  .aurora-banner {
+    border-top: 1px solid var(--border);
+    padding-top: 32px;
+  }
+
+  .aurora-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+
+  .aurora-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .aurora-dot.alert { background: var(--warn); }
+
+  .aurora-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .aurora-detail {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* Footer */
+  .footer {
+    padding-top: 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent-soft);
+    font-weight: 600;
+  }
+
+  @media (max-width: 900px) {
+    .container { padding: 48px 24px; }
+    .header { grid-template-columns: 1fr; gap: 32px; }
+    .stats-row { grid-template-columns: 1fr 1fr; gap: 32px; }
+    .solar-grid { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; gap: 48px; }
+    h1.hero { font-size: 100px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-main">
+      <div class="label">Outside · Right now</div>
+      <h1 class="hero">14.2<span class="unit">°C</span></h1>
+      <p class="subtitle">A calm evening. Pressure rising, sixty-two muons per minute, two small earthquakes in Britain this week.</p>
+    </div>
+    <div class="header-aside">
+      <div class="aside-item">
+        <div class="aside-label">Local time</div>
+        <div class="aside-value">23:42 BST · Monday</div>
+      </div>
+      <div class="aside-item">
+        <div class="aside-label">Sun</div>
+        <div class="aside-value">Rises 04:51 · Sets 21:08</div>
+      </div>
+      <div class="aside-item">
+        <div class="aside-label">Moon</div>
+        <div class="aside-value">Waxing crescent · 23%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP STATS ROW -->
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-label">Pressure</div>
+      <div class="stat-value">1018</div>
+      <div class="stat-meta"><span class="trend-up">↑</span>hPa · rising 1.2/hr</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Humidity</div>
+      <div class="stat-value">68%</div>
+      <div class="stat-meta">steady · dew point 9°C</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Muons</div>
+      <div class="stat-value">62</div>
+      <div class="stat-meta">per minute · pressure corrected</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">UV</div>
+      <div class="stat-value">0.0</div>
+      <div class="stat-meta">night · max today was 4.2</div>
+    </div>
+  </div>
+
+  <!-- MUON FLUX CHART -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Muon flux</span>
+      <span class="section-meta">Past 24 hours</span>
+    </div>
+    <div class="section-sub">Events per minute, corrected for atmospheric pressure</div>
+    <svg viewBox="0 0 1100 240" width="100%" height="240" preserveAspectRatio="none" style="display:block">
+      <g stroke="#f0f0ec" stroke-width="1">
+        <line x1="60" y1="40" x2="1100" y2="40"/>
+        <line x1="60" y1="90" x2="1100" y2="90"/>
+        <line x1="60" y1="140" x2="1100" y2="140"/>
+        <line x1="60" y1="190" x2="1100" y2="190"/>
+      </g>
+      <g font-family="Inter, sans-serif" font-size="11" fill="#5a6b5a" font-weight="600">
+        <text x="0" y="44">70</text>
+        <text x="0" y="94">65</text>
+        <text x="0" y="144">60</text>
+        <text x="0" y="194">55</text>
+      </g>
+      <path d="M60,160 L110,155 L160,158 L210,148 L260,152 L310,145 L360,150 L410,138 L460,142 L510,135 L560,140 L610,128 L660,132 L710,125 L760,130 L810,122 L860,127 L910,115 L960,120 L1010,112 L1060,118 L1100,105" stroke="#111111" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="1100" cy="105" r="5" fill="#6b8e6b"/>
+      <circle cx="1100" cy="105" r="12" fill="none" stroke="#6b8e6b" stroke-opacity="0.25" stroke-width="1.5"/>
+      <text x="1075" y="90" font-family="Inter, sans-serif" font-size="13" fill="#111111" font-weight="600" text-anchor="end">62 now</text>
+      <line x1="60" y1="210" x2="1100" y2="210" stroke="#ebebe8" stroke-width="1"/>
+      <g font-family="Inter, sans-serif" font-size="11" fill="#5a6b5a" font-weight="600">
+        <text x="55" y="226">00:00</text>
+        <text x="305" y="226">06:00</text>
+        <text x="555" y="226">12:00</text>
+        <text x="805" y="226">18:00</text>
+        <text x="1075" y="226">Now</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- SOLAR / SPACE WEATHER -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Space weather</span>
+      <span class="section-meta">NOAA SWPC</span>
+    </div>
+    <div class="section-sub">Solar activity affects cosmic ray flux. A geomagnetic storm 24–72 hours from now would typically show as a dip in the muon chart above.</div>
+
+    <div class="solar-grid">
+      <div class="solar-card">
+        <div class="solar-card-label">Solar flare class</div>
+        <div class="solar-card-value">C2.4</div>
+        <div class="solar-card-meta">Last 24h peak · no major activity</div>
+      </div>
+      <div class="solar-card">
+        <div class="solar-card-label">Solar wind speed</div>
+        <div class="solar-card-value">418</div>
+        <div class="solar-card-meta">km/s · within normal range</div>
+      </div>
+      <div class="solar-card">
+        <div class="solar-card-label">Geomagnetic Kp</div>
+        <div class="solar-card-value">2</div>
+        <div class="kp-bar">
+          <div class="kp-cell active-low"></div>
+          <div class="kp-cell active-low"></div>
+          <div class="kp-cell"></div>
+          <div class="kp-cell"></div>
+          <div class="kp-cell"></div>
+          <div class="kp-cell"></div>
+          <div class="kp-cell"></div>
+          <div class="kp-cell"></div>
+          <div class="kp-cell"></div>
+        </div>
+        <div class="solar-card-meta" style="margin-top:12px">Quiet · scale 0–9, storm threshold is 5</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TWO COLUMN: EARTHQUAKES + LIGHTNING -->
+  <div class="two-col">
+
+    <!-- EARTHQUAKES -->
+    <div>
+      <div class="section-header">
+        <span class="section-title">Earthquakes</span>
+        <span class="section-meta">USGS · EMSC</span>
+      </div>
+      <div class="section-sub">Magnitude 4.0+ globally, all detectable UK events</div>
+
+      <div class="event-row">
+        <span class="event-time">19:42</span>
+        <span>
+          <div class="event-title">Vanuatu region</div>
+          <div class="event-sub">68 km depth · 4 hours ago</div>
+        </span>
+        <span class="magnitude-pill mag-mod">M 5.4</span>
+      </div>
+      <div class="event-row">
+        <span class="event-time">14:08</span>
+        <span>
+          <div class="event-title">Off Honshu, Japan</div>
+          <div class="event-sub">32 km depth · 9 hours ago</div>
+        </span>
+        <span class="magnitude-pill mag-mod">M 4.8</span>
+      </div>
+      <div class="event-row">
+        <span class="event-time">Sun</span>
+        <span>
+          <div class="event-title">Newdigate, Surrey</div>
+          <div class="event-sub">UK · 8 km depth · yesterday</div>
+        </span>
+        <span class="magnitude-pill mag-small">M 1.7</span>
+      </div>
+      <div class="event-row">
+        <span class="event-time">Sat</span>
+        <span>
+          <div class="event-title">Northern Peru</div>
+          <div class="event-sub">112 km depth · 2 days ago</div>
+        </span>
+        <span class="magnitude-pill mag-big">M 6.1</span>
+      </div>
+      <div class="event-row">
+        <span class="event-time">Sat</span>
+        <span>
+          <div class="event-title">Greek-Albanian border</div>
+          <div class="event-sub">15 km depth · 2 days ago</div>
+        </span>
+        <span class="magnitude-pill mag-mod">M 4.3</span>
+      </div>
+    </div>
+
+    <!-- LIGHTNING -->
+    <div>
+      <div class="section-header">
+        <span class="section-title">Lightning</span>
+        <span class="section-meta">Blitzortung · UK + Ireland</span>
+      </div>
+      <div class="section-sub">Real-time strike detection across the British Isles</div>
+
+      <div class="lightning-meta">
+        <div class="lightning-stat">
+          <div class="lightning-num">0</div>
+          <div class="lightning-lbl">Past hour</div>
+        </div>
+        <div class="lightning-stat">
+          <div class="lightning-num">14</div>
+          <div class="lightning-lbl">Past 24h</div>
+        </div>
+        <div class="lightning-stat">
+          <div class="lightning-num">312 km</div>
+          <div class="lightning-lbl">Nearest today</div>
+        </div>
+      </div>
+
+      <!-- Sparkline of strikes per hour over last 24h -->
+      <div class="sparkline-wrap">
+        <svg viewBox="0 0 500 80" width="100%" height="80" preserveAspectRatio="none" style="display:block">
+          <g fill="#5a6b5a">
+            <rect x="0" y="70" width="18" height="6"/>
+            <rect x="22" y="68" width="18" height="8"/>
+            <rect x="44" y="74" width="18" height="2"/>
+            <rect x="66" y="72" width="18" height="4"/>
+            <rect x="88" y="76" width="18" height="0"/>
+            <rect x="110" y="74" width="18" height="2"/>
+            <rect x="132" y="68" width="18" height="8"/>
+            <rect x="154" y="50" width="18" height="26"/>
+            <rect x="176" y="30" width="18" height="46"/>
+            <rect x="198" y="20" width="18" height="56"/>
+            <rect x="220" y="35" width="18" height="41"/>
+            <rect x="242" y="55" width="18" height="21"/>
+            <rect x="264" y="68" width="18" height="8"/>
+            <rect x="286" y="74" width="18" height="2"/>
+            <rect x="308" y="76" width="18" height="0"/>
+            <rect x="330" y="76" width="18" height="0"/>
+            <rect x="352" y="76" width="18" height="0"/>
+            <rect x="374" y="76" width="18" height="0"/>
+            <rect x="396" y="76" width="18" height="0"/>
+            <rect x="418" y="76" width="18" height="0"/>
+            <rect x="440" y="76" width="18" height="0"/>
+            <rect x="462" y="76" width="18" height="0"/>
+            <rect x="484" y="76" width="18" height="0"/>
+          </g>
+          <text x="0" y="76" font-family="Inter, sans-serif" font-size="9" fill="#5a6b5a" font-weight="600">strikes/hr · last 24h</text>
+        </svg>
+      </div>
+
+      <div style="font-size:13px; color: var(--text-muted); margin-top:8px;">
+        Storm cluster passed over Wales mid-afternoon. All clear now.
+      </div>
+    </div>
+  </div>
+
+  <!-- AURORA -->
+  <div class="section">
+    <div class="aurora-banner">
+      <div class="section-header" style="margin-bottom:24px">
+        <span class="section-title">Aurora visibility</span>
+        <span class="section-meta">AuroraWatch UK · Lancaster</span>
+      </div>
+      <div class="aurora-status">
+        <div class="aurora-dot"></div>
+        <div>
+          <div class="aurora-label">Green · No significant activity</div>
+          <div class="aurora-detail">Aurora unlikely to be visible from the UK tonight. Next alert window: any time — depends on solar wind.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEATHER HISTORY (small, supplementary) -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Temperature today</span>
+      <span class="section-meta">Outside sensor</span>
+    </div>
+    <svg viewBox="0 0 1100 180" width="100%" height="180" preserveAspectRatio="none" style="display:block">
+      <g stroke="#f0f0ec" stroke-width="1">
+        <line x1="60" y1="30" x2="1100" y2="30"/>
+        <line x1="60" y1="80" x2="1100" y2="80"/>
+        <line x1="60" y1="130" x2="1100" y2="130"/>
+      </g>
+      <g font-family="Inter, sans-serif" font-size="11" fill="#5a6b5a" font-weight="600">
+        <text x="0" y="34">20°</text>
+        <text x="0" y="84">15°</text>
+        <text x="0" y="134">10°</text>
+      </g>
+      <!-- Temperature curve: cool morning, warm afternoon, cooling evening -->
+      <path d="M60,110 L160,115 L260,108 L360,90 L460,65 L560,45 L660,35 L760,40 L860,55 L960,75 L1060,90 L1100,95" stroke="#111111" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="1100" cy="95" r="5" fill="#6b8e6b"/>
+      <text x="1075" y="82" font-family="Inter, sans-serif" font-size="13" fill="#111111" font-weight="600" text-anchor="end">14.2°</text>
+      <line x1="60" y1="155" x2="1100" y2="155" stroke="#ebebe8" stroke-width="1"/>
+      <g font-family="Inter, sans-serif" font-size="11" fill="#5a6b5a" font-weight="600">
+        <text x="55" y="171">00:00</text>
+        <text x="305" y="171">06:00</text>
+        <text x="555" y="171">12:00</text>
+        <text x="805" y="171">18:00</text>
+        <text x="1075" y="171">Now</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>Observatory · v0.1</span>
+    <span>Last update: 23:42:18</span>
+  </div>
+
+</div>
+
+</body>
+</html>
