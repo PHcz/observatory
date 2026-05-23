@@ -5,6 +5,7 @@ On dev machines: pydantic-settings reads from .env (gitignored) with London plac
 
 All services import the module-level `settings` object. Direct env access is forbidden.
 """
+
 from __future__ import annotations
 
 from pydantic import Field
@@ -41,7 +42,7 @@ def _load() -> Settings:
 # directly inside the test with monkeypatched env.
 try:
     settings = _load()
-except Exception:  # noqa: BLE001
+except Exception:
     # Re-raised on first attribute access by downstream code; tests using
     # the `valid_env` fixture import this module AFTER the fixture is applied.
     settings = None  # type: ignore[assignment]

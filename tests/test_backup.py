@@ -1,4 +1,5 @@
-"""DATA-04: backup creates .db + .ok sentinel; fails fast on missing mount; prunes 14d+; idempotent same-day."""
+"""DATA-04: backup creates .db + .ok sentinel; fails fast on missing mount; prunes 14d+."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -21,23 +22,17 @@ def populated_source_db(tmp_path: Path) -> Path:
     db = tmp_path / "src.db"
     conn = sqlite3.connect(str(db))
     conn.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)")
-    conn.executemany(
-        "INSERT INTO t (v) VALUES (?)", [("a",), ("b",), ("c",)]
-    )
+    conn.executemany("INSERT INTO t (v) VALUES (?)", [("a",), ("b",), ("c",)])
     conn.commit()
     conn.close()
     return db
 
 
-def test_backup_fails_if_mount_missing(
-    populated_source_db: Path, tmp_path: Path
-) -> None:
+def test_backup_fails_if_mount_missing(populated_source_db: Path, tmp_path: Path) -> None:
     fake_mount = tmp_path / "not-mounted"
     fake_mount.mkdir()
     # tmp dirs are NOT real mountpoints, so is_mount() returns False naturally
-    rc = backup_mod.run_backup(
-        source_db=populated_source_db, backup_mount=fake_mount
-    )
+    rc = backup_mod.run_backup(source_db=populated_source_db, backup_mount=fake_mount)
     assert rc == 1
     assert not any(fake_mount.glob("observatory-*.db"))
 

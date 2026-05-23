@@ -3,6 +3,7 @@
 Provides isolated tmp paths and env vars so tests don't touch the real
 SQLite database, backup mount, or shell environment.
 """
+
 from __future__ import annotations
 
 import os
