@@ -1,0 +1,9 @@
+# Gitleaks fixture file — for testing that the gitleaks hook works.
+#
+# This file is allowlisted in .gitleaks.toml so gitleaks will not scan it.
+# scripts/verify-gitleaks.sh uses this file to set up the test scenario.
+#
+# The verify script creates a temporary file with the actual test key content
+# and stages it to prove gitleaks blocks it. See scripts/verify-gitleaks.sh.
+FIXTURE_LABEL=gitleaks-test-fixture
+FIXTURE_PURPOSE=verify-aws-access-key-detection
