@@ -1,0 +1,63 @@
+[project]
+name = "observatory"
+version = "0.1.0"
+description = "Home observatory: Pi 4 + weather + muon + space weather + earthquakes + aurora + dashboard"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "yoyo-migrations>=9.0",
+  "structlog>=24.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+  "ruff>=0.9.0",
+  "mypy>=1.10",
+  "bandit[toml]>=1.8",
+  "pip-audit>=2.8",
+  "pre-commit>=4.0",
+  "types-PyYAML",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["observatory"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["frontend", "migrations", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["observatory"]
+exclude = ["frontend", "migrations", ".venv", "tests/fixtures"]
+
+[[tool.mypy.overrides]]
+module = ["yoyo.*"]
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", "frontend", ".venv"]
+skips = ["B101"]  # assert_used — fine in tests, excluded above
