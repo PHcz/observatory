@@ -79,6 +79,9 @@ log "Section 4: directories"
 install -d -o observatory -g observatory -m 0750 /var/lib/observatory
 install -d -o root -g observatory -m 0750 /etc/observatory
 install -d -m 0755 /mnt/backup
+# observatory user has --no-create-home, but uv needs a writable cache dir.
+# Create the home dir explicitly (no login shell, just a place for $HOME).
+install -d -o observatory -g observatory -m 0750 /home/observatory
 
 # Seed /etc/observatory/observatory.env if absent (operator fills real values)
 if [ ! -f /etc/observatory/observatory.env ]; then
