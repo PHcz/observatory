@@ -169,7 +169,7 @@ sudo -u observatory \
 sudo -u observatory \
   "$REPO_ROOT/.venv/bin/pre-commit" install --hook-type pre-push --config "$REPO_ROOT/.pre-commit-config.yaml"
 
-# --- SECTION 12: apply yoyo migrations ---
+# --- SECTION 12: apply yoyo migrations + enable WAL mode ---
 log "Section 12: migrations"
 sudo -u observatory \
   "$REPO_ROOT/.venv/bin/python" -c "
@@ -179,6 +179,14 @@ from observatory.db.migrations import apply_migrations
 n = apply_migrations('/var/lib/observatory/observatory.db')
 print(f'Applied {n} migration(s)')
 "
+
+# yoyo uses its own sqlite3 connection that bypasses observatory.db.connection.get_conn(),
+# so PRAGMA journal_mode=WAL is never applied during migration. journal_mode IS persisted
+# in the database header (unlike busy_timeout and synchronous which are per-connection),
+# so we set it once here. Without this, the DB stays in default 'delete' mode until the
+# first service connects via get_conn() — and the Phase 1 acceptance check fails.
+log "Section 12b: enable WAL mode on observatory.db"
+sudo -u observatory sqlite3 /var/lib/observatory/observatory.db "PRAGMA journal_mode=WAL" >/dev/null
 
 # --- SECTION 13: install + enable backup timer ---
 log "Section 13: backup timer"
