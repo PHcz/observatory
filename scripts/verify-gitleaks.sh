@@ -20,8 +20,13 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-if ! command -v pre-commit >/dev/null 2>&1; then
-  echo "FAIL: pre-commit not installed"; exit 1
+# Find pre-commit: prefer the repo's venv (Pi deployment), fall back to PATH (dev machine).
+if [ -x "$REPO_ROOT/.venv/bin/pre-commit" ]; then
+  PRECOMMIT="$REPO_ROOT/.venv/bin/pre-commit"
+elif command -v pre-commit >/dev/null 2>&1; then
+  PRECOMMIT="$(command -v pre-commit)"
+else
+  echo "FAIL: pre-commit not installed (looked in $REPO_ROOT/.venv/bin/ and PATH)"; exit 1
 fi
 
 # Save current staging state and stash anything currently staged
@@ -52,7 +57,7 @@ printf "fake_aws_access_key_id = %s%s\n" "$KEY_PREFIX" "$KEY_SUFFIX" > "$TMPFILE
 git add "$TMPFILE"
 
 # Run only the gitleaks hook on the staged file
-OUT="$(pre-commit run gitleaks --files "$TMPFILE" 2>&1)"
+OUT="$("$PRECOMMIT" run gitleaks --files "$TMPFILE" 2>&1)"
 RC=$?
 
 if [ "$RC" -eq 0 ]; then
