@@ -132,7 +132,14 @@ def test_main_orders_configure_logging_then_wait_for_ntp_then_reader() -> None:
         tracker.reader_init()
         return fake_reader_instance
 
+    fake_settings = MagicMock()
+    fake_settings.muon_serial_path = "/dev/picomuon"
+    fake_settings.observatory_db_path = "/tmp/x.db"
+    fake_settings.muon_flush_interval_sec = 5
+    fake_settings.muon_buffer_max = 500
+
     with (
+        patch.object(muon_main, "settings", fake_settings),
         patch.object(muon_main, "configure_logging", side_effect=fake_configure),
         patch.object(muon_main, "wait_for_ntp", side_effect=fake_wait),
         patch.object(muon_main, "Reader", side_effect=fake_reader_factory),
