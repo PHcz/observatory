@@ -69,7 +69,7 @@ files = ["observatory"]
 exclude = ["frontend", "migrations", ".venv", "tests/fixtures"]
 
 [[tool.mypy.overrides]]
-module = ["yoyo.*"]
+module = ["yoyo.*", "serial.*", "sdnotify.*"]
 ignore_missing_imports = true
 
 [tool.bandit]
