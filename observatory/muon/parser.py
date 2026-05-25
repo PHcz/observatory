@@ -1,12 +1,22 @@
 """Pure-function PicoMuon CSV line parser. No I/O, no logging — testable with strings.
 
-Protocol (HIGH confidence, confirmed from upstream UKRAA firmware source):
-    Position,Count,ADC,PicoTime,DeadTime,PicoTemp,PicoPres
+Protocol:
+    7-field (upstream UKRAA):  Position,Count,ADC,PicoTime,DeadTime,PicoTemp,PicoPres
+    8-field (observed):        ..., PicoPres, DeviceID  (DeviceID = trailing static ID)
 
-7 comma-separated fields per event, newline-terminated, transmitted at 115200 8N1
-over USB CDC-ACM. BMP280 temperature and pressure are present on EVERY event line
-(not periodic), so each parsed MuonEvent always carries detector_temp_c and
-detector_pressure_hpa values — satisfying MUON-03's pressure-correction contract.
+Both variants are accepted. The 8th field is a static device identifier
+(observed value `56-597-118` on PID 000a, serial E663589863348027 — likely a
+firmware version triple). It is preserved on the parsed event as
+`device_id` (None for 7-field firmware) so the reader can log it once at
+startup as device metadata. It is NOT written to muon_events — the schema
+stays lean per 02-CONTEXT.md "Implementation Decisions → Serial parsing".
+
+Lines are newline-terminated, transmitted at 115200 8N1 over USB CDC-ACM.
+The firmware emits `\\n\\n` between events; the reader handles the blank-line
+case by stripping and skipping. BMP280 temperature and pressure are present
+on EVERY event line (not periodic), so each parsed MuonEvent always carries
+detector_temp_c and detector_pressure_hpa values — satisfying MUON-03's
+pressure-correction contract.
 
 Field-to-column mapping (matches migrations/0001_initial_schema.sql.muon_events):
     Position  'T'|'B'|'C'  -> coincidence (1 iff 'C', else 0)
@@ -16,6 +26,12 @@ Field-to-column mapping (matches migrations/0001_initial_schema.sql.muon_events)
     DeadTime  int/float    -> dropped (debug only)
     PicoTemp  float (°C)   -> detector_temp_c
     PicoPres  float (hPa)  -> detector_pressure_hpa
+    DeviceID  str (opt.)   -> MuonEvent.device_id (not persisted; logged once)
+
+Deviation history:
+    2026-05-25 — Real device emits 8 fields, not the 7 documented in upstream
+    UKRAA scripts. See .planning/phases/02-muon-detector/02-01-CAPTURE-NOTES.md
+    "Protocol deviation" section. Parser relaxed to accept both.
 """
 
 from __future__ import annotations
@@ -23,7 +39,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
-NUM_FIELDS: Final[int] = 7
+VALID_FIELD_COUNTS: Final[frozenset[int]] = frozenset({7, 8})
 VALID_POSITIONS: Final[frozenset[str]] = frozenset({"T", "B", "C"})
 
 
@@ -42,6 +58,7 @@ class MuonEvent:
     amplitude: int  # ADC value 0..1023
     detector_temp_c: float
     detector_pressure_hpa: float
+    device_id: str | None = None  # 8th field if firmware emits it; None for 7-field firmware
 
     @property
     def coincidence(self) -> int:
@@ -69,10 +86,15 @@ def parse_line(raw: bytes | str) -> MuonEvent:
         raise ParseError("empty line")
 
     fields = stripped.split(",")
-    if len(fields) != NUM_FIELDS:
-        raise ParseError(f"expected {NUM_FIELDS} fields, got {len(fields)}: {text!r}")
+    if len(fields) not in VALID_FIELD_COUNTS:
+        raise ParseError(f"expected 7 or 8 fields, got {len(fields)}: {text!r}")
 
-    position, _count, adc, _picotime, _deadtime, picotemp, picopres = fields
+    position = fields[0]
+    adc = fields[2]
+    picotemp = fields[5]
+    picopres = fields[6]
+    device_id = fields[7] if len(fields) == 8 else None
+
     if position not in VALID_POSITIONS:
         raise ParseError(f"invalid position {position!r}, expected one of T/B/C")
 
@@ -82,6 +104,7 @@ def parse_line(raw: bytes | str) -> MuonEvent:
             amplitude=int(adc),
             detector_temp_c=float(picotemp),
             detector_pressure_hpa=float(picopres),
+            device_id=device_id,
         )
     except ValueError as exc:
         raise ParseError(f"numeric parse failed: {text!r}") from exc
