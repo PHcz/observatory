@@ -11,17 +11,18 @@ Exit codes:
   redirect, structural parse error, OR per-item parse_failures ratio
   EXCEEDING ``POLLER_PARSE_FAILURE_THRESHOLD`` (writes 0 rows in that case).
 
-Per-source quirks vs USGS/EMSC: BGS feed is RSS (xml.etree), no <guid>
-(external_id derived from <link>), naive pubDate (BGS parser assumes UTC
-itself rather than routing through the strict parse_ts).
+Per-source quirks vs USGS/EMSC: BGS feed is RSS (parsed via defusedxml —
+billion-laughs / external-entity defenses), no <guid> (external_id derived
+from <link>), naive pubDate (BGS parser assumes UTC itself rather than
+routing through the strict parse_ts).
 """
 
 from __future__ import annotations
 
 import sys
 import time
-import xml.etree.ElementTree as ET
 
+import defusedxml.ElementTree as ET
 import structlog
 
 from observatory.config import settings
