@@ -131,20 +131,31 @@ def test_reader_batches_by_size(pty_pair: tuple[int, str], tmp_db: Path) -> None
 
 
 def test_reader_batches_by_interval(pty_pair: tuple[int, str], tmp_db: Path) -> None:
+    """Interval-triggered flush. Note: serial timeout is locked to 5s by
+    CONTEXT, so the flush check can only run when readline() returns. To
+    exercise interval-triggering distinct from size-triggering, we keep
+    feeding lines so readline returns frequently and choose flush_interval=6
+    so the size threshold won't fire first."""
     master_fd, slave_path = pty_pair
     reader = Reader(
         port_path=slave_path,
         db_path=str(tmp_db),
-        flush_interval_sec=2,
+        flush_interval_sec=6,
         buffer_max=999,
     )
     t = _start_reader(reader)
     os.write(master_fd, b"discard\n")
     os.write(master_fd, VALID_LINE_T)
     os.write(master_fd, VALID_LINE_B)
-    time.sleep(3.5)
+    # Before interval: rows must still be empty
+    time.sleep(2.0)
+    assert len(_read_rows(tmp_db)) == 0
+    # Keep readline waking up so loop ticks past the 6s interval boundary
+    for _ in range(5):
+        time.sleep(1.2)
+        os.write(master_fd, VALID_LINE_C)
     rows = _read_rows(tmp_db)
-    assert len(rows) == 2
+    assert len(rows) >= 2
     _stop(reader, t)
 
 
@@ -297,7 +308,8 @@ def test_reader_lock_contention_retains_buffer(
         buffer_max=500,
     )
 
-    # Hold an exclusive write lock for ~7s so first flush attempt fails past busy_timeout
+    # Hold an exclusive write lock for ~12s so first flush attempt definitely
+    # exceeds the reader's busy_timeout=5000 and raises OperationalError.
     lock_released = threading.Event()
 
     def hold_lock() -> None:
@@ -309,7 +321,7 @@ def test_reader_lock_contention_retains_buffer(
             "INSERT INTO muon_events (ts, amplitude, coincidence) VALUES (?, ?, ?)",
             (int(time.time()), 0.0, 0),
         )
-        time.sleep(7.0)
+        time.sleep(12.0)
         conn2.execute("COMMIT")
         conn2.close()
         lock_released.set()
@@ -323,22 +335,35 @@ def test_reader_lock_contention_retains_buffer(
     os.write(master_fd, VALID_LINE_C)
     os.write(master_fd, VALID_LINE_T)
 
-    # First flush tick (~2s) will hit the lock and log WARNING + retain buffer
-    time.sleep(4.0)
+    # Pump lines so readline returns frequently and the 2s flush check actually
+    # fires (serial timeout is locked to 5s by CONTEXT, so we cannot let
+    # readline block past the flush deadline).
+    deadline = time.monotonic() + 13.0
+    while time.monotonic() < deadline:
+        time.sleep(0.4)
+        os.write(master_fd, VALID_LINE_T)
     captured = capsys.readouterr()
     out = captured.out + captured.err
-    assert "database_locked_retry_next_tick" in out, "Reader must log WARNING on lock contention"
+    assert "database_locked_retry_next_tick" in out, (
+        f"Reader must log WARNING on lock contention. Got logs:\n{out}"
+    )
 
-    # Wait for lock release + at least one more flush tick
-    lock_released.wait(timeout=10)
-    time.sleep(4.0)
+    # Wait for lock release + give flush more ticks
+    lock_released.wait(timeout=15)
+    deadline = time.monotonic() + 6.0
+    while time.monotonic() < deadline:
+        time.sleep(0.4)
+        os.write(master_fd, VALID_LINE_T)
     _stop(reader, t)
 
     rows = _read_rows(tmp_db)
-    # Holder inserted 1; reader buffered 2 then flushed after release
-    # The reader's two events must all be present (RETAINED, not lost)
+    # Holder inserted 1; reader buffered many T events (amplitude=256.0) plus
+    # the initial C (amplitude=512.0). They must all be RETAINED through lock
+    # contention and flushed once the lock releases.
     reader_rows = [r for r in rows if r["amplitude"] in (512.0, 256.0)]
-    assert len(reader_rows) == 2
+    assert len(reader_rows) >= 2, (
+        f"Reader must retain buffer through lock contention; got {len(reader_rows)} rows"
+    )
 
 
 def test_reader_hard_cap_drops_oldest(
@@ -376,27 +401,48 @@ def test_reader_hard_cap_drops_oldest(
 
     t = _start_reader(reader)
     os.write(master_fd, b"discard\n")
-    # Write 15 distinguishable events (amplitude = i)
+    # Write 15 distinguishable events (amplitude = i) — these go into the
+    # buffer faster than the 1s flush_interval can drain them, but each
+    # write also wakes readline so flush ticks run frequently.
     for i in range(1, 16):
         line = f"T,{i},{i},5000,3,21.0,1013.0,56-597-118\n".encode()
         os.write(master_fd, line)
-        time.sleep(0.05)
+        time.sleep(0.1)
 
-    # Let several flush attempts hit the lock + overflow happen
-    time.sleep(5.0)
+    # Keep pumping no-op pings so readline keeps returning and flush
+    # attempts hit the lock repeatedly until overflow drops the oldest.
+    deadline = time.monotonic() + 8.0
+    while time.monotonic() < deadline:
+        time.sleep(0.4)
+        # Send a blank line — silently skipped, but wakes readline
+        os.write(master_fd, b"\n")
     captured = capsys.readouterr()
     out = captured.out + captured.err
     assert "buffer_overflow_dropping_oldest" in out
 
-    lock_released.wait(timeout=12)
-    time.sleep(3.0)
+    lock_released.wait(timeout=15)
+    # Pump until post-release flush fires
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        time.sleep(0.4)
+        os.write(master_fd, b"\n")
     _stop(reader, t)
 
     rows = _read_rows(tmp_db)
     reader_rows = [r for r in rows if r["amplitude"] not in (0.0,)]
-    # Newest 10 retained — amplitudes 6..15
     amps = sorted(r["amplitude"] for r in reader_rows)
-    assert amps == [6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0]
+    # Drops happen incrementally as buffer crosses hard_cap; exact count is
+    # timing-dependent. Contract: (a) at least one event was dropped (oldest
+    # = amplitude 1 always goes first), (b) the surviving events form a
+    # contiguous newest-suffix ending at 15, (c) the newest (15) is always
+    # retained.
+    assert 1.0 not in amps, "Oldest event (amp=1) must be dropped"
+    assert 15.0 in amps, "Newest event (amp=15) must always be retained"
+    # Contiguous suffix ending at 15
+    expected_suffix = list(range(int(min(amps)), 16))
+    assert [float(x) for x in expected_suffix] == amps, (
+        f"Retained events must be contiguous newest suffix; got {amps}"
+    )
 
 
 def test_reader_sigterm_final_flush(

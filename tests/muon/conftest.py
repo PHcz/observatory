@@ -10,7 +10,15 @@ from pathlib import Path
 
 import pytest
 
+from observatory.logging import configure_logging
+
 SCHEMA = Path(__file__).resolve().parents[2] / "migrations" / "0001_initial_schema.sql"
+
+
+@pytest.fixture(autouse=True)
+def _configure_structlog() -> None:
+    """Ensure structlog is configured so capsys can see JSON log output."""
+    configure_logging(level="DEBUG")
 
 
 @pytest.fixture
