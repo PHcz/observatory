@@ -143,6 +143,9 @@ sudo -u observatory uv sync --python /usr/bin/python3.11
 log "Section 10: deploy artifacts"
 cp "$REPO_ROOT/deploy/udev/99-picomuon.rules" /etc/udev/rules.d/
 udevadm control --reload-rules
+udevadm trigger
+# Re-evaluating udev rules creates /dev/picomuon if the PicoMuon is already
+# plugged in. Safe no-op if the device isn't present yet.
 
 # Mosquitto config (Phase 1 baseline). Seed an admin password if absent.
 cp "$REPO_ROOT/deploy/mosquitto/mosquitto.conf" /etc/mosquitto/mosquitto.conf
@@ -199,6 +202,20 @@ systemctl enable obs-backup.timer
 #   sudo systemctl start obs-backup.timer
 # after configuring the USB stick mount.
 
+# --- SECTION 14: install + enable obs-muon service (do NOT start) ---
+log "Section 14: obs-muon service"
+cp "$REPO_ROOT/deploy/systemd/obs-muon.service" /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable obs-muon.service
+# Do NOT start the service here — operator should:
+#   1. Confirm PicoMuon is plugged in (`ls /dev/picomuon`)
+#   2. Confirm chrony has converged (`chronyc tracking | grep "System time"`)
+#   3. Start with: sudo systemctl start obs-muon.service
+# The 02-07 acceptance script `scripts/verify-muon.sh` automates these checks.
+# Pitfall 6 reminder: do NOT open /dev/picomuon with screen/cat/minicom while
+# the service is running — the reader holds the port with exclusive=True and
+# will refuse to share it.
+
 log "Bootstrap complete."
 log "Next steps for the operator:"
 log "  1. Edit /etc/observatory/observatory.env — set real HOME_LAT and HOME_LON."
@@ -206,3 +223,5 @@ log "  2. Configure USB stick: blkid /dev/sda1 -> uncomment + fill UUID in /etc/
 log "  3. sudo mount -a, then start the obs-backup.timer (systemctl start)"
 log "  4. Reboot to activate tmpfs mounts: sudo reboot"
 log "  5. After reboot, run cold-boot acceptance checklist (see README)."
+log "  6. Phase 2: confirm /dev/picomuon exists, then: sudo systemctl start obs-muon.service"
+log "     (Pitfall 6: stop the service before opening /dev/picomuon with screen/cat/minicom.)"
