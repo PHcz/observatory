@@ -60,6 +60,9 @@ def _configure_structlog(monkeypatch: pytest.MonkeyPatch) -> None:
         "observatory.pollers.usgs.__main__",
         "observatory.pollers.emsc.__main__",
         "observatory.pollers.bgs.__main__",
+        "observatory.pollers.noaa.__main__",
+        "observatory.pollers.aurorawatch.__main__",
+        "observatory.pollers.blitzortung.__main__",
     ):
         try:
             _m = importlib.import_module(mod_path)
@@ -97,12 +100,21 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
         "observatory.pollers.usgs.__main__",
         "observatory.pollers.emsc.__main__",
         "observatory.pollers.bgs.__main__",
+        "observatory.pollers.noaa.__main__",
+        "observatory.pollers.aurorawatch.__main__",
+        "observatory.pollers.blitzortung.__main__",
     ):
         try:
             _m = importlib.import_module(mod_path)
             monkeypatch.setattr(_m, "settings", s, raising=False)
         except ModuleNotFoundError:
             pass
+
+
+@pytest.fixture
+def fixtures_dir() -> Path:
+    """Path to tests/fixtures/ for Phase 5+ poller fixtures."""
+    return REPO_ROOT / "tests" / "fixtures"
 
 
 @pytest.fixture
