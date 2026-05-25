@@ -167,8 +167,10 @@ def test_parse_real_sample_when_present() -> None:
 
 
 def test_muon_event_is_frozen() -> None:
+    from dataclasses import FrozenInstanceError
+
     ev = parse_line("C,1,2,3,4,5.0,6.0")
-    with pytest.raises((AttributeError, Exception)) as excinfo:
+    # frozen=True dataclasses raise FrozenInstanceError on attribute assignment.
+    # FrozenInstanceError subclasses AttributeError per the stdlib docs.
+    with pytest.raises((FrozenInstanceError, AttributeError)):
         ev.position = "T"  # type: ignore[misc]
-    # dataclasses.FrozenInstanceError subclasses AttributeError
-    assert "frozen" in str(excinfo.value).lower() or "attribute" in str(excinfo.value).lower()
