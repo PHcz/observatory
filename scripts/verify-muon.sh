@@ -211,7 +211,9 @@ if [ ! -e "$DEV_TARGET" ]; then
   ANOMALIES+=("Criterion 3 skipped: ${DEV_TARGET} not present at start of silence test.")
 else
   ORIG_MODE="$(stat -c %a "$DEV_TARGET")"
-  LOG_START_TS="$(date -Iseconds)"
+  # journalctl --since does NOT accept ISO 8601 with timezone offset.
+  # Use unix epoch with @ prefix instead (always parseable).
+  LOG_START_EPOCH="$(date +%s)"
   info "blocking access to ${DEV_TARGET} (was mode ${ORIG_MODE}); reader should hit EACCES on next reopen"
   sudo chmod 000 "$DEV_TARGET"
   # 70s ensures we cross the 60s silence_timeout_sec threshold in reader.py
@@ -226,7 +228,7 @@ else
   sleep 30
 
   # 3a: WARNING log present mentioning silence/reopen/serial_error
-  SILENCE_LOG="$(sudo journalctl -u "$UNIT" --since "$LOG_START_TS" --no-pager 2>&1 || true)"
+  SILENCE_LOG="$(sudo journalctl -u "$UNIT" --since "@${LOG_START_EPOCH}" --no-pager 2>&1 || true)"
   if echo "$SILENCE_LOG" | grep -qE 'serial_silence_reopen|reopen_attempt|serial_error|reopening_after_silence'; then
     pass "Criterion 3a: reader logged silence/reopen warning during blockade"
     LOG_RESULT_3A="PASS"
