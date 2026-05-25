@@ -67,6 +67,7 @@ python_version = "3.11"
 strict = true
 files = ["observatory"]
 exclude = ["frontend", "migrations", ".venv", "tests/fixtures"]
+plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = ["yoyo.*", "serial.*", "sdnotify.*"]
@@ -74,4 +75,8 @@ ignore_missing_imports = true
 
 [tool.bandit]
 exclude_dirs = ["tests", "frontend", ".venv"]
-skips = ["B101"]  # assert_used — fine in tests, excluded above
+# B101: assert_used — fine in tests, excluded above
+# B404: subprocess import — needed by observatory.muon.__main__ for `chronyc tracking` (NTP gate)
+# B603: subprocess call without shell — actually safer (no shell injection); we never pass user input
+# B607: partial executable path — fine, PATH is controlled by systemd EnvironmentFile on the Pi
+skips = ["B101", "B404", "B603", "B607"]

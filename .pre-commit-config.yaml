@@ -67,6 +67,7 @@ repos:
       - id: bandit
         stages: [pre-push]
         args: [-r, observatory/, -c, pyproject.toml]
+        pass_filenames: false
         additional_dependencies: ["bandit[toml]"]
 
   - repo: https://github.com/pypa/pip-audit
