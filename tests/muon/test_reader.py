@@ -57,9 +57,9 @@ def _stop(reader: Reader, t: threading.Thread, timeout: float = 5.0) -> None:
     t.join(timeout=timeout)
 
 
-VALID_LINE_C = b"C,1,512,5000,3,21.3,1013.25,56-597-118\n"
-VALID_LINE_T = b"T,2,256,5001,4,21.4,1013.30,56-597-118\n"
-VALID_LINE_B = b"B,3,128,5002,5,21.5,1013.35,56-597-118\n"
+VALID_LINE_C = b"C,1,512,5000,3,21.3,1013.25,XX-XXX-XXX\n"
+VALID_LINE_T = b"T,2,256,5001,4,21.4,1013.30,XX-XXX-XXX\n"
+VALID_LINE_B = b"B,3,128,5002,5,21.5,1013.35,XX-XXX-XXX\n"
 
 
 def test_reader_ingests_via_pty(pty_pair: tuple[int, str], tmp_db: Path) -> None:
@@ -178,7 +178,7 @@ def test_reader_inserts_correct_columns(pty_pair: tuple[int, str], tmp_db: Path)
     reader = Reader(port_path=slave_path, db_path=str(tmp_db), flush_interval_sec=2)
     t = _start_reader(reader)
     os.write(master_fd, b"discard\n")
-    os.write(master_fd, b"C,1,512,3,4,21.3,1013.25,56-597-118\n")
+    os.write(master_fd, b"C,1,512,3,4,21.3,1013.25,XX-XXX-XXX\n")
     time.sleep(3.0)
     _stop(reader, t)
     rows = _read_rows(tmp_db)
@@ -194,10 +194,10 @@ def test_reader_bmp280_cache_retains_last_known(pty_pair: tuple[int, str], tmp_d
     reader = Reader(port_path=slave_path, db_path=str(tmp_db), flush_interval_sec=2)
     t = _start_reader(reader)
     os.write(master_fd, b"discard\n")
-    os.write(master_fd, b"C,1,100,3,4,21.0,1010.0,56-597-118\n")
+    os.write(master_fd, b"C,1,100,3,4,21.0,1010.0,XX-XXX-XXX\n")
     # Hand-crafted malformed line (wrong field count). Cache must NOT be cleared.
     os.write(master_fd, b"BROKEN,LINE\n")
-    os.write(master_fd, b"T,2,200,3,4,22.5,1015.5,56-597-118\n")
+    os.write(master_fd, b"T,2,200,3,4,22.5,1015.5,XX-XXX-XXX\n")
     time.sleep(3.0)
     _stop(reader, t)
     rows = _read_rows(tmp_db)
@@ -273,7 +273,7 @@ def test_reader_logs_device_metadata_once(
         f"Expected 1 muon_device_metadata log; got {len(metadata_events)}"
     )
     parsed: dict[str, Any] = json.loads(metadata_events[0])
-    assert parsed["device_id"] == "56-597-118"
+    assert parsed["device_id"] == "XX-XXX-XXX"
 
 
 def test_reader_logs_json_on_warning(
@@ -405,7 +405,7 @@ def test_reader_hard_cap_drops_oldest(
     # buffer faster than the 1s flush_interval can drain them, but each
     # write also wakes readline so flush ticks run frequently.
     for i in range(1, 16):
-        line = f"T,{i},{i},5000,3,21.0,1013.0,56-597-118\n".encode()
+        line = f"T,{i},{i},5000,3,21.0,1013.0,XX-XXX-XXX\n".encode()
         os.write(master_fd, line)
         time.sleep(0.1)
 

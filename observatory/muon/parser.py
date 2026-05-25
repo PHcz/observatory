@@ -5,11 +5,12 @@ Protocol:
     8-field (observed):        ..., PicoPres, DeviceID  (DeviceID = trailing static ID)
 
 Both variants are accepted. The 8th field is a static device identifier
-(observed value `56-597-118` on PID 000a, serial E663589863348027 — likely a
-firmware version triple). It is preserved on the parsed event as
-`device_id` (None for 7-field firmware) so the reader can log it once at
-startup as device metadata. It is NOT written to muon_events — the schema
-stays lean per 02-CONTEXT.md "Implementation Decisions → Serial parsing".
+(observed on PID 000a as a NN-NNN-NNN triple — likely a firmware version
+triple, constant for a given device/session). It is preserved on the
+parsed event as `device_id` (None for 7-field firmware) so the reader
+can log it once at startup as device metadata. It is NOT written to
+muon_events — the schema stays lean per 02-CONTEXT.md "Implementation
+Decisions → Serial parsing".
 
 Lines are newline-terminated, transmitted at 115200 8N1 over USB CDC-ACM.
 The firmware emits `\\n\\n` between events; the reader handles the blank-line
