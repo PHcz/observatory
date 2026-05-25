@@ -1,0 +1,13 @@
+[Unit]
+Description=Observatory USGS poller schedule (every 5 min)
+Requires=obs-usgs-poll.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+Persistent=true
+Unit=obs-usgs-poll.service
+
+[Install]
+WantedBy=timers.target
