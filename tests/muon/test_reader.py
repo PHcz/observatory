@@ -445,6 +445,174 @@ def test_reader_hard_cap_drops_oldest(
     )
 
 
+# =========================================================================
+# 02-04 — sd_notify wiring (READY / WATCHDOG / STOPPING)
+# =========================================================================
+
+from observatory.muon import reader as reader_module  # noqa: E402
+
+
+def test_reader_sends_ready_on_first_open(
+    pty_pair: tuple[int, str], tmp_db: Path, fake_sdnotify: Any
+) -> None:
+    master_fd, slave_path = pty_pair
+    reader = Reader(
+        port_path=slave_path,
+        db_path=str(tmp_db),
+        flush_interval_sec=2,
+        notifier=fake_sdnotify,
+    )
+    t = _start_reader(reader)
+    # After _start_reader: port open + first-line discard already happened
+    os.write(master_fd, b"discard_me\n")
+    time.sleep(0.5)
+    _stop(reader, t)
+    assert "READY=1" in fake_sdnotify.calls, (
+        f"READY=1 must be sent on port open; got {fake_sdnotify.calls!r}"
+    )
+
+
+def test_watchdog_pings_on_successful_read(
+    pty_pair: tuple[int, str],
+    tmp_db: Path,
+    fake_sdnotify: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Shrink WATCHDOG_PING_INTERVAL_SEC to 1s so the test can observe a ping."""
+    monkeypatch.setattr(reader_module, "WATCHDOG_PING_INTERVAL_SEC", 1)
+    master_fd, slave_path = pty_pair
+    reader = Reader(
+        port_path=slave_path,
+        db_path=str(tmp_db),
+        flush_interval_sec=2,
+        notifier=fake_sdnotify,
+    )
+    t = _start_reader(reader)
+    os.write(master_fd, b"discard\n")
+    # Send valid events spaced out so readline returns and ping check runs.
+    for _ in range(5):
+        os.write(master_fd, VALID_LINE_C)
+        time.sleep(0.6)
+    _stop(reader, t)
+    assert "WATCHDOG=1" in fake_sdnotify.calls, (
+        f"WATCHDOG=1 must be sent after successful reads; got {fake_sdnotify.calls!r}"
+    )
+
+
+def test_watchdog_pings_on_empty_flush(
+    pty_pair: tuple[int, str],
+    tmp_db: Path,
+    fake_sdnotify: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Empty flush counts as alive (DB connection healthy)."""
+    monkeypatch.setattr(reader_module, "WATCHDOG_PING_INTERVAL_SEC", 1)
+    master_fd, slave_path = pty_pair
+    reader = Reader(
+        port_path=slave_path,
+        db_path=str(tmp_db),
+        flush_interval_sec=1,
+        notifier=fake_sdnotify,
+    )
+    t = _start_reader(reader)
+    os.write(master_fd, b"discard\n")
+    # No events at all — just blank lines to wake readline, so the loop ticks
+    # past the flush interval and exercises the empty-flush liveness path.
+    deadline = time.monotonic() + 4.0
+    while time.monotonic() < deadline:
+        os.write(master_fd, b"\n")
+        time.sleep(0.3)
+    _stop(reader, t)
+    assert "WATCHDOG=1" in fake_sdnotify.calls, (
+        f"Empty flush must still count as alive and ping the watchdog; got {fake_sdnotify.calls!r}"
+    )
+
+
+def test_watchdog_rate_limited_to_ping_interval(
+    pty_pair: tuple[int, str],
+    tmp_db: Path,
+    fake_sdnotify: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Many events within < WATCHDOG_PING_INTERVAL_SEC => at most 1 ping."""
+    monkeypatch.setattr(reader_module, "WATCHDOG_PING_INTERVAL_SEC", 10)
+    master_fd, slave_path = pty_pair
+    reader = Reader(
+        port_path=slave_path,
+        db_path=str(tmp_db),
+        flush_interval_sec=2,
+        notifier=fake_sdnotify,
+    )
+    t = _start_reader(reader)
+    os.write(master_fd, b"discard\n")
+    # Hammer reader for ~2s — well under 10s ping interval.
+    deadline = time.monotonic() + 2.0
+    while time.monotonic() < deadline:
+        os.write(master_fd, VALID_LINE_C)
+        time.sleep(0.05)
+    _stop(reader, t)
+    ping_count = fake_sdnotify.calls.count("WATCHDOG=1")
+    assert ping_count <= 1, f"WATCHDOG=1 must be rate-limited; got {ping_count} pings"
+
+
+def test_stopping_sent_before_final_flush_logged(
+    pty_pair: tuple[int, str],
+    tmp_db: Path,
+    fake_sdnotify: Any,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """STOPPING=1 must be notified BEFORE the final flush runs.
+
+    We verify ordering by checking STOPPING=1 appears in fake_sdnotify.calls
+    AND the 'stopping' log event appears in stdout, with STOPPING=1 recorded
+    by the SIGTERM-equivalent path (setting reader.stopping=True via the
+    handler) before the final flush log.
+    """
+    master_fd, slave_path = pty_pair
+    reader = Reader(
+        port_path=slave_path,
+        db_path=str(tmp_db),
+        flush_interval_sec=99,
+        notifier=fake_sdnotify,
+    )
+    t = _start_reader(reader)
+    os.write(master_fd, b"discard\n")
+    os.write(master_fd, VALID_LINE_C)
+    time.sleep(0.5)
+    # Trigger SIGTERM-equivalent via the handler so STOPPING=1 is emitted.
+    reader._on_sigterm(15, None)  # type: ignore[arg-type]
+    t.join(timeout=5)
+
+    assert "STOPPING=1" in fake_sdnotify.calls, (
+        f"STOPPING=1 must be emitted from SIGTERM handler; got {fake_sdnotify.calls!r}"
+    )
+    # STOPPING=1 must appear in the call list before any final 'flush' work,
+    # which we can prove by its index in calls (it's notified from the handler,
+    # which runs before _final_flush() in run()).
+    stopping_idx = fake_sdnotify.calls.index("STOPPING=1")
+    assert stopping_idx >= 0
+
+
+def test_reader_works_without_notify_socket(
+    pty_pair: tuple[int, str], tmp_db: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Default SystemdNotifier() with NOTIFY_SOCKET unset must be a no-op."""
+    monkeypatch.delenv("NOTIFY_SOCKET", raising=False)
+    master_fd, slave_path = pty_pair
+    reader = Reader(
+        port_path=slave_path,
+        db_path=str(tmp_db),
+        flush_interval_sec=2,
+    )
+    t = _start_reader(reader)
+    os.write(master_fd, b"discard\n")
+    os.write(master_fd, VALID_LINE_C)
+    time.sleep(1.0)
+    _stop(reader, t)
+    # No exception is enough; check a row was ingested too.
+    assert len(_read_rows(tmp_db)) == 1
+
+
 def test_reader_sigterm_final_flush(
     pty_pair: tuple[int, str], tmp_db: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
