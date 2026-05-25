@@ -83,6 +83,8 @@ def _install_fetch(monkeypatch: pytest.MonkeyPatch, body_or_exc: bytes | Excepti
 
     monkeypatch.setattr(_http_mod, "fetch", fake_fetch)
     monkeypatch.setattr(_main_mod, "fetch", fake_fetch)
+    # main() calls configure_logging(); the autouse conftest fixture already
+    # neutralizes it for every poller __main__ module so capture_logs works.
 
 
 # ---------- Tests ----------
