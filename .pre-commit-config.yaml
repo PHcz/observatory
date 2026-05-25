@@ -64,6 +64,9 @@ repos:
           - types-PyYAML
           - httpx
           - defusedxml
+          - fastapi
+          - uvicorn
+          - websockets
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.3
