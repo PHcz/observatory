@@ -160,9 +160,11 @@ def test_parse_real_sample_when_present() -> None:
         assert ev.detector_temp_c is not None
         assert ev.detector_pressure_hpa is not None
     # Real PID-000a firmware emits the 8-field variant; device_id should be set
-    # and identical across the whole capture session.
+    # and identical across the whole capture session (the actual value identifies
+    # a specific device — fixture sanitized to "XX-XXX-XXX" for public repo).
     device_ids = {ev.device_id for ev in successes}
-    assert device_ids == {"56-597-118"}, f"expected single static device_id, got {device_ids}"
+    assert len(device_ids) == 1, f"expected single static device_id, got {device_ids}"
+    assert next(iter(device_ids)) is not None, "device_id required on 8-field firmware"
 
 
 # --------------------------------------------------------------------------- #
@@ -172,13 +174,13 @@ def test_parse_real_sample_when_present() -> None:
 
 def test_parse_8_field_variant_extracts_device_id() -> None:
     """PID-000a firmware emits Position,Count,ADC,PicoTime,DeadTime,PicoTemp,PicoPres,DeviceID."""
-    line = "T,619,84,395652,349,27.8,1031.2,56-597-118"
+    line = "T,619,84,395652,349,27.8,1031.2,XX-XXX-XXX"
     ev = parse_line(line)
     assert ev.position == "T"
     assert ev.amplitude == 84
     assert ev.detector_temp_c == 27.8
     assert ev.detector_pressure_hpa == 1031.2
-    assert ev.device_id == "56-597-118"
+    assert ev.device_id == "XX-XXX-XXX"
     assert ev.coincidence == 0
 
 

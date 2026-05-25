@@ -3,8 +3,9 @@
 # The PicoMuon is built on an RP2040; USB VID 2e8a is the Raspberry Pi
 # Foundation vendor ID, confirmed for all RP2040/RP2350 devices.
 #
-# The product ID (PID) varies by firmware. Captured on 2026-05-25 on the
-# project Pi (hostname `observatory`): PID=000a, serial=E663589863348027.
+# The product ID (PID) varies by firmware. PID `000a` was confirmed on
+# 2026-05-25 with a UKRAA-shipped PicoMuon (hostname `observatory`). The
+# specific device serial is recorded in operator-only notes (not committed).
 # If a future PicoMuon ships with different firmware, recapture per the
 # procedure below and update the PID in the active KERNEL== line.
 #
