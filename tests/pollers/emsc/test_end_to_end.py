@@ -74,6 +74,10 @@ def _install_fetch(monkeypatch: pytest.MonkeyPatch, body_or_exc: bytes | Excepti
 
     monkeypatch.setattr(_http_mod, "fetch", fake_fetch)
     monkeypatch.setattr(_main_mod, "fetch", fake_fetch)
+    # main() calls configure_logging() which would re-install processors and
+    # break capture_logs(). No-op it under tests — the autouse conftest fixture
+    # already configured structlog for capture.
+    monkeypatch.setattr(_main_mod, "configure_logging", lambda *a, **kw: None)
 
 
 def test_e2e_against_fixture_writes_events(

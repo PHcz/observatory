@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+import structlog
 
 import observatory.config as _config_mod
 from observatory.config import Settings
-from observatory.logging import configure_logging
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_0001 = REPO_ROOT / "migrations" / "0001_initial_schema.sql"
@@ -19,7 +21,24 @@ SCHEMA_0002 = REPO_ROOT / "migrations" / "0002_poller_runs.sql"
 
 @pytest.fixture(autouse=True)
 def _configure_structlog() -> None:
-    configure_logging(level="DEBUG")
+    """Per-test structlog config WITHOUT cached loggers.
+
+    structlog.testing.capture_logs() patches the processor chain at the
+    config level, but cached bound loggers retain a reference to the
+    pre-patch chain — so tests using capture_logs would see no events.
+    Disabling logger caching keeps capture_logs working across all tests.
+    """
+    logging.basicConfig(format="%(message)s", stream=sys.stdout, level=logging.DEBUG)
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.JSONRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
+        cache_logger_on_first_use=False,
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -42,6 +61,21 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(_http_mod, "settings", s, raising=False)
     monkeypatch.setattr(_write_mod, "settings", s, raising=False)
+    # Per-source poller __main__ modules also capture `settings` by name on
+    # import; rebind them defensively (raising=False so this is a no-op for
+    # sources whose main hasn't shipped yet).
+    import importlib
+
+    for mod_path in (
+        "observatory.pollers.usgs.__main__",
+        "observatory.pollers.emsc.__main__",
+        "observatory.pollers.bgs.__main__",
+    ):
+        try:
+            _m = importlib.import_module(mod_path)
+            monkeypatch.setattr(_m, "settings", s, raising=False)
+        except ModuleNotFoundError:
+            pass
 
 
 @pytest.fixture
