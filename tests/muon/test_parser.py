@@ -159,6 +159,45 @@ def test_parse_real_sample_when_present() -> None:
     for ev in successes:
         assert ev.detector_temp_c is not None
         assert ev.detector_pressure_hpa is not None
+    # Real PID-000a firmware emits the 8-field variant; device_id should be set
+    # and identical across the whole capture session.
+    device_ids = {ev.device_id for ev in successes}
+    assert device_ids == {"56-597-118"}, f"expected single static device_id, got {device_ids}"
+
+
+# --------------------------------------------------------------------------- #
+# 8-field protocol variant (deviation captured 2026-05-25, see 02-01 notes)   #
+# --------------------------------------------------------------------------- #
+
+
+def test_parse_8_field_variant_extracts_device_id() -> None:
+    """PID-000a firmware emits Position,Count,ADC,PicoTime,DeadTime,PicoTemp,PicoPres,DeviceID."""
+    line = "T,619,84,395652,349,27.8,1031.2,56-597-118"
+    ev = parse_line(line)
+    assert ev.position == "T"
+    assert ev.amplitude == 84
+    assert ev.detector_temp_c == 27.8
+    assert ev.detector_pressure_hpa == 1031.2
+    assert ev.device_id == "56-597-118"
+    assert ev.coincidence == 0
+
+
+def test_parse_7_field_variant_has_no_device_id() -> None:
+    """Upstream UKRAA firmware (7 fields) still parses; device_id is None."""
+    line = "C,42,512,123456,789,22.5,1013.25"
+    ev = parse_line(line)
+    assert ev.position == "C"
+    assert ev.amplitude == 512
+    assert ev.device_id is None
+    assert ev.coincidence == 1
+
+
+def test_parse_rejects_neither_7_nor_8_fields() -> None:
+    """6 or 9 fields must raise — only 7 and 8 are valid PicoMuon shapes."""
+    with pytest.raises(ParseError, match="expected 7 or 8 fields"):
+        parse_line("T,1,2,3,4,5")  # 6
+    with pytest.raises(ParseError, match="expected 7 or 8 fields"):
+        parse_line("T,1,2,3,4,5,6,7,8")  # 9
 
 
 # --------------------------------------------------------------------------- #
