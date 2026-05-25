@@ -34,6 +34,7 @@ import time
 from types import FrameType
 from typing import Final
 
+import sdnotify
 import serial
 import structlog
 
@@ -50,6 +51,10 @@ INSERT_SQL: Final[str] = (
 # Rate limit for malformed-line WARNING: at most 10 per rolling 60s window
 PARSE_WARN_MAX_PER_WINDOW: Final[int] = 10
 PARSE_WARN_WINDOW_SEC: Final[float] = 60.0
+
+# sd_notify watchdog ping cadence (CONTEXT.md: 3x safety margin vs WatchdogSec=30s).
+# Tests monkeypatch this constant down to <2s to exercise ping behaviour quickly.
+WATCHDOG_PING_INTERVAL_SEC: int = 10
 
 
 class Reader:
@@ -71,6 +76,7 @@ class Reader:
         flush_interval_sec: int = 5,
         buffer_max: int = 500,
         hard_cap: int = 10000,
+        notifier: sdnotify.SystemdNotifier | None = None,
     ) -> None:
         self.port_path = port_path
         self.db_path = db_path
@@ -89,6 +95,15 @@ class Reader:
 
         # Device metadata: log once on first event, again only if it changes
         self._last_device_id: str | None = None
+
+        # sd_notify wiring. SystemdNotifier.notify() is a no-op if $NOTIFY_SOCKET
+        # is unset, so the default works fine outside systemd (tests, dev).
+        self._notifier = notifier if notifier is not None else sdnotify.SystemdNotifier()
+        # Liveness tracking: ping watchdog only if a successful read OR flush
+        # happened since the last ping (catches phantom uptime).
+        now = time.monotonic()
+        self._last_data_event: float = now
+        self._last_watchdog_ping: float = now
 
     # ------------------------------------------------------------------ run
 
@@ -114,8 +129,21 @@ class Reader:
             self._final_flush()
 
     def _on_sigterm(self, signum: int, frame: FrameType | None) -> None:
+        # STOPPING=1 MUST be sent before _final_flush runs so systemd's
+        # accounting reflects the orderly shutdown (CONTEXT.md).
+        self._notifier.notify("STOPPING=1")
         log.info("stopping", signum=signum)
         self.stopping = True
+
+    # -------------------------------------------------------- watchdog ping
+
+    def _maybe_ping_watchdog(self, now: float) -> None:
+        """Ping systemd watchdog if interval elapsed AND a data event happened since."""
+        if (now - self._last_watchdog_ping) >= WATCHDOG_PING_INTERVAL_SEC and (
+            self._last_data_event >= self._last_watchdog_ping
+        ):
+            self._notifier.notify("WATCHDOG=1")
+            self._last_watchdog_ping = now
 
     # -------------------------------------------------------- read session
 
@@ -134,6 +162,11 @@ class Reader:
             # runs again, which is the correct behaviour.
             ser.readline()
 
+            # Port is open + first-line discarded => signal systemd we are READY.
+            self._notifier.notify("READY=1")
+            self._last_data_event = time.monotonic()
+            log.info("ready", port_path=self.port_path)
+
             last_flush = time.monotonic()
             while not self.stopping:
                 line = ser.readline()
@@ -146,6 +179,7 @@ class Reader:
                 ):
                     self._flush()
                     last_flush = now
+                self._maybe_ping_watchdog(now)
 
     # ------------------------------------------------------- line handling
 
@@ -180,6 +214,8 @@ class Reader:
                 ev.coincidence,
             )
         )
+        # Successful parse + buffer append => data is moving through the pipeline.
+        self._last_data_event = time.monotonic()
 
     def _handle_parse_error(self, line: bytes, exc: ParseError) -> None:
         now = time.monotonic()
@@ -194,8 +230,11 @@ class Reader:
 
     def _flush(self) -> None:
         if not self.buffer:
-            # Empty flushes "count as alive" for the future 02-04 watchdog,
-            # but there is no DB work to do.
+            # Empty flushes count as alive: the periodic flush attempt itself
+            # proves the loop is ticking and (when there's no contention) the
+            # DB connection is healthy. Update liveness so the watchdog can
+            # ping during quiet stretches.
+            self._last_data_event = time.monotonic()
             return
 
         try:
@@ -205,6 +244,8 @@ class Reader:
                 conn.execute("COMMIT")
             log.info("flush", batch_size=len(self.buffer))
             self.buffer.clear()
+            # Successful DB flush => pipeline is healthy.
+            self._last_data_event = time.monotonic()
         except sqlite3.OperationalError as exc:
             if "locked" in str(exc).lower():
                 log.warning("database_locked_retry_next_tick", buffered=len(self.buffer))
