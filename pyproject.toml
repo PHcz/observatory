@@ -47,8 +47,11 @@ packages = ["observatory"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers -m 'not network'"
 asyncio_mode = "auto"
+markers = [
+  "network: requires live network access (skipped by default; run with -m network -s)",
+]
 
 [tool.ruff]
 line-length = 100
