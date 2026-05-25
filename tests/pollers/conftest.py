@@ -20,15 +20,23 @@ SCHEMA_0002 = REPO_ROOT / "migrations" / "0002_poller_runs.sql"
 
 
 @pytest.fixture(autouse=True)
-def _configure_structlog() -> None:
-    """Per-test structlog config WITHOUT cached loggers.
+def _configure_structlog(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Per-test structlog config WITHOUT cached loggers + no-op prod configure.
 
-    structlog.testing.capture_logs() patches the processor chain at the
-    config level, but cached bound loggers retain a reference to the
-    pre-patch chain — so tests using capture_logs would see no events.
-    Disabling logger caching keeps capture_logs working across all tests.
+    Two interlocking issues this fixes:
+      1. structlog.testing.capture_logs() patches the processor chain in
+         place, but cached bound loggers retain a stale reference. We set
+         cache_logger_on_first_use=False so the lazy proxy re-resolves
+         each call and sees the LogCapture processor.
+      2. Production code (poller __main__ entry points) calls
+         observatory.logging.configure_logging() which sets
+         cache_logger_on_first_use=True — locking the parser's logger
+         to the prod JSON-renderer chain for the rest of the suite,
+         which then defeats capture_logs in later tests. We monkeypatch
+         configure_logging to a no-op so prod main() doesn't fight us.
     """
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=logging.DEBUG)
+    structlog.reset_defaults()
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
@@ -39,6 +47,25 @@ def _configure_structlog() -> None:
         wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
         cache_logger_on_first_use=False,
     )
+    # Neutralize prod configure_logging in any module that imports it.
+    import observatory.logging as _obs_logging
+
+    monkeypatch.setattr(_obs_logging, "configure_logging", lambda level="INFO": None)
+    # Per-source poller __main__ modules import configure_logging by name;
+    # rebind their copy too (defensive — works whether or not the module
+    # has shipped yet).
+    import importlib
+
+    for mod_path in (
+        "observatory.pollers.usgs.__main__",
+        "observatory.pollers.emsc.__main__",
+        "observatory.pollers.bgs.__main__",
+    ):
+        try:
+            _m = importlib.import_module(mod_path)
+            monkeypatch.setattr(_m, "configure_logging", lambda level="INFO": None, raising=False)
+        except ModuleNotFoundError:
+            pass
 
 
 @pytest.fixture(autouse=True)
