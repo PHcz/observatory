@@ -387,16 +387,22 @@ else
   pass "Criterion 5a: 3 obs-*-poll.timer entries present"
 fi
 
-# Confirm RandomizedDelaySec=30000000 (microseconds) per timer unit
+# Confirm RandomizedDelaySec=30 per timer unit.
+# Note: the unit-file directive is `RandomizedDelaySec` but systemd's runtime
+# property name is `RandomizedDelayUSec` (microseconds) — querying `-p
+# RandomizedDelaySec` returns empty. We grep the installed unit file directly:
+# version-agnostic and tests what's on disk. Runtime value is informational only.
 for s in "${SOURCES[@]}"; do
-  rds="$(systemctl show "obs-${s}-poll.timer" -p RandomizedDelaySec --value 2>/dev/null || echo '')"
-  info "obs-${s}-poll.timer RandomizedDelaySec=${rds}"
-  if [ "$rds" = "30000000" ] || [ "$rds" = "30s" ]; then
-    pass "Criterion 5b [${s}]: RandomizedDelaySec=30s confirmed"
+  unit_file="/etc/systemd/system/obs-${s}-poll.timer"
+  rds_file="$(grep -E '^RandomizedDelaySec=' "$unit_file" 2>/dev/null | head -1 | cut -d= -f2)"
+  rds_runtime="$(systemctl show "obs-${s}-poll.timer" -p RandomizedDelayUSec --value 2>/dev/null || echo '')"
+  info "obs-${s}-poll.timer: file='${rds_file:-MISSING}'  runtime='${rds_runtime:-N/A}'"
+  if [ "$rds_file" = "30" ] || [ "$rds_file" = "30s" ]; then
+    pass "Criterion 5b [${s}]: RandomizedDelaySec=30 confirmed in unit file"
   else
-    fail "Criterion 5b [${s}]: RandomizedDelaySec=${rds} (expected 30000000 microseconds or '30s')"
+    fail "Criterion 5b [${s}]: RandomizedDelaySec='${rds_file:-MISSING}' in ${unit_file} (expected '30' or '30s')"
     C5_PASS=0
-    ANOMALIES+=("Criterion 5b [${s}]: RandomizedDelaySec=${rds}; expected 30s.")
+    ANOMALIES+=("Criterion 5b [${s}]: file directive='${rds_file:-MISSING}'; expected 30.")
   fi
 done
 
