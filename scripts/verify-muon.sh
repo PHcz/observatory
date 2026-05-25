@@ -199,65 +199,91 @@ fi
 # ========================================================================
 # Criterion 3: 60s silence triggers warning + watchdog stays satisfied
 # ========================================================================
-hdr "Criterion 3: simulated serial silence (90s)"
+hdr "Criterion 3: simulated serial silence via USB driver unbind (~110s)"
 
-# Pitfall 6: do NOT open /dev/picomuon. Revoke read perm on the underlying
-# ttyACM* node so the reader's reopen attempts get EACCES. We chmod the
-# resolved target (NOT the symlink — chmod on a symlink targets the link itself
-# on Linux, but stat -c %a follows it).
-if [ ! -e "$DEV_TARGET" ]; then
-  warn "Skipping Criterion 3: ${DEV_TARGET} no longer exists"
-  RESULTS[3]="SKIP (DEV_TARGET missing)"
-  ANOMALIES+=("Criterion 3 skipped: ${DEV_TARGET} not present at start of silence test.")
+# Why USB unbind, not chmod:
+#   chmod 000 on /dev/ttyACMx only blocks NEW opens — it does NOT affect an
+#   already-open file descriptor. A long-running reader with the port already
+#   open is unaffected by chmod and keeps reading. This was the bug in the
+#   original chmod-based test (every flush succeeded during the "blockade").
+#
+#   USB driver unbind actually closes the kernel device and revokes the
+#   reader's open FD — read() returns EIO / serial.SerialException. This is
+#   the kernel-level equivalent of a physical disconnect WITHOUT the human
+#   action, which exercises the reader's silence/reopen path on demand.
+#
+# Pitfall 6 still respected: we never open /dev/picomuon ourselves.
+
+# Resolve the USB bus-port (e.g. "1-1.3") from the current ttyACM* target.
+# udevadm path looks like:
+#   /devices/platform/scb/.../usb1/1-1/1-1.3/1-1.3:1.0/tty/ttyACM0
+# The bus-port is the parent of the interface (1-1.3:1.0) segment.
+DEV_TARGET_LIVE="$(readlink -f /dev/picomuon 2>/dev/null || true)"
+if [ -z "$DEV_TARGET_LIVE" ] || [ ! -e "$DEV_TARGET_LIVE" ]; then
+  warn "Skipping Criterion 3: /dev/picomuon does not resolve to a live tty"
+  RESULTS[3]="SKIP (/dev/picomuon missing)"
+  ANOMALIES+=("Criterion 3 skipped: /dev/picomuon symlink missing or stale.")
 else
-  ORIG_MODE="$(stat -c %a "$DEV_TARGET")"
-  # journalctl --since does NOT accept ISO 8601 with timezone offset.
-  # Use unix epoch with @ prefix instead (always parseable).
-  LOG_START_EPOCH="$(date +%s)"
-  info "blocking access to ${DEV_TARGET} (was mode ${ORIG_MODE}); reader should hit EACCES on next reopen"
-  sudo chmod 000 "$DEV_TARGET"
-  # 70s ensures we cross the 60s silence_timeout_sec threshold in reader.py
-  # AND we observe at least one reopen attempt being denied.
-  info "sleeping 70s with port blocked..."
-  sleep 70
-  info "restoring mode ${ORIG_MODE} on ${DEV_TARGET}"
-  sudo chmod "$ORIG_MODE" "$DEV_TARGET"
-  # Reader needs time to next reopen attempt (up to 30s in backoff schedule) +
-  # NTP gate (in-process is not re-run on reopen, only on full systemd restart).
-  info "sleeping 30s for reader recovery..."
-  sleep 30
-
-  # 3a: WARNING log present mentioning silence/reopen/serial_error
-  SILENCE_LOG="$(sudo journalctl -u "$UNIT" --since "@${LOG_START_EPOCH}" --no-pager 2>&1 || true)"
-  if echo "$SILENCE_LOG" | grep -qE 'serial_silence_reopen|reopen_attempt|serial_error|reopening_after_silence'; then
-    pass "Criterion 3a: reader logged silence/reopen warning during blockade"
-    LOG_RESULT_3A="PASS"
-  else
-    fail "Criterion 3a: no silence/reopen warning in journal during blockade"
-    LOG_RESULT_3A="FAIL"
-    echo "--- last 20 lines of journal during blockade ---"
-    echo "$SILENCE_LOG" | tail -20
-    echo "--- end ---"
-    ANOMALIES+=("Criterion 3a: expected one of [serial_silence_reopen, reopen_attempt, serial_error, reopening_after_silence] in journalctl since blockade start; none found.")
+  USB_SYSPATH="$(udevadm info --query=path --name="$DEV_TARGET_LIVE" 2>/dev/null || true)"
+  USB_BUS_PORT="$(echo "$USB_SYSPATH" | sed -nE 's|.*/(usb[0-9]+)/[0-9]+-[0-9]+(\.[0-9]+)*/([0-9]+-[0-9]+(\.[0-9]+)*):[0-9]+\.[0-9]+/tty/[^/]+$|\3|p')"
+  # Fallback: if the device is directly on the root hub (no port chain),
+  # the path has only one bus-port segment between usbN and the interface.
+  if [ -z "$USB_BUS_PORT" ]; then
+    USB_BUS_PORT="$(echo "$USB_SYSPATH" | sed -nE 's|.*/(usb[0-9]+)/([0-9]+-[0-9]+(\.[0-9]+)*)/.*|\2|p')"
   fi
 
-  # 3b: service is still active OR was restarted by systemd watchdog within bounds
-  STATE_POST="$(systemctl is-active "$UNIT" || true)"
-  N_RESTARTS_END="$(systemctl show -p NRestarts --value "$UNIT")"
-  RESTART_DELTA=$(( N_RESTARTS_END - N_RESTARTS_START ))
-  if [ "$STATE_POST" = "active" ]; then
-    pass "Criterion 3b: service still active after silence; NRestarts delta=${RESTART_DELTA}"
-    LOG_RESULT_3B="PASS"
+  if [ -z "$USB_BUS_PORT" ] || [ ! -e "/sys/bus/usb/devices/${USB_BUS_PORT}" ]; then
+    warn "Skipping Criterion 3: could not derive USB bus-port from ${USB_SYSPATH:-<unknown>}"
+    RESULTS[3]="SKIP (USB bus-port not derivable)"
+    ANOMALIES+=("Criterion 3 skipped: USB bus-port parse failed for ${DEV_TARGET_LIVE}.")
   else
-    fail "Criterion 3b: service not active after silence (state=${STATE_POST}); NRestarts delta=${RESTART_DELTA}"
-    LOG_RESULT_3B="FAIL"
-    ANOMALIES+=("Criterion 3b: service state=${STATE_POST} after silence (expected active); NRestarts delta=${RESTART_DELTA}.")
-  fi
+    LOG_START_EPOCH="$(date +%s)"
+    info "USB bus-port resolved: ${USB_BUS_PORT} (was ${DEV_TARGET_LIVE})"
+    info "unbinding USB driver — reader's open FD will see EIO on next read"
+    echo "$USB_BUS_PORT" | sudo tee /sys/bus/usb/drivers/usb/unbind >/dev/null
+    # 70s ensures we cross the 60s silence_timeout_sec threshold in reader.py
+    # AND we observe at least one reopen attempt being denied (device is gone).
+    info "sleeping 70s with USB device unbound..."
+    sleep 70
+    info "rebinding USB driver — udev rule should recreate /dev/picomuon"
+    echo "$USB_BUS_PORT" | sudo tee /sys/bus/usb/drivers/usb/bind >/dev/null
+    # Reader needs time to: notice port is back, run the next backoff step
+    # (up to 30s), reopen successfully, and start ingesting. 40s is generous.
+    info "sleeping 40s for udev re-enumeration + reader recovery..."
+    sleep 40
 
-  if [ "$LOG_RESULT_3A" = "PASS" ] && [ "$LOG_RESULT_3B" = "PASS" ]; then
-    RESULTS[3]="PASS (warning logged + service active; NRestarts delta=${RESTART_DELTA})"
-  else
-    RESULTS[3]="FAIL (3a=${LOG_RESULT_3A}, 3b=${LOG_RESULT_3B}; NRestarts delta=${RESTART_DELTA})"
+    # 3a: WARNING log present mentioning silence/reopen/serial_error
+    SILENCE_LOG="$(sudo journalctl -u "$UNIT" --since "@${LOG_START_EPOCH}" --no-pager 2>&1 || true)"
+    if echo "$SILENCE_LOG" | grep -qE 'serial_silence_reopen|reopen_attempt|serial_error|reopening_after_silence|silence_timeout'; then
+      pass "Criterion 3a: reader logged silence/reopen warning during unbind window"
+      LOG_RESULT_3A="PASS"
+    else
+      fail "Criterion 3a: no silence/reopen warning in journal during unbind window"
+      LOG_RESULT_3A="FAIL"
+      echo "--- last 30 lines of journal during unbind window ---"
+      echo "$SILENCE_LOG" | tail -30
+      echo "--- end ---"
+      ANOMALIES+=("Criterion 3a: expected one of [serial_silence_reopen, reopen_attempt, serial_error, reopening_after_silence, silence_timeout] in journalctl since unbind; none found.")
+    fi
+
+    # 3b: service is still active OR was restarted by systemd watchdog within bounds
+    STATE_POST="$(systemctl is-active "$UNIT" || true)"
+    N_RESTARTS_END="$(systemctl show -p NRestarts --value "$UNIT")"
+    RESTART_DELTA=$(( N_RESTARTS_END - N_RESTARTS_START ))
+    if [ "$STATE_POST" = "active" ]; then
+      pass "Criterion 3b: service still active after silence; NRestarts delta=${RESTART_DELTA}"
+      LOG_RESULT_3B="PASS"
+    else
+      fail "Criterion 3b: service not active after silence (state=${STATE_POST}); NRestarts delta=${RESTART_DELTA}"
+      LOG_RESULT_3B="FAIL"
+      ANOMALIES+=("Criterion 3b: service state=${STATE_POST} after silence (expected active); NRestarts delta=${RESTART_DELTA}.")
+    fi
+
+    if [ "$LOG_RESULT_3A" = "PASS" ] && [ "$LOG_RESULT_3B" = "PASS" ]; then
+      RESULTS[3]="PASS (warning logged + service active; NRestarts delta=${RESTART_DELTA}; method=usb-unbind)"
+    else
+      RESULTS[3]="FAIL (3a=${LOG_RESULT_3A}, 3b=${LOG_RESULT_3B}; NRestarts delta=${RESTART_DELTA}; method=usb-unbind)"
+    fi
   fi
 fi
 
