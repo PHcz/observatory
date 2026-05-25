@@ -616,6 +616,11 @@ def test_reader_reopens_on_serial_exception(
     import serial as pyserial
 
     master_fd, slave_path = pty_pair
+    # Compress backoff to ~0 so the test runs in seconds, not in 1+2+5=8s.
+    monkeypatch.setattr(reader_module, "BACKOFF_SEQUENCE_SEC", (0, 0, 0, 0, 0))
+    # Shrink the per-readline timeout so silence triggers in 2s instead of 60s.
+    monkeypatch.setattr(reader_module, "SERIAL_READ_TIMEOUT_SEC", 1)
+
     call_count = [0]
     real_serial = pyserial.Serial
 
@@ -627,24 +632,18 @@ def test_reader_reopens_on_serial_exception(
 
     monkeypatch.setattr(reader_module.serial, "Serial", flaky_serial)
 
-    sleeps: list[float] = []
-    monkeypatch.setattr(reader_module.time, "sleep", lambda s: sleeps.append(s))
-
-    # Force _read_session to return quickly after one event (to trigger reopen path).
-    # Shrink silence threshold so the first session returns on silence too if needed.
     reader = Reader(
         port_path=slave_path,
         db_path=str(tmp_db),
         flush_interval_sec=1,
-        silence_timeout_sec=10,  # 2 empty reads at timeout=5s
+        silence_timeout_sec=2,  # 2 empty reads at SERIAL_READ_TIMEOUT_SEC=1
     )
     t = _start_reader(reader)
     os.write(master_fd, b"discard\n")
     os.write(master_fd, VALID_LINE_C)
-    # Wait long enough for: first session opens, ingests, then silence triggers
-    # return; backoff (1s) + 0.2s; second open raises SerialException; backoff (2s)
-    # + 0.2s; third open succeeds. With monkeypatched sleep this is fast.
-    time.sleep(15.0)
+    # 1st session: ingests, then silence (2s) returns; reopen #2 raises;
+    # 3rd reopen succeeds. With backoff compressed to 0 this finishes <8s.
+    time.sleep(8.0)
     _stop(reader, t)
 
     captured = capsys.readouterr()
@@ -663,6 +662,9 @@ def test_reader_reopens_on_oserror(
     import serial as pyserial
 
     master_fd, slave_path = pty_pair
+    monkeypatch.setattr(reader_module, "BACKOFF_SEQUENCE_SEC", (0, 0, 0, 0, 0))
+    monkeypatch.setattr(reader_module, "SERIAL_READ_TIMEOUT_SEC", 1)
+
     call_count = [0]
     real_serial = pyserial.Serial
 
@@ -673,19 +675,17 @@ def test_reader_reopens_on_oserror(
         return real_serial(*args, **kwargs)
 
     monkeypatch.setattr(reader_module.serial, "Serial", flaky_serial)
-    sleeps: list[float] = []
-    monkeypatch.setattr(reader_module.time, "sleep", lambda s: sleeps.append(s))
 
     reader = Reader(
         port_path=slave_path,
         db_path=str(tmp_db),
         flush_interval_sec=1,
-        silence_timeout_sec=10,
+        silence_timeout_sec=2,
     )
     t = _start_reader(reader)
     os.write(master_fd, b"discard\n")
     os.write(master_fd, VALID_LINE_C)
-    time.sleep(15.0)
+    time.sleep(8.0)
     _stop(reader, t)
 
     captured = capsys.readouterr()
@@ -703,9 +703,7 @@ def test_reader_reopens_on_eof(
     """Silence (consecutive empty reads beyond threshold) must trigger a
     WARNING serial_silence_reopen and a reopen attempt."""
     master_fd, slave_path = pty_pair
-    sleeps: list[float] = []
-    monkeypatch.setattr(reader_module.time, "sleep", lambda s: sleeps.append(s))
-    # Shrink the per-readline timeout so silence_limit is reached fast in tests.
+    monkeypatch.setattr(reader_module, "BACKOFF_SEQUENCE_SEC", (0, 0, 0, 0, 0))
     monkeypatch.setattr(reader_module, "SERIAL_READ_TIMEOUT_SEC", 1)
 
     reader = Reader(
@@ -719,7 +717,7 @@ def test_reader_reopens_on_eof(
     os.write(master_fd, b"discard\n")
     os.write(master_fd, VALID_LINE_C)
     # Don't write anything else — silence after this should trigger reopen.
-    time.sleep(8.0)
+    time.sleep(5.0)
     _stop(reader, t)
     captured = capsys.readouterr()
     out = captured.out + captured.err
@@ -729,16 +727,19 @@ def test_reader_reopens_on_eof(
 
 
 def test_backoff_sequence_respected(
-    pty_pair: tuple[int, str],
     tmp_db: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Force 6 consecutive Serial() failures and assert the backoff schedule
-    is 1, 2, 5, 10, 30, 30 (sixth onward stays at 30)."""
+    is 1, 2, 5, 10, 30, 30 (sixth onward stays at 30).
+
+    No pty fixture: Serial() always raises before it can touch the device, so
+    the slave_path is irrelevant. This lets the test patch time.sleep globally
+    without interfering with pty setup/teardown."""
     import serial as pyserial
 
-    _, slave_path = pty_pair
     call_count = [0]
+    reader_box: list[Reader] = []
 
     def always_fail(*args: Any, **kwargs: Any) -> Any:
         call_count[0] += 1
@@ -749,15 +750,17 @@ def test_backoff_sequence_respected(
 
     def recorded_sleep(s: float) -> None:
         sleeps.append(s)
-        # Stop after 6 failures so the test ends; the reader will exit its loop
-        # on the next iteration when stopping=True.
-        if call_count[0] >= 6:
-            reader.stopping = True
+        # Stop after we've seen 6 backoff-class sleeps so the test terminates.
+        backoff_sleeps_so_far = [x for x in sleeps if x != 0.2]
+        if len(backoff_sleeps_so_far) >= 6 and reader_box:
+            reader_box[0].stopping = True
 
     monkeypatch.setattr(reader_module.time, "sleep", recorded_sleep)
 
-    reader = Reader(port_path=slave_path, db_path=str(tmp_db))
-    t = _start_reader(reader)
+    reader = Reader(port_path="/nonexistent", db_path=str(tmp_db))
+    reader_box.append(reader)
+    t = threading.Thread(target=reader.run, daemon=True)
+    t.start()
     t.join(timeout=10.0)
 
     backoff_only = _filter_backoff_sleeps(sleeps)
@@ -767,60 +770,60 @@ def test_backoff_sequence_respected(
 
 
 def test_reconnect_counter_resets_after_successful_read(
-    pty_pair: tuple[int, str],
     tmp_db: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """After a successful read + reopen, backoff must restart from 1s."""
+    """After _had_successful_read is set during a session, the next backoff
+    must be the FIRST step (1s), not whatever the counter had climbed to.
+
+    Uses a stub _read_session to isolate the run() logic from the pty:
+      - calls 1, 2: pretend a read happened then silence → return normally
+      - call 3 onward: raise SerialException
+    After the first run (success), attempt should reset; so the run-loop
+    sleep BEFORE call 4 must be 1s (a fresh restart), not 5s as it would be
+    if the counter hadn't reset."""
     import serial as pyserial
 
-    master_fd, slave_path = pty_pair
-    real_serial = pyserial.Serial
     call_count = [0]
+    reader_box: list[Reader] = []
 
-    def flaky_serial(*args: Any, **kwargs: Any) -> Any:
+    def stub_read_session(self: Reader) -> None:
         call_count[0] += 1
-        # call 1 succeeds (ingests), call 2 fails, call 3 fails, call 4 succeeds
-        # (ingests), call 5 fails. Backoff after call 5 must be 1 (reset), not 5.
-        if call_count[0] in (2, 3, 5):
-            raise pyserial.SerialException(f"simulated #{call_count[0]}")
-        return real_serial(*args, **kwargs)
+        if call_count[0] in (1, 2):
+            self._had_successful_read = True
+            return  # silence path
+        raise pyserial.SerialException(f"simulated #{call_count[0]}")
 
-    monkeypatch.setattr(reader_module.serial, "Serial", flaky_serial)
-    monkeypatch.setattr(reader_module, "SERIAL_READ_TIMEOUT_SEC", 1)
+    monkeypatch.setattr(reader_module.Reader, "_read_session", stub_read_session)
+
     sleeps: list[float] = []
 
     def recorded_sleep(s: float) -> None:
         sleeps.append(s)
-        if call_count[0] >= 5:
-            reader.stopping = True
+        # Stop after we have seen the 4th backoff sleep (post call 4 failure).
+        if len([x for x in sleeps if x != 0.2]) >= 4 and reader_box:
+            reader_box[0].stopping = True
 
     monkeypatch.setattr(reader_module.time, "sleep", recorded_sleep)
 
-    reader = Reader(
-        port_path=slave_path,
-        db_path=str(tmp_db),
-        flush_interval_sec=1,
-        silence_timeout_sec=2,
-    )
-    t = _start_reader(reader)
-    os.write(master_fd, b"discard\n")
-    os.write(master_fd, VALID_LINE_C)
-    time.sleep(0.5)
-    # Open a second pty for after the first session's silence-return: write to it
-    # so the second successful open also ingests.
-    t.join(timeout=15.0)
+    reader = Reader(port_path="/nonexistent", db_path=str(tmp_db))
+    reader_box.append(reader)
+    t = threading.Thread(target=reader.run, daemon=True)
+    t.start()
+    t.join(timeout=10.0)
 
     backoff_only = _filter_backoff_sleeps(sleeps)
-    # First session: success → silence → return. Backoff before call 2: 1s.
-    # Call 2 fails. Backoff before call 3: 2s. Call 3 fails. Backoff before
-    # call 4: 5s. Call 4: success (no event but opens fine) → silence → return,
-    # _had_successful_read may be False this time (no event written). To keep
-    # the test deterministic, just assert: at least one "1" appears AFTER the
-    # first "1" — i.e. the counter reset at some point. Simpler: assert the
-    # sequence starts 1, 2, 5 (calls 2,3,4 backoffs) and at some later point a
-    # 1 appears.
-    assert backoff_only[0] == 1, f"first backoff must be 1; got {backoff_only}"
+    # Expected schedule of backoff sleeps (one per call termination):
+    #   after call 1 success+silence: attempt=0 → sleep 1, then attempt=1
+    #     (counter reset DID happen; attempt was already 0 before reset).
+    #   after call 2 success+silence: attempt was 1, reset to 0 → sleep 1
+    #   after call 3 failure: attempt was 1 → sleep 2
+    #   after call 4 failure: attempt was 2 → sleep 5
+    # So backoff_only[:4] must be [1, 1, 2, 5] — the second "1" is the proof
+    # that the counter reset after call 2's successful read.
+    assert backoff_only[:4] == [1, 1, 2, 5], (
+        f"counter must reset after each successful read; got {backoff_only[:4]}"
+    )
 
 
 def test_silence_threshold_uses_settings(
@@ -833,8 +836,7 @@ def test_silence_threshold_uses_settings(
     path fires. With timeout=1 and silence=2, two empties trigger reopen."""
     master_fd, slave_path = pty_pair
     monkeypatch.setattr(reader_module, "SERIAL_READ_TIMEOUT_SEC", 1)
-    sleeps: list[float] = []
-    monkeypatch.setattr(reader_module.time, "sleep", lambda s: sleeps.append(s))
+    monkeypatch.setattr(reader_module, "BACKOFF_SEQUENCE_SEC", (0, 0, 0, 0, 0))
 
     reader = Reader(
         port_path=slave_path,
@@ -845,8 +847,8 @@ def test_silence_threshold_uses_settings(
     t = _start_reader(reader)
     os.write(master_fd, b"discard\n")
     os.write(master_fd, VALID_LINE_C)
-    # Wait for ~5s of silence — should trigger reopen quickly.
-    time.sleep(6.0)
+    # Wait for silence to fire (2 empties at 1s = ~2-3s).
+    time.sleep(5.0)
     _stop(reader, t)
     captured = capsys.readouterr()
     out = captured.out + captured.err
@@ -856,13 +858,10 @@ def test_silence_threshold_uses_settings(
 def test_reader_does_not_reopen_on_parse_error(
     pty_pair: tuple[int, str],
     tmp_db: Path,
-    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Parse errors are handled in-loop and must NOT trigger any reopen."""
     master_fd, slave_path = pty_pair
-    sleeps: list[float] = []
-    monkeypatch.setattr(reader_module.time, "sleep", lambda s: sleeps.append(s))
 
     reader = Reader(
         port_path=slave_path,

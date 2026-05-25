@@ -2,11 +2,7 @@
 
 Owns: serial port, in-memory event buffer, BMP280 last-known cache, batched
 SQLite flush, SIGTERM/SIGINT graceful shutdown, malformed-line tolerance with
-rate-limited WARNING.
-
-Does NOT own (yet): in-process reconnect/backoff on disconnect (plan 02-05),
-sd_notify watchdog ping + NTP gate (plan 02-04). The `_read_session` method
-is the integration point those plans will wrap.
+rate-limited WARNING, in-process reopen-on-failure loop with backoff.
 
 Locked design decisions (from 02-CONTEXT.md):
 - Serial: 115200 8N1, timeout=5, exclusive=True (POSIX) — blocks screen/minicom races
@@ -56,6 +52,19 @@ PARSE_WARN_WINDOW_SEC: Final[float] = 60.0
 # Tests monkeypatch this constant down to <2s to exercise ping behaviour quickly.
 WATCHDOG_PING_INTERVAL_SEC: int = 10
 
+# In-process reopen backoff sequence (CONTEXT.md verbatim):
+#   "1s, 2s, 5s, 10s, then 30s and loop"
+# Trigger conditions (CONTEXT.md verbatim):
+#   "60s of consecutive empty/silent reads, serial.SerialException, OSError on read"
+# Worst-case time to recover from a glitch is therefore well under the
+# WatchdogSec=30s budget after the first successful reopen — only catastrophic
+# repeated failures escalate to systemd-driven process restart.
+BACKOFF_SEQUENCE_SEC: Final[tuple[int, ...]] = (1, 2, 5, 10, 30)
+
+# Per-readline timeout. Tests monkeypatch this down so silence_limit computes
+# to ~2 empty reads in a few seconds instead of the production 60s.
+SERIAL_READ_TIMEOUT_SEC: int = 5
+
 
 class Reader:
     """Long-running PicoMuon serial → SQLite ingest loop.
@@ -76,6 +85,7 @@ class Reader:
         flush_interval_sec: int = 5,
         buffer_max: int = 500,
         hard_cap: int = 10000,
+        silence_timeout_sec: int = 60,
         notifier: sdnotify.SystemdNotifier | None = None,
     ) -> None:
         self.port_path = port_path
@@ -83,6 +93,11 @@ class Reader:
         self.flush_interval_sec = flush_interval_sec
         self.buffer_max = buffer_max
         self.hard_cap = hard_cap
+        self.silence_timeout_sec = silence_timeout_sec
+        # Set by _read_session whenever a non-empty read happens; run() uses it
+        # to decide whether to reset the backoff attempt counter after a session
+        # returns (silence path) or raises (serial error path).
+        self._had_successful_read: bool = False
 
         # (ts, pressure_hpa, temp_c, amplitude, coincidence)
         self.buffer: list[tuple[int, float | None, float | None, float, int]] = []
@@ -108,9 +123,10 @@ class Reader:
     # ------------------------------------------------------------------ run
 
     def run(self) -> None:
-        """Install signal handlers (if on main thread), run the read session,
-        then final-flush. 02-05 will wrap _read_session in a backoff/reopen
-        loop; this method's structure leaves room for that without rewrites."""
+        """Install signal handlers (if on main thread), then loop forever
+        wrapping _read_session in a reopen/backoff cycle. Returns only on
+        stopping=True or on a truly unexpected exception (which propagates
+        so systemd's Restart=on-failure takes over)."""
         try:
             signal.signal(signal.SIGTERM, self._on_sigterm)
             signal.signal(signal.SIGINT, self._on_sigterm)
@@ -118,13 +134,39 @@ class Reader:
             # Not on main thread (test contexts). Rely on stopping attribute.
             pass
 
+        attempt = 0  # index into BACKOFF_SEQUENCE_SEC
         try:
-            self._read_session()
-        except (serial.SerialException, OSError) as exc:
-            # 02-05 will replace this with a reconnect/backoff loop. For now,
-            # log + fall through to final flush so buffered data is not lost
-            # on disconnect or pty-master-close in tests.
-            log.warning("serial_error_exiting", error=str(exc))
+            while not self.stopping:
+                self._had_successful_read = False
+                try:
+                    self._read_session()
+                    # Returned (not raised) means the silence threshold fired.
+                    # Backoff still applies, but the WARNING flavour differs.
+                    if self.stopping:
+                        break
+                    log.warning("reopening_after_silence")
+                except (serial.SerialException, OSError) as exc:
+                    log.warning("serial_error", error=str(exc), attempt=attempt + 1)
+                except Exception as exc:
+                    # Anything else is genuinely unexpected; escalate to systemd.
+                    log.error("unexpected_error", error=str(exc))
+                    raise
+
+                if self.stopping:
+                    break
+
+                # Successful read since last (re)open => reset backoff. The
+                # one-off glitch shouldn't slow recovery from later glitches.
+                if self._had_successful_read:
+                    attempt = 0
+
+                wait = BACKOFF_SEQUENCE_SEC[min(attempt, len(BACKOFF_SEQUENCE_SEC) - 1)]
+                time.sleep(wait)
+                # RESEARCH.md open question 4: avoid the exclusive=True flock
+                # release race between close() and the next open().
+                time.sleep(0.2)
+                attempt += 1
+                log.info("reopen_attempt", attempt=attempt)
         finally:
             self._final_flush()
 
@@ -148,21 +190,31 @@ class Reader:
     # -------------------------------------------------------- read session
 
     def _read_session(self) -> None:
+        """One open→read→close cycle. RETURNS normally when the silence
+        threshold is exceeded (run() will back off + reopen). PROPAGATES
+        serial.SerialException / OSError to run() for the same backoff path.
+        ParseError stays in-loop via _handle_line + _handle_parse_error."""
+        consecutive_empty = 0
+        # silence_limit = how many consecutive empty readlines == silence_timeout.
+        # readline() returns b"" after each timeout=SERIAL_READ_TIMEOUT_SEC expiry.
+        silence_limit = max(1, self.silence_timeout_sec // max(1, SERIAL_READ_TIMEOUT_SEC))
+
         with serial.Serial(
             self.port_path,
             baudrate=115200,
             bytesize=serial.EIGHTBITS,
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
-            timeout=5,
+            timeout=SERIAL_READ_TIMEOUT_SEC,
             exclusive=True,
         ) as ser:
             # First read is always discarded — avoids a guaranteed mid-event
-            # partial on service start. Per-session: on reconnect (02-05) this
-            # runs again, which is the correct behaviour.
+            # partial on service start. On reopen this runs again, which is the
+            # correct behaviour (a reconnected device may also emit a partial).
             ser.readline()
 
             # Port is open + first-line discarded => signal systemd we are READY.
+            # READY=1 is idempotent in systemd; re-sending on reopen is harmless.
             self._notifier.notify("READY=1")
             self._last_data_event = time.monotonic()
             log.info("ready", port_path=self.port_path)
@@ -170,9 +222,23 @@ class Reader:
             last_flush = time.monotonic()
             while not self.stopping:
                 line = ser.readline()
-                if line:
-                    self._handle_line(line)
                 now = time.monotonic()
+                if line:
+                    consecutive_empty = 0
+                    # Non-empty: blank lines (b"\n") are silently skipped inside
+                    # _handle_line. The buffer/cache update + liveness write
+                    # happen there too. Mark that the session has seen real I/O.
+                    if line.strip():
+                        self._had_successful_read = True
+                    self._handle_line(line)
+                else:
+                    consecutive_empty += 1
+                    if consecutive_empty >= silence_limit:
+                        log.warning(
+                            "serial_silence_reopen",
+                            seconds=consecutive_empty * SERIAL_READ_TIMEOUT_SEC,
+                        )
+                        return  # falls through to backoff in run()
                 if (
                     now - last_flush >= self.flush_interval_sec
                     or len(self.buffer) >= self.buffer_max
