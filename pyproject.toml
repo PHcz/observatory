@@ -8,6 +8,8 @@ dependencies = [
   "pydantic-settings>=2.3",
   "yoyo-migrations>=9.0",
   "structlog>=24.1",
+  "pyserial>=3.5",
+  "sdnotify>=0.3.2",
 ]
 
 [project.optional-dependencies]

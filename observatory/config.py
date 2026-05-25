@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     mqtt_host: str = "localhost"
     mqtt_port: int = Field(default=1883, ge=1, le=65535)
 
+    # --- Muon detector (Phase 2) ---
+    muon_serial_path: str = "/dev/picomuon"
+    muon_flush_interval_sec: int = Field(default=5, ge=1, le=60)
+    muon_buffer_max: int = Field(default=500, ge=1, le=10000)
+    muon_silence_timeout_sec: int = Field(default=60, ge=10, le=600)
+    muon_ntp_gate_timeout_sec: int = Field(default=30, ge=5, le=300)
+
 
 def _load() -> Settings:
     """Instantiate Settings; raises ValidationError on missing/invalid env."""
