@@ -27,16 +27,18 @@ Per-item resilience (closes checker WARNING 1 for BGS):
     the description, and any per-item exception increment
     ``parse_failures`` and emit a WARNING with a truncated raw dump.
     Structural failures (not-XML) propagate as
-    :class:`xml.etree.ElementTree.ParseError`.
+    :class:`defusedxml.ElementTree.ParseError` (sub-class of stdlib
+    ``xml.etree.ElementTree.ParseError``). XML attacks (billion-laughs,
+    external entities) are blocked by defusedxml at parse time.
 """
 
 from __future__ import annotations
 
 import re
-import xml.etree.ElementTree as ET
 from datetime import UTC
 from email.utils import parsedate_to_datetime
 
+import defusedxml.ElementTree as ET
 import structlog
 
 from observatory.pollers._types import EarthquakeEvent
@@ -55,7 +57,9 @@ _RAW_TRUNC = 200
 def _raw(item: ET.Element) -> str:
     """Return a truncated XML serialization of an item for log context."""
     try:
-        return ET.tostring(item, encoding="unicode")[:_RAW_TRUNC]
+        # defusedxml.ElementTree.tostring lacks stubs (ignore_missing_imports);
+        # explicit str() pins the return type for mypy strict.
+        return str(ET.tostring(item, encoding="unicode"))[:_RAW_TRUNC]
     except Exception:
         return repr(item)[:_RAW_TRUNC]
 
