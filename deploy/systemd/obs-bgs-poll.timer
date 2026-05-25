@@ -1,0 +1,13 @@
+[Unit]
+Description=Observatory BGS poller schedule (every 30 min)
+Requires=obs-bgs-poll.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30min
+RandomizedDelaySec=30
+Persistent=true
+Unit=obs-bgs-poll.service
+
+[Install]
+WantedBy=timers.target

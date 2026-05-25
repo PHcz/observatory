@@ -1,0 +1,13 @@
+[Unit]
+Description=Observatory EMSC poller schedule (every 5 min)
+Requires=obs-emsc-poll.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+Persistent=true
+Unit=obs-emsc-poll.service
+
+[Install]
+WantedBy=timers.target

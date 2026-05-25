@@ -216,6 +216,25 @@ systemctl enable obs-muon.service
 # the service is running — the reader holds the port with exclusive=True and
 # will refuse to share it.
 
+# --- SECTION 14b: install + enable earthquake poller timers (do NOT start) ---
+log "Section 14b: earthquake poller timers"
+cp "$REPO_ROOT/deploy/systemd/obs-usgs-poll.service" /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-usgs-poll.timer"   /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-emsc-poll.service" /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-emsc-poll.timer"   /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-bgs-poll.service"  /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-bgs-poll.timer"    /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable obs-usgs-poll.timer
+systemctl enable obs-emsc-poll.timer
+systemctl enable obs-bgs-poll.timer
+# Do NOT start the timers here — operator should:
+#   1. Confirm /etc/observatory/observatory.env has the POLLER_* defaults
+#      (auto-loaded from .env.example pattern; usually no edit needed)
+#   2. Confirm chrony has converged (`chronyc tracking | grep "System time"`)
+#   3. Start with: sudo systemctl start obs-usgs-poll.timer obs-emsc-poll.timer obs-bgs-poll.timer
+# The 04-06 acceptance script `scripts/verify-pollers.sh` automates the validation.
+
 log "Bootstrap complete."
 log "Next steps for the operator:"
 log "  1. Edit /etc/observatory/observatory.env — set real HOME_LAT and HOME_LON."
@@ -225,3 +244,4 @@ log "  4. Reboot to activate tmpfs mounts: sudo reboot"
 log "  5. After reboot, run cold-boot acceptance checklist (see README)."
 log "  6. Phase 2: confirm /dev/picomuon exists, then: sudo systemctl start obs-muon.service"
 log "     (Pitfall 6: stop the service before opening /dev/picomuon with screen/cat/minicom.)"
+log "  7. Phase 4: start the earthquake poller timers: sudo systemctl start obs-usgs-poll.timer obs-emsc-poll.timer obs-bgs-poll.timer"
