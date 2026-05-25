@@ -1,0 +1,402 @@
+<?xml version="1.0"?>
+<rss version="2.0" xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+<title>Recent earthquakes around the UK</title>
+<link>http://earthquakes.bgs.ac.uk/</link>
+<description>Recent seismic events recorded by the BGS Seismology team</description>
+<language>en-gb</language>
+<lastBuildDate>Mon, 25 May 2026 20:50:02</lastBuildDate>
+<image>
+<title>BGS Logo</title>
+<url>http://www.bgs.ac.uk/images/logos/bgs_c_w_227x50.gif</url>
+<link>http://earthquakes.bgs.ac.uk/</link>
+</image>
+<item>
+<title>UK Earthquake alert : M  2.2 :ENGLISH CHANNEL, Sun, 24 May 2026 20:10:46</title>
+<description>Origin date/time: Sun, 24 May 2026 20:10:46 ; Location: ENGLISH CHANNEL ; Lat/long: 50.080,0.682 ; Depth: 14 km ; Magnitude:  2.2</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260524200750.html</link>
+<pubDate>Sun, 24 May 2026 20:10:46</pubDate>
+<category>EQUK</category>
+<geo:lat>50.080</geo:lat>
+<geo:long>0.682</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.2 :BRAMHAM,W YORKSHIRE, Thu, 21 May 2026 22:44:11</title>
+<description>Origin date/time: Thu, 21 May 2026 22:44:11 ; Location: BRAMHAM,W YORKSHIRE ; Lat/long: 53.864,-1.370 ; Depth: 27 km ; Magnitude:  1.2</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260521224300.html</link>
+<pubDate>Thu, 21 May 2026 22:44:11</pubDate>
+<category>EQUK</category>
+<geo:lat>53.864</geo:lat>
+<geo:long>-1.370</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  2.6 :BARRISDALE,HIGHLAND, Wed, 20 May 2026 12:23:58</title>
+<description>Origin date/time: Wed, 20 May 2026 12:23:58 ; Location: BARRISDALE,HIGHLAND ; Lat/long: 57.059,-5.526 ; Depth: 8 km ; Magnitude:  2.6</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260520122141.html</link>
+<pubDate>Wed, 20 May 2026 12:23:58</pubDate>
+<category>EQUK</category>
+<geo:lat>57.059</geo:lat>
+<geo:long>-5.526</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.8 :CELTIC SEA, Sun, 17 May 2026 12:08:58</title>
+<description>Origin date/time: Sun, 17 May 2026 12:08:58 ; Location: CELTIC SEA ; Lat/long: 52.089,-6.641 ; Depth: 3 km ; Magnitude:  0.8</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260517120830.html</link>
+<pubDate>Sun, 17 May 2026 12:08:58</pubDate>
+<category>EQUK</category>
+<geo:lat>52.089</geo:lat>
+<geo:long>-6.641</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  2.3 :SILVERDALE,LANCASHIRE, Wed, 13 May 2026 09:11:19</title>
+<description>Origin date/time: Wed, 13 May 2026 09:11:19 ; Location: SILVERDALE,LANCASHIRE ; Lat/long: 54.164,-2.834 ; Depth: 3 km ; Magnitude:  2.3</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260513091119.html</link>
+<pubDate>Wed, 13 May 2026 09:11:19</pubDate>
+<category>EQUK</category>
+<geo:lat>54.164</geo:lat>
+<geo:long>-2.834</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.4 :WISTON,DYFED, Tue, 12 May 2026 18:22:19</title>
+<description>Origin date/time: Tue, 12 May 2026 18:22:19 ; Location: WISTON,DYFED ; Lat/long: 51.841,-4.920 ; Depth: 8 km ; Magnitude:  1.4</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260512182123.html</link>
+<pubDate>Tue, 12 May 2026 18:22:19</pubDate>
+<category>EQUK</category>
+<geo:lat>51.841</geo:lat>
+<geo:long>-4.920</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  2.7 :LLANBISTER,POWYS, Tue, 12 May 2026 07:33:27</title>
+<description>Origin date/time: Tue, 12 May 2026 07:33:27 ; Location: LLANBISTER,POWYS ; Lat/long: 52.368,-3.345 ; Depth: 5 km ; Magnitude:  2.7</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260512073326.html</link>
+<pubDate>Tue, 12 May 2026 07:33:27</pubDate>
+<category>EQUK</category>
+<geo:lat>52.368</geo:lat>
+<geo:long>-3.345</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.7 :GLENDARUEL,ARGYLL/BUTE, Mon, 11 May 2026 01:16:02</title>
+<description>Origin date/time: Mon, 11 May 2026 01:16:02 ; Location: GLENDARUEL,ARGYLL/BUTE ; Lat/long: 56.021,-5.232 ; Depth: 3 km ; Magnitude:  0.7</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260511011451.html</link>
+<pubDate>Mon, 11 May 2026 01:16:02</pubDate>
+<category>EQUK</category>
+<geo:lat>56.021</geo:lat>
+<geo:long>-5.232</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.9 :MULL,ARGYLL AND BUTE, Sun, 10 May 2026 04:33:45</title>
+<description>Origin date/time: Sun, 10 May 2026 04:33:45 ; Location: MULL,ARGYLL AND BUTE ; Lat/long: 56.603,-6.284 ; Depth: 5 km ; Magnitude:  1.9</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260510043345.html</link>
+<pubDate>Sun, 10 May 2026 04:33:45</pubDate>
+<category>EQUK</category>
+<geo:lat>56.603</geo:lat>
+<geo:long>-6.284</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.1 :GLENSANDA,HIGHLAND, Fri, 08 May 2026 23:31:31</title>
+<description>Origin date/time: Fri, 08 May 2026 23:31:31 ; Location: GLENSANDA,HIGHLAND ; Lat/long: 56.611,-5.666 ; Depth: 4 km ; Magnitude:  1.1</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260508233029.html</link>
+<pubDate>Fri, 08 May 2026 23:31:31</pubDate>
+<category>EQUK</category>
+<geo:lat>56.611</geo:lat>
+<geo:long>-5.666</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.1 :GLENSANDA,HIGHLAND, Fri, 08 May 2026 22:16:14</title>
+<description>Origin date/time: Fri, 08 May 2026 22:16:14 ; Location: GLENSANDA,HIGHLAND ; Lat/long: 56.601,-5.627 ; Depth: 2 km ; Magnitude:  1.1</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260508221513.html</link>
+<pubDate>Fri, 08 May 2026 22:16:14</pubDate>
+<category>EQUK</category>
+<geo:lat>56.601</geo:lat>
+<geo:long>-5.627</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.4 :MULL,ARGYLL AND BUTE, Thu, 07 May 2026 19:18:28</title>
+<description>Origin date/time: Thu, 07 May 2026 19:18:28 ; Location: MULL,ARGYLL AND BUTE ; Lat/long: 56.555,-6.416 ; Depth: 3 km ; Magnitude:  1.4</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260507191716.html</link>
+<pubDate>Thu, 07 May 2026 19:18:28</pubDate>
+<category>EQUK</category>
+<geo:lat>56.555</geo:lat>
+<geo:long>-6.416</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.9 :CALLANDER,STIRLING, Wed, 06 May 2026 07:17:43</title>
+<description>Origin date/time: Wed, 06 May 2026 07:17:43 ; Location: CALLANDER,STIRLING ; Lat/long: 56.220,-4.157 ; Depth: 3 km ; Magnitude:  0.9</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260506071618.html</link>
+<pubDate>Wed, 06 May 2026 07:17:43</pubDate>
+<category>EQUK</category>
+<geo:lat>56.220</geo:lat>
+<geo:long>-4.157</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.1 :KINLOCH HOURN,HIGHLAND, Sat, 02 May 2026 22:16:08</title>
+<description>Origin date/time: Sat, 02 May 2026 22:16:08 ; Location: KINLOCH HOURN,HIGHLAND ; Lat/long: 57.085,-5.210 ; Depth: 10 km ; Magnitude:  1.1</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260502221457.html</link>
+<pubDate>Sat, 02 May 2026 22:16:08</pubDate>
+<category>EQUK</category>
+<geo:lat>57.085</geo:lat>
+<geo:long>-5.210</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.2 :IRISH SEA, Sat, 02 May 2026 17:20:16</title>
+<description>Origin date/time: Sat, 02 May 2026 17:20:16 ; Location: IRISH SEA ; Lat/long: 53.751,-3.962 ; Depth: 5 km ; Magnitude:  0.2</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260502171950.html</link>
+<pubDate>Sat, 02 May 2026 17:20:16</pubDate>
+<category>EQUK</category>
+<geo:lat>53.751</geo:lat>
+<geo:long>-3.962</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.8 :LITTON,NORTH YORKSHIRE, Sat, 02 May 2026 07:25:49</title>
+<description>Origin date/time: Sat, 02 May 2026 07:25:49 ; Location: LITTON,NORTH YORKSHIRE ; Lat/long: 54.153,-2.186 ; Depth: 14 km ; Magnitude:  0.8</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260502072530.html</link>
+<pubDate>Sat, 02 May 2026 07:25:49</pubDate>
+<category>EQUK</category>
+<geo:lat>54.153</geo:lat>
+<geo:long>-2.186</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.9 :KINLOCH HOURN,HIGHLAND, Sat, 02 May 2026 04:54:07</title>
+<description>Origin date/time: Sat, 02 May 2026 04:54:07 ; Location: KINLOCH HOURN,HIGHLAND ; Lat/long: 57.081,-5.195 ; Depth: 8 km ; Magnitude:  0.9</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260502045350.html</link>
+<pubDate>Sat, 02 May 2026 04:54:07</pubDate>
+<category>EQUK</category>
+<geo:lat>57.081</geo:lat>
+<geo:long>-5.195</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  2.2 :SOUTHERN NORTH SEA, Fri, 01 May 2026 17:52:46</title>
+<description>Origin date/time: Fri, 01 May 2026 17:52:46 ; Location: SOUTHERN NORTH SEA ; Lat/long: 51.968,1.610 ; Depth: 8 km ; Magnitude:  2.2</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260501175134.html</link>
+<pubDate>Fri, 01 May 2026 17:52:46</pubDate>
+<category>EQUK</category>
+<geo:lat>51.968</geo:lat>
+<geo:long>1.610</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.9 :ABINGTON,LANARKSHIRE, Thu, 30 Apr 2026 04:28:02</title>
+<description>Origin date/time: Thu, 30 Apr 2026 04:28:02 ; Location: ABINGTON,LANARKSHIRE ; Lat/long: 55.493,-3.705 ; Depth: 3 km ; Magnitude:  0.9</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260430042702.html</link>
+<pubDate>Thu, 30 Apr 2026 04:28:02</pubDate>
+<category>EQUK</category>
+<geo:lat>55.493</geo:lat>
+<geo:long>-3.705</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.0 :INNERLEITHEN,BORDERS, Thu, 30 Apr 2026 00:25:16</title>
+<description>Origin date/time: Thu, 30 Apr 2026 00:25:16 ; Location: INNERLEITHEN,BORDERS ; Lat/long: 55.587,-3.097 ; Depth: 6 km ; Magnitude:  1.0</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260430002516.html</link>
+<pubDate>Thu, 30 Apr 2026 00:25:16</pubDate>
+<category>EQUK</category>
+<geo:lat>55.587</geo:lat>
+<geo:long>-3.097</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.1 :ACHALLADER,ARGYLL/BUTE, Tue, 28 Apr 2026 03:45:15</title>
+<description>Origin date/time: Tue, 28 Apr 2026 03:45:15 ; Location: ACHALLADER,ARGYLL/BUTE ; Lat/long: 56.593,-4.615 ; Depth: 8 km ; Magnitude:  0.1</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260428034500.html</link>
+<pubDate>Tue, 28 Apr 2026 03:45:15</pubDate>
+<category>EQUK</category>
+<geo:lat>56.593</geo:lat>
+<geo:long>-4.615</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.2 :PUBIL,PERTH AND KINROSS, Tue, 28 Apr 2026 02:14:21</title>
+<description>Origin date/time: Tue, 28 Apr 2026 02:14:21 ; Location: PUBIL,PERTH AND KINROSS ; Lat/long: 56.541,-4.529 ; Depth: 4 km ; Magnitude:  0.2</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260428021331.html</link>
+<pubDate>Tue, 28 Apr 2026 02:14:21</pubDate>
+<category>EQUK</category>
+<geo:lat>56.541</geo:lat>
+<geo:long>-4.529</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.8 :BATH,SOMERSET, Mon, 27 Apr 2026 00:52:32</title>
+<description>Origin date/time: Mon, 27 Apr 2026 00:52:32 ; Location: BATH,SOMERSET ; Lat/long: 51.326,-2.333 ; Depth: 14 km ; Magnitude:  1.8</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260427005231.html</link>
+<pubDate>Mon, 27 Apr 2026 00:52:32</pubDate>
+<category>EQUK</category>
+<geo:lat>51.326</geo:lat>
+<geo:long>-2.333</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.8 :DENT,CUMBRIA, Mon, 20 Apr 2026 13:22:42</title>
+<description>Origin date/time: Mon, 20 Apr 2026 13:22:42 ; Location: DENT,CUMBRIA ; Lat/long: 54.291,-2.478 ; Depth: 8 km ; Magnitude:  1.8</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260420132242.html</link>
+<pubDate>Mon, 20 Apr 2026 13:22:42</pubDate>
+<category>EQUK</category>
+<geo:lat>54.291</geo:lat>
+<geo:long>-2.478</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.9 :ASKRIGG,N YORKSHIRE, Fri, 17 Apr 2026 23:26:55</title>
+<description>Origin date/time: Fri, 17 Apr 2026 23:26:55 ; Location: ASKRIGG,N YORKSHIRE ; Lat/long: 54.324,-2.129 ; Depth: 3 km ; Magnitude:  0.9</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260417232534.html</link>
+<pubDate>Fri, 17 Apr 2026 23:26:55</pubDate>
+<category>EQUK</category>
+<geo:lat>54.324</geo:lat>
+<geo:long>-2.129</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.5 :ENGLISH CHANNEL, Fri, 17 Apr 2026 17:30:56</title>
+<description>Origin date/time: Fri, 17 Apr 2026 17:30:56 ; Location: ENGLISH CHANNEL ; Lat/long: 50.142,-2.239 ; Depth: 4 km ; Magnitude:  1.5</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260417173030.html</link>
+<pubDate>Fri, 17 Apr 2026 17:30:56</pubDate>
+<category>EQUK</category>
+<geo:lat>50.142</geo:lat>
+<geo:long>-2.239</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.6 :PUBIL,PERTH AND KINROSS, Fri, 17 Apr 2026 04:46:59</title>
+<description>Origin date/time: Fri, 17 Apr 2026 04:46:59 ; Location: PUBIL,PERTH AND KINROSS ; Lat/long: 56.523,-4.577 ; Depth: 4 km ; Magnitude:  1.6</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260417044700.html</link>
+<pubDate>Fri, 17 Apr 2026 04:46:59</pubDate>
+<category>EQUK</category>
+<geo:lat>56.523</geo:lat>
+<geo:long>-4.577</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.7 :PUBIL,PERTH AND KINROSS, Fri, 17 Apr 2026 00:57:08</title>
+<description>Origin date/time: Fri, 17 Apr 2026 00:57:08 ; Location: PUBIL,PERTH AND KINROSS ; Lat/long: 56.536,-4.547 ; Depth: 3 km ; Magnitude:  1.7</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260417005708.html</link>
+<pubDate>Fri, 17 Apr 2026 00:57:08</pubDate>
+<category>EQUK</category>
+<geo:lat>56.536</geo:lat>
+<geo:long>-4.547</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.2 :PUBIL,PERTH AND KINROSS, Thu, 16 Apr 2026 20:13:51</title>
+<description>Origin date/time: Thu, 16 Apr 2026 20:13:51 ; Location: PUBIL,PERTH AND KINROSS ; Lat/long: 56.553,-4.537 ; Depth: 3 km ; Magnitude:  0.2</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260416201330.html</link>
+<pubDate>Thu, 16 Apr 2026 20:13:51</pubDate>
+<category>EQUK</category>
+<geo:lat>56.553</geo:lat>
+<geo:long>-4.537</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.2 :PUBIL,PERTH AND KINROSS, Thu, 16 Apr 2026 20:01:31</title>
+<description>Origin date/time: Thu, 16 Apr 2026 20:01:31 ; Location: PUBIL,PERTH AND KINROSS ; Lat/long: 56.516,-4.536 ; Depth: 3 km ; Magnitude:  1.2</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260416200013.html</link>
+<pubDate>Thu, 16 Apr 2026 20:01:31</pubDate>
+<category>EQUK</category>
+<geo:lat>56.516</geo:lat>
+<geo:long>-4.536</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.4 :PUBIL,PERTH AND KINROSS, Thu, 16 Apr 2026 19:58:28</title>
+<description>Origin date/time: Thu, 16 Apr 2026 19:58:28 ; Location: PUBIL,PERTH AND KINROSS ; Lat/long: 56.539,-4.596 ; Depth: 3 km ; Magnitude:  1.4</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260416195710.html</link>
+<pubDate>Thu, 16 Apr 2026 19:58:28</pubDate>
+<category>EQUK</category>
+<geo:lat>56.539</geo:lat>
+<geo:long>-4.596</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  3.3 :PUBIL,PERTH AND KINROSS, Thu, 16 Apr 2026 19:46:27</title>
+<description>Origin date/time: Thu, 16 Apr 2026 19:46:27 ; Location: PUBIL,PERTH AND KINROSS ; Lat/long: 56.531,-4.582 ; Depth: 3 km ; Magnitude:  3.3</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260416194626.html</link>
+<pubDate>Thu, 16 Apr 2026 19:46:27</pubDate>
+<category>EQUK</category>
+<geo:lat>56.531</geo:lat>
+<geo:long>-4.582</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  2.3 :PUBIL,PERTH AND KINROSS, Wed, 15 Apr 2026 15:55:13</title>
+<description>Origin date/time: Wed, 15 Apr 2026 15:55:13 ; Location: PUBIL,PERTH AND KINROSS ; Lat/long: 56.535,-4.594 ; Depth: 7 km ; Magnitude:  2.3</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260415155354.html</link>
+<pubDate>Wed, 15 Apr 2026 15:55:13</pubDate>
+<category>EQUK</category>
+<geo:lat>56.535</geo:lat>
+<geo:long>-4.594</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.1 :BOROUGHBRIDGE,N YORKS, Mon, 13 Apr 2026 05:13:29</title>
+<description>Origin date/time: Mon, 13 Apr 2026 05:13:29 ; Location: BOROUGHBRIDGE,N YORKS ; Lat/long: 54.076,-1.365 ; Depth: 4 km ; Magnitude:  1.1</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260413051216.html</link>
+<pubDate>Mon, 13 Apr 2026 05:13:29</pubDate>
+<category>EQUK</category>
+<geo:lat>54.076</geo:lat>
+<geo:long>-1.365</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.4 :MALIN SEA, Sun, 12 Apr 2026 23:11:16</title>
+<description>Origin date/time: Sun, 12 Apr 2026 23:11:16 ; Location: MALIN SEA ; Lat/long: 55.450,-7.000 ; Depth: 4 km ; Magnitude:  0.4</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260412231100.html</link>
+<pubDate>Sun, 12 Apr 2026 23:11:16</pubDate>
+<category>EQUK</category>
+<geo:lat>55.450</geo:lat>
+<geo:long>-7.000</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.4 :SILVERDALE,LANCASHIRE, Sun, 12 Apr 2026 21:00:27</title>
+<description>Origin date/time: Sun, 12 Apr 2026 21:00:27 ; Location: SILVERDALE,LANCASHIRE ; Lat/long: 54.164,-2.819 ; Depth: 3 km ; Magnitude:  0.4</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260412210000.html</link>
+<pubDate>Sun, 12 Apr 2026 21:00:27</pubDate>
+<category>EQUK</category>
+<geo:lat>54.164</geo:lat>
+<geo:long>-2.819</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.0 :HARTLEPOOL,CO DURHAM, Thu, 09 Apr 2026 00:28:26</title>
+<description>Origin date/time: Thu, 09 Apr 2026 00:28:26 ; Location: HARTLEPOOL,CO DURHAM ; Lat/long: 54.756,-1.173 ; Depth: 7 km ; Magnitude:  1.0</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260409002717.html</link>
+<pubDate>Thu, 09 Apr 2026 00:28:26</pubDate>
+<category>EQUK</category>
+<geo:lat>54.756</geo:lat>
+<geo:long>-1.173</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.5 :STOKE-ON-TRENT,STAFFS, Mon, 06 Apr 2026 05:33:24</title>
+<description>Origin date/time: Mon, 06 Apr 2026 05:33:24 ; Location: STOKE-ON-TRENT,STAFFS ; Lat/long: 53.018,-2.203 ; Depth: 2 km ; Magnitude:  0.5</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260406053300.html</link>
+<pubDate>Mon, 06 Apr 2026 05:33:24</pubDate>
+<category>EQUK</category>
+<geo:lat>53.018</geo:lat>
+<geo:long>-2.203</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.4 :ENNISCORTHY,CO WEXFORD, Sun, 05 Apr 2026 23:02:56</title>
+<description>Origin date/time: Sun, 05 Apr 2026 23:02:56 ; Location: ENNISCORTHY,CO WEXFORD ; Lat/long: 52.490,-6.530 ; Depth: 3 km ; Magnitude:  0.4</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260405230230.html</link>
+<pubDate>Sun, 05 Apr 2026 23:02:56</pubDate>
+<category>EQUK</category>
+<geo:lat>52.490</geo:lat>
+<geo:long>-6.530</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.6 :NORTH CHANNEL, Thu, 02 Apr 2026 04:25:48</title>
+<description>Origin date/time: Thu, 02 Apr 2026 04:25:48 ; Location: NORTH CHANNEL ; Lat/long: 55.307,-5.861 ; Depth: 8 km ; Magnitude:  0.6</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260402042530.html</link>
+<pubDate>Thu, 02 Apr 2026 04:25:48</pubDate>
+<category>EQUK</category>
+<geo:lat>55.307</geo:lat>
+<geo:long>-5.861</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.1 :CAIRNDOW,ARGYLL AND BUTE, Tue, 31 Mar 2026 09:12:39</title>
+<description>Origin date/time: Tue, 31 Mar 2026 09:12:39 ; Location: CAIRNDOW,ARGYLL AND BUTE ; Lat/long: 56.248,-4.834 ; Depth: 8 km ; Magnitude:  1.1</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260331091125.html</link>
+<pubDate>Tue, 31 Mar 2026 09:12:39</pubDate>
+<category>EQUK</category>
+<geo:lat>56.248</geo:lat>
+<geo:long>-4.834</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  0.6 :GLENDARUEL,ARGYLL/BUTE, Mon, 30 Mar 2026 05:11:55</title>
+<description>Origin date/time: Mon, 30 Mar 2026 05:11:55 ; Location: GLENDARUEL,ARGYLL/BUTE ; Lat/long: 56.031,-5.211 ; Depth: 3 km ; Magnitude:  0.6</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260330051130.html</link>
+<pubDate>Mon, 30 Mar 2026 05:11:55</pubDate>
+<category>EQUK</category>
+<geo:lat>56.031</geo:lat>
+<geo:long>-5.211</geo:long>
+</item>
+<item>
+<title>UK Earthquake alert : M  1.4 :SHIELDAIG,HIGHLAND, Fri, 27 Mar 2026 14:34:30</title>
+<description>Origin date/time: Fri, 27 Mar 2026 14:34:30 ; Location: SHIELDAIG,HIGHLAND ; Lat/long: 57.521,-5.651 ; Depth: 4 km ; Magnitude:  1.4</description>
+<link>http://earthquakes.bgs.ac.uk/earthquakes/recent_events/20260327143400.html</link>
+<pubDate>Fri, 27 Mar 2026 14:34:30</pubDate>
+<category>EQUK</category>
+<geo:lat>57.521</geo:lat>
+<geo:long>-5.651</geo:long>
+</item>
+</channel>
+</rss>
