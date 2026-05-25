@@ -50,7 +50,9 @@ class Settings(BaseSettings):
     poller_emsc_url: str = (
         "https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=200&minmag=2.5"
     )
-    poller_bgs_url: str = "http://earthquakes.bgs.ac.uk/feeds/MhSeismology.xml"
+    # BGS https support confirmed 2026-05-25 via tests/pollers/bgs/test_https_probe.py
+    # (HEAD returned 200). See tests/pollers/bgs/HTTPS_PROBE_RESULT.md.
+    poller_bgs_url: str = "https://earthquakes.bgs.ac.uk/feeds/MhSeismology.xml"
 
 
 def _load() -> Settings:
