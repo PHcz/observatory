@@ -38,6 +38,20 @@ class Settings(BaseSettings):
     muon_silence_timeout_sec: int = Field(default=60, ge=10, le=600)
     muon_ntp_gate_timeout_sec: int = Field(default=30, ge=5, le=300)
 
+    # --- External pollers (Phase 4) ---
+    poller_http_connect_timeout_sec: float = Field(default=5.0, ge=1.0, le=30.0)
+    poller_http_read_timeout_sec: float = Field(default=15.0, ge=1.0, le=60.0)
+    poller_http_max_response_bytes: int = Field(default=5_242_880, ge=10_000, le=104_857_600)
+    poller_http_max_redirects: int = Field(default=3, ge=0, le=10)
+    poller_parse_failure_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    poller_usgs_url: str = (
+        "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson"
+    )
+    poller_emsc_url: str = (
+        "https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=200&minmag=2.5"
+    )
+    poller_bgs_url: str = "http://earthquakes.bgs.ac.uk/feeds/MhSeismology.xml"
+
 
 def _load() -> Settings:
     """Instantiate Settings; raises ValidationError on missing/invalid env."""
