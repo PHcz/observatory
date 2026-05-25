@@ -1,0 +1,25 @@
+[Unit]
+Description=Observatory muon detector ingest
+After=chrony.service time-sync.target
+Wants=chrony.service
+
+[Service]
+Type=notify
+User=observatory
+Group=dialout
+EnvironmentFile=/etc/observatory/observatory.env
+WorkingDirectory=/opt/observatory
+ExecStart=/opt/observatory/.venv/bin/python -m observatory.muon
+Restart=on-failure
+RestartSec=5s
+WatchdogSec=30s
+TimeoutStopSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=obs-muon
+Nice=0
+IOSchedulingClass=best-effort
+IOSchedulingPriority=4
+
+[Install]
+WantedBy=multi-user.target
