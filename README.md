@@ -162,3 +162,58 @@ ls -la /dev/picomuon    # expect a symlink to /dev/ttyACM*
 This step belongs to Phase 2 (Muon Detector) but is documented here for completeness.
 
 ---
+
+## Phase 2: Muon service operator notes
+
+The `obs-muon.service` systemd unit is installed and enabled by `bootstrap-pi.sh`
+but not started automatically. To bring it up:
+
+```bash
+sudo systemctl start obs-muon.service
+systemctl status obs-muon.service
+journalctl -u obs-muon -f
+```
+
+The unit runs as `observatory:dialout` and opens `/dev/picomuon` (the udev symlink
+from `deploy/udev/99-picomuon.rules`). It blocks at startup until `chronyc tracking`
+reports a sub-0.5s offset (typically <5s on a Pi that has been up for a minute).
+
+**Pitfall 6 — exclusive port access.** The service opens the serial port with
+`exclusive=True`. Before manually inspecting the device with `screen`, `cat`, or
+`minicom`, stop the service:
+
+```bash
+sudo systemctl stop obs-muon.service
+sudo screen /dev/picomuon 115200       # or whatever debug tool
+# ...later...
+sudo systemctl start obs-muon.service
+```
+
+**Watchdog.** The service uses `Type=notify` with `WatchdogSec=30s`. A process that
+stops moving data through the pipeline (read OR DB flush) is killed and restarted
+within 30s. Check with:
+
+```bash
+systemctl show obs-muon.service -p NRestarts,ActiveState
+journalctl -u obs-muon --since "1 hour ago" | grep -E 'WATCHDOG|stopping|reopen'
+```
+
+**Verifying ingest.** Latest events:
+
+```bash
+sqlite3 /var/lib/observatory/observatory.db \
+    "SELECT datetime(ts,'unixepoch'), detector_pressure_hpa, detector_temp_c, amplitude, coincidence \
+     FROM muon_events ORDER BY id DESC LIMIT 5;"
+```
+
+A quick row-count + max-timestamp probe to confirm the pipeline is advancing:
+
+```bash
+sqlite3 /var/lib/observatory/observatory.db \
+    "SELECT COUNT(*), MAX(ts) FROM muon_events;"
+```
+
+For the full acceptance procedure (unplug/replug, simulated silence, BMP280 column check),
+run `bash scripts/verify-muon.sh` (added by Plan 02-07).
+
+---
