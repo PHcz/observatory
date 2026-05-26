@@ -21,6 +21,35 @@ let attempt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let manualClose = false;
 
+// WATCHDOG: Inter-message silence detection. The TCP onclose event can take
+// minutes to fire when the network is severed (only fires on next send-attempt
+// timeout). The server emits a {type:'ping'} every api_ws_ping_interval_sec
+// (default 30s); 60s = 2× that interval per UAT-gap-9 formula
+// max(api_ws_ping_interval_sec × 2, ~60s). On timeout, force-close the socket
+// so the existing onclose → scheduleReconnect() flow runs.
+const WATCHDOG_MS = 60_000;
+let watchdogTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearWatchdog(): void {
+  if (watchdogTimer != null) {
+    clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
+}
+
+function resetWatchdog(): void {
+  clearWatchdog();
+  if (manualClose) return;
+  watchdogTimer = setTimeout(() => {
+    watchdogTimer = null;
+    wsStatus.set('disconnected');
+    if (ws) {
+      try { ws.close(); } catch { /* swallow */ }
+    }
+    scheduleReconnect();
+  }, WATCHDOG_MS);
+}
+
 function buildWsUrl(): string {
   if (typeof window === 'undefined') return '';
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -93,18 +122,22 @@ function connect(): void {
   ws.onopen = () => {
     attempt = 0;
     wsStatus.set('connected');
+    resetWatchdog();
   };
 
   ws.onmessage = (evt: MessageEvent<string>) => {
+    resetWatchdog();
     routeMessage(evt.data);
   };
 
   ws.onclose = () => {
+    clearWatchdog();
     wsStatus.set('disconnected');
     scheduleReconnect();
   };
 
   ws.onerror = () => {
+    clearWatchdog();
     wsStatus.set('disconnected');
     scheduleReconnect();
   };
@@ -116,6 +149,7 @@ export function initWs(): () => void {
   connect();
   return () => {
     manualClose = true;
+    clearWatchdog();
     if (reconnectTimer != null) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
