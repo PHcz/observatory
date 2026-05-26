@@ -59,6 +59,16 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 
     monkeypatch.setattr(_thermal_mod, "settings", s, raising=False)
 
+    # Rebind db_watcher — used by lifespan; reads settings.api_db_watcher_interval_sec.
+    import observatory.api.db_watcher as _db_watcher_mod
+
+    monkeypatch.setattr(_db_watcher_mod, "settings", s, raising=False)
+
+    # Rebind ws router — reads settings.api_ws_queue_maxsize/ping/pong at request time.
+    import observatory.api.routers.ws as _ws_mod
+
+    monkeypatch.setattr(_ws_mod, "settings", s, raising=False)
+
     return db_path
 
 
