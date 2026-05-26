@@ -103,6 +103,7 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
         "observatory.pollers.noaa.__main__",
         "observatory.pollers.aurorawatch.__main__",
         "observatory.pollers.blitzortung.__main__",
+        "observatory.pollers.blitzortung.client",
     ):
         try:
             _m = importlib.import_module(mod_path)
