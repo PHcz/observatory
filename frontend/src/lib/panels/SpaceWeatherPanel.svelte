@@ -57,6 +57,7 @@
 
     <div class="solar-card">
       <div class="solar-card-label">Kp index</div>
+      <div class="solar-card-value">{kp_index != null ? `Kp ${kp_index.toFixed(1)}` : '—'}</div>
       <KpBar kpIndex={kp_index} />
       <div class="solar-card-meta">{kpMeta}</div>
     </div>
