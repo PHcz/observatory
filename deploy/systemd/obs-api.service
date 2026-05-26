@@ -1,0 +1,29 @@
+[Unit]
+Description=Observatory FastAPI (health endpoint + Phase 6 extensions)
+Documentation=file:///opt/observatory/CLAUDE.md
+After=network-online.target chrony.service time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=observatory
+Group=observatory
+EnvironmentFile=/etc/observatory/observatory.env
+WorkingDirectory=/opt/observatory
+ExecStart=/opt/observatory/.venv/bin/python -m observatory.api
+Restart=on-failure
+RestartSec=5s
+WatchdogSec=30s
+TimeoutStopSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=obs-api
+Nice=0
+IOSchedulingClass=best-effort
+IOSchedulingPriority=4
+
+# Phase 5 binds to 0.0.0.0:8000 by default — Pi LAN topology is the security
+# boundary. Phase 6 (SEC-04) may tighten to a specific interface.
+
+[Install]
+WantedBy=multi-user.target
