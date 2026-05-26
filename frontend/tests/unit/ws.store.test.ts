@@ -179,3 +179,48 @@ describe('WS store — reconnect backoff', () => {
     cleanup();
   });
 });
+
+describe('WS store — browser offline/online events', () => {
+  it('marks status disconnected immediately on offline event', () => {
+    const cleanup = initWs();
+    mockWsInstance.simulateOpen();
+    expect(get(wsStatus)).toBe('connected');
+
+    window.dispatchEvent(new Event('offline'));
+
+    expect(get(wsStatus)).toBe('disconnected');
+    expect(mockWsInstance.readyState).toBe(MockWs.CLOSED);
+    cleanup();
+  });
+
+  it('triggers immediate reconnect on online event (no backoff wait)', () => {
+    const cleanup = initWs();
+    mockWsInstance.simulateOpen();
+
+    window.dispatchEvent(new Event('offline'));
+    expect(get(wsStatus)).toBe('disconnected');
+
+    // Capture how many WebSocket constructions had happened.
+    // The WebSocket factory in beforeEach is a vi.fn; call count is the proxy.
+    const WsFactory = (globalThis as unknown as { WebSocket: ReturnType<typeof vi.fn> }).WebSocket;
+    const callsBeforeOnline = WsFactory.mock.calls.length;
+
+    window.dispatchEvent(new Event('online'));
+
+    // Online should immediately open a new socket (not schedule a backoff timer first).
+    expect(WsFactory.mock.calls.length).toBeGreaterThan(callsBeforeOnline);
+    cleanup();
+  });
+
+  it('removes offline/online listeners on cleanup', () => {
+    const cleanup = initWs();
+    mockWsInstance.simulateOpen();
+    cleanup();
+
+    // Reset status to something distinct so we can assert listener removal.
+    wsStatus.set('connected');
+    window.dispatchEvent(new Event('offline'));
+    // Listener was removed by cleanup, so status must NOT flip back to 'disconnected'.
+    expect(get(wsStatus)).toBe('connected');
+  });
+});
