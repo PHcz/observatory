@@ -45,6 +45,7 @@ apt-get install -y \
   avahi-daemon \
   git \
   curl \
+  jq \
   ca-certificates \
   build-essential
 
@@ -71,8 +72,12 @@ fi
 log "Section 3: observatory user"
 if ! id -u observatory >/dev/null 2>&1; then
   useradd --system --no-create-home --shell /usr/sbin/nologin \
-          --groups dialout observatory
+          --groups dialout,video observatory
 fi
+# Idempotent group additions: dialout (for /dev/picomuon serial access — Phase 2)
+# and video (for vcgencmd in /api/health pi.* block — Phase 5). usermod -aG is
+# additive; safe to re-run.
+usermod -aG dialout,video observatory
 
 # --- SECTION 4: directories ---
 log "Section 4: directories"
@@ -256,6 +261,10 @@ systemctl enable obs-api.service
 
 log "Bootstrap complete."
 log "Next steps for the operator:"
+log "  0. Add YOUR login user (the one you SSH in as, e.g. 'ph' or 'pi') to the 'observatory' group"
+log "     so verify-*.sh scripts can read /var/lib/observatory/observatory.db:"
+log "       sudo usermod -aG observatory \$USER"
+log "     Then log out and back in for the group membership to apply."
 log "  1. Edit /etc/observatory/observatory.env — set real HOME_LAT and HOME_LON."
 log "  2. Configure USB stick: blkid /dev/sda1 -> uncomment + fill UUID in /etc/fstab observatory-backup line."
 log "  3. sudo mount -a, then start the obs-backup.timer (systemctl start)"
