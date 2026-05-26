@@ -235,6 +235,25 @@ systemctl enable obs-bgs-poll.timer
 #   3. Start with: sudo systemctl start obs-usgs-poll.timer obs-emsc-poll.timer obs-bgs-poll.timer
 # The 04-06 acceptance script `scripts/verify-pollers.sh` automates the validation.
 
+# --- SECTION 14d: install Phase 5 services (NOAA + Aurora timers, Blitzortung + API long-running) ---
+log "Section 14d: Phase 5 services (NOAA + Aurora timers, Blitzortung + API)"
+for unit in \
+  obs-noaa-poll.service obs-noaa-poll.timer \
+  obs-aurora-poll.service obs-aurora-poll.timer \
+  obs-blitzortung.service \
+  obs-api.service; do
+  install -m 644 "$REPO_ROOT/deploy/systemd/$unit" /etc/systemd/system/
+done
+systemctl daemon-reload
+# Enable timers — operator gates start on chrony convergence + env review
+systemctl enable obs-noaa-poll.timer
+systemctl enable obs-aurora-poll.timer
+# Long-running services — enable only (operator confirms /etc/observatory/observatory.env first,
+# then `systemctl start obs-blitzortung.service obs-api.service`).
+systemctl enable obs-blitzortung.service
+systemctl enable obs-api.service
+# Sanity-check tip for the operator: `curl http://observatory.local:8000/api/health | jq`
+
 log "Bootstrap complete."
 log "Next steps for the operator:"
 log "  1. Edit /etc/observatory/observatory.env — set real HOME_LAT and HOME_LON."
@@ -245,3 +264,6 @@ log "  5. After reboot, run cold-boot acceptance checklist (see README)."
 log "  6. Phase 2: confirm /dev/picomuon exists, then: sudo systemctl start obs-muon.service"
 log "     (Pitfall 6: stop the service before opening /dev/picomuon with screen/cat/minicom.)"
 log "  7. Phase 4: start the earthquake poller timers: sudo systemctl start obs-usgs-poll.timer obs-emsc-poll.timer obs-bgs-poll.timer"
+log "  8. Phase 5: start NOAA + Aurora timers: sudo systemctl start obs-noaa-poll.timer obs-aurora-poll.timer"
+log "  9. Phase 5: start long-running services: sudo systemctl start obs-blitzortung.service obs-api.service"
+log " 10. Health check: curl http://observatory.local:8000/api/health | jq"
