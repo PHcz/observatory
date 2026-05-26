@@ -1,0 +1,4 @@
+@import './lib/styles/tokens.css';
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+body { font-family: 'Inter', system-ui, sans-serif; font-weight: 400; -webkit-font-smoothing: antialiased; }
