@@ -1,5 +1,29 @@
 import type { MuonPoint, WeatherPoint, HealthResponse } from '$lib/types';
 
-export function fetchMuonHistory(_from: number, _to: number): Promise<MuonPoint[]> { throw new Error('NOT_IMPLEMENTED'); }
-export function fetchWeatherHistory(_from: number, _to: number): Promise<WeatherPoint[]> { throw new Error('NOT_IMPLEMENTED'); }
-export function fetchHealth(): Promise<HealthResponse> { throw new Error('NOT_IMPLEMENTED'); }
+async function getJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+  return res.json() as Promise<T>;
+}
+
+interface TimeSeriesRow { ts: number; [k: string]: number | null; }
+interface TimeSeriesResponse {
+  window: { from: number; to: number };
+  bucket_size_sec: number;
+  agg: string;
+  rows: TimeSeriesRow[];
+}
+
+export async function fetchMuonHistory(from: number, to: number): Promise<MuonPoint[]> {
+  const data = await getJson<TimeSeriesResponse>(`/api/muon?from=${from}&to=${to}&agg=auto`);
+  return data.rows.map(r => ({ ts: r.ts, rate_per_min: (r.rate_per_min as number) ?? 0 }));
+}
+
+export async function fetchWeatherHistory(from: number, to: number): Promise<WeatherPoint[]> {
+  const data = await getJson<TimeSeriesResponse>(`/api/weather?from=${from}&to=${to}&agg=auto`);
+  return data.rows.map(r => ({ ts: r.ts, temp_c: (r.temp_c as number | null) }));
+}
+
+export async function fetchHealth(): Promise<HealthResponse> {
+  return getJson<HealthResponse>('/api/health');
+}
