@@ -30,9 +30,9 @@
 <section class="lightning-panel" class:is-stale-amber={blitzLevel === 'amber'} class:is-stale-red={blitzLevel === 'red'}>
   <div class="section-header">
     <span class="section-title">Lightning</span>
-    <span class="section-meta">Blitzortung · UK + Ireland</span>
+    <span class="section-meta">Blitzortung · Europe</span>
   </div>
-  <p class="section-sub">Real-time strike detection across the British Isles</p>
+  <p class="section-sub">Real-time strike detection across Europe</p>
   {#if blitzLevel !== 'fresh'}
     <StalenessCaption lastTs={blitzLastTs} />
   {/if}

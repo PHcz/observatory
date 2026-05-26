@@ -7,6 +7,18 @@ const STROKE_GRID = '#f0f0ec';
 const FILL_DOT = '#6b8e6b';
 
 /**
+ * Filter out muon points whose ts is within the last 90 seconds of wall-clock time.
+ * Guards the right edge of the chart against client/server clock skew and
+ * backend aggregation lag (the most recent minute can still be filling).
+ * Exported for unit testing.
+ *
+ * STUB (RED): returns input unchanged — replaced with real predicate in GREEN step.
+ */
+export function withinSafetyMargin(data: MuonPoint[], _nowMs: number = Date.now()): MuonPoint[] {
+  return data;
+}
+
+/**
  * Centered rolling average over MuonPoint series.
  * Window shrinks symmetrically at the edges so output length matches input.
  * Exported for unit testing.
