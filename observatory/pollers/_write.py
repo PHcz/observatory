@@ -13,7 +13,7 @@ import structlog
 
 from observatory.config import settings
 from observatory.db.connection import get_write_conn
-from observatory.pollers._types import EarthquakeEvent
+from observatory.pollers._types import AuroraSnapshot, EarthquakeEvent, SpaceWeatherSnapshot
 
 log = structlog.get_logger(__name__)
 
@@ -132,4 +132,176 @@ def write_events(
             fetched=fetched,
             written=written,
         )
+    return fetched, written
+
+
+def write_space_weather(
+    snapshot: SpaceWeatherSnapshot | None,
+    started_at: int,
+    status: str,
+    error_summary: str | None = None,
+) -> tuple[int, int]:
+    """Write 0 or 1 ``space_weather`` rows + always emit one ``poller_runs`` row (POLL-04).
+
+    Mirrors :func:`write_events` / :func:`write_aurora_status` two-transaction
+    discipline (snapshot insert + audit insert kept separate so the audit
+    row survives any rollback of the snapshot insert).
+
+    NOAA-specific: introduces ``status='partial'`` to the ``poller_runs``
+    status vocabulary, meaning 1 or 2 of NOAA's 3 endpoints succeeded.
+    The /api/health endpoint (Plan 05-05) treats ``partial`` as non-fatal
+    (the source is healthy from the data-freshness perspective).
+
+    Args:
+      snapshot: per-poll snapshot, or ``None`` when all 3 endpoints
+        failed and caller is recording a ``transient_fail``.
+      started_at: poll start time (unix epoch seconds).
+      status: ``'success'`` | ``'partial'`` | ``'transient_fail'`` |
+        ``'parse_fail'`` | ``'db_fail'``.
+      error_summary: short human-readable summary; truncated to 200
+        chars at write time.
+
+    Returns:
+      ``(fetched, written)`` — both 0 or 1 for noaa. No dedup applied;
+      every poll writes a fresh row.
+    """
+    source = "noaa"
+    fetched = 0 if snapshot is None else 1
+    written = 0
+    events_status = status
+    events_error = error_summary
+
+    # --- Transaction 1: snapshot insert (best-effort) ---
+    if snapshot is not None:
+        try:
+            with get_write_conn() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    cur = conn.execute(
+                        "INSERT INTO space_weather "
+                        "(ts, kp_index, solar_wind_kms, flare_class, flare_peak_ts) "
+                        "VALUES (?,?,?,?,?)",
+                        (
+                            snapshot.ts,
+                            snapshot.kp_index,
+                            snapshot.solar_wind_kms,
+                            snapshot.flare_class,
+                            snapshot.flare_peak_ts,
+                        ),
+                    )
+                    written = cur.rowcount
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
+        except (sqlite3.Error, sqlite3.ProgrammingError, sqlite3.InterfaceError) as exc:
+            events_status = "db_fail"
+            events_error = f"{type(exc).__name__}: {exc}"
+            written = 0
+            log.error("write_space_weather_db_failure", source=source, error=str(exc))
+
+    # --- Transaction 2: audit row (always attempted) ---
+    ended_at = int(time.time())
+    try:
+        with get_write_conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO poller_runs "
+                "(source, started_at, ended_at, status, events_fetched, "
+                "events_written, error_summary) VALUES (?,?,?,?,?,?,?)",
+                (
+                    source,
+                    started_at,
+                    ended_at,
+                    events_status,
+                    fetched,
+                    written,
+                    events_error[:200] if events_error else None,
+                ),
+            )
+            conn.execute("COMMIT")
+    except sqlite3.Error as exc:
+        log.error("poller_runs_emit_failed", source=source, error=str(exc))
+
+    return fetched, written
+
+
+def write_aurora_status(
+    snapshot: AuroraSnapshot | None,
+    started_at: int,
+    status: str,
+    error_summary: str | None = None,
+) -> tuple[int, int]:
+    """Write 0 or 1 aurora_status row + always emit one poller_runs row (POLL-06).
+
+    No dedup — state-machine transitions matter (a green->amber that we
+    skipped would be a regression in the dashboard story). The writer simply
+    inserts whatever the parser produced.
+
+    Two transactions (events first, then audit) follow the Phase 4 discipline
+    so the poller_runs audit row survives any event-write rollback.
+
+    Args:
+        snapshot: parsed status, or ``None`` when fetch/parse failed (in
+            which case ``status`` is ``transient_fail`` or ``parse_fail``
+            and no aurora_status row is written, only the audit row).
+        started_at: unix epoch seconds at poll start (for poller_runs).
+        status: poller_runs.status value
+            (``success`` | ``transient_fail`` | ``parse_fail`` | ``db_fail``).
+        error_summary: short human-readable error context for the audit
+            row, truncated to 200 chars at write time.
+
+    Returns:
+        ``(fetched, written)`` — both 0 or 1 for aurora.
+    """
+    source = "aurora"
+    fetched = 1 if snapshot is not None else 0
+    written = 0
+    events_status = status
+    events_error = error_summary
+
+    # --- Transaction 1: aurora_status insert (only when we have a snapshot) ---
+    if snapshot is not None:
+        try:
+            with get_write_conn() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    conn.execute(
+                        "INSERT INTO aurora_status (ts, status, detail) VALUES (?,?,?)",
+                        (snapshot.ts, snapshot.status, snapshot.detail),
+                    )
+                    written = 1
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
+        except (sqlite3.Error, sqlite3.ProgrammingError, sqlite3.InterfaceError) as exc:
+            events_status = "db_fail"
+            events_error = f"{type(exc).__name__}: {exc}"
+            written = 0
+            log.error("write_aurora_status_db_failure", source=source, error=str(exc))
+
+    # --- Transaction 2: audit row (always attempted) ---
+    ended_at = int(time.time())
+    try:
+        with get_write_conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO poller_runs "
+                "(source, started_at, ended_at, status, events_fetched, "
+                "events_written, error_summary) VALUES (?,?,?,?,?,?,?)",
+                (
+                    source,
+                    started_at,
+                    ended_at,
+                    events_status,
+                    fetched,
+                    written,
+                    events_error[:200] if events_error else None,
+                ),
+            )
+            conn.execute("COMMIT")
+    except sqlite3.Error as exc:
+        log.error("poller_runs_emit_failed", source=source, error=str(exc))
+
     return fetched, written
