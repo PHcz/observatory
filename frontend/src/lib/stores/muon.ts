@@ -18,6 +18,12 @@ export const muonStore: Writable<MuonState> = writable({
 let muonBuffer: MuonEvent[] = [];
 let recentEventTimestamps: number[] = [];
 
+// Bucket size for history aggregation — one entry per minute.
+// Matches the /api/muon?agg=1m server-side aggregation and the
+// `Math.floor(ts/60)*60` minute-floor formula used by buildMuonPlot's
+// 90s safety margin (07-17).
+const BUCKET_SEC = 60;
+
 export function bufferMuonEvent(evt: MuonEvent): void {
   muonBuffer.push(evt);
   recentEventTimestamps.push(evt.ts);
@@ -27,14 +33,34 @@ export function flushMuonBuffer(): void {
   if (muonBuffer.length === 0) return;
   const drained = muonBuffer.splice(0);
   const nowSec = Math.floor(Date.now() / 1000);
-  // Trim event timestamps to the rolling 60-second window
+
+  // Trim event timestamps to the rolling 60-second window (UNCHANGED from 07-10)
   recentEventTimestamps = recentEventTimestamps.filter(ts => ts > nowSec - 60);
   const liveRate = recentEventTimestamps.length;
+
+  // Bucket new events by minute start
+  const bucketIncrements = new Map<number, number>();
+  for (const e of drained) {
+    const bucketTs = Math.floor(e.ts / BUCKET_SEC) * BUCKET_SEC;
+    bucketIncrements.set(bucketTs, (bucketIncrements.get(bucketTs) ?? 0) + 1);
+  }
+
   muonStore.update(s => {
-    const newHistory = [
-      ...s.history,
-      ...drained.map(e => ({ ts: e.ts, rate_per_min: liveRate })),
-    ].filter(p => p.ts > nowSec - 86400);
+    // Merge increments into existing history (find-or-create per bucket)
+    const byTs = new Map<number, MuonPoint>();
+    for (const p of s.history) byTs.set(p.ts, { ts: p.ts, rate_per_min: p.rate_per_min });
+    for (const [bucketTs, inc] of bucketIncrements) {
+      const existing = byTs.get(bucketTs);
+      byTs.set(bucketTs, {
+        ts: bucketTs,
+        rate_per_min: (existing?.rate_per_min ?? 0) + inc,
+      });
+    }
+    // Sort ascending + trim to last 24h
+    const merged = Array.from(byTs.values())
+      .filter(p => p.ts > nowSec - 86400)
+      .sort((a, b) => a.ts - b.ts);
+
     const last = drained[drained.length - 1];
     return {
       current: {
@@ -44,7 +70,7 @@ export function flushMuonBuffer(): void {
         detector_temp_c: last.detector_temp_c,
         latest_event_ts: last.ts,
       } as unknown as MuonData,
-      history: newHistory,
+      history: merged,
       rate: liveRate,
       lastUpdateTs: nowSec,
     };
