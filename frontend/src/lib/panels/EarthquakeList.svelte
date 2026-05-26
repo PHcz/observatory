@@ -33,7 +33,7 @@
   })();
 
   $: recent = $earthquakeStore.recent;
-  $: filtered = recent.filter(e => e.source === 'bgs' || (e.magnitude != null && e.magnitude >= 4.0));
+  $: filtered = recent.filter(e => e.source === 'bgs' || (e.magnitude != null && e.magnitude >= 3.0));
   $: displayed = filtered.slice(0, MAX_ROWS);
   $: hasMore = filtered.length > MAX_ROWS;
 </script>
@@ -44,7 +44,7 @@
       <h2 class="section-title">Earthquakes</h2>
       <span class="section-meta">USGS · EMSC</span>
     </div>
-    <p class="section-sub">Magnitude 4.0+ globally, all detectable UK events</p>
+    <p class="section-sub">Magnitude 3.0+ globally, all detectable UK events</p>
     {#if quakeLevel !== 'fresh'}
       <StalenessCaption lastTs={quakeLastTs} />
     {/if}
