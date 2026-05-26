@@ -72,19 +72,25 @@ def test_empty_db_returns_200_with_empty_rows(client: TestClient) -> None:
 
 
 def test_flare_class_max_picks_strongest(client: TestClient, db_path: Path) -> None:
-    """4 rows in one hour window with different flare_class — MAX() should pick X1.0."""
+    """4 rows in one UTC hour bucket — MAX(flare_class) should pick X1.0."""
+    import datetime
+
     now = int(time.time())
+    dt_now = datetime.datetime.fromtimestamp(now, tz=datetime.UTC)
+    hour_start = dt_now.replace(minute=0, second=0, microsecond=0)
+    base = int(hour_start.timestamp()) + 30
+
     conn = sqlite3.connect(str(db_path))
-    base = now - 3600 + 60
     _insert_sw(conn, base + 0, flare_class="C1.0")
-    _insert_sw(conn, base + 100, flare_class="M2.5")
-    _insert_sw(conn, base + 200, flare_class="X1.0")
-    _insert_sw(conn, base + 300, flare_class="B5.0")
+    _insert_sw(conn, base + 60, flare_class="M2.5")
+    _insert_sw(conn, base + 120, flare_class="X1.0")
+    _insert_sw(conn, base + 180, flare_class="B5.0")
     conn.commit()
     conn.close()
 
-    from_ts = now - 3600
-    resp = client.get(f"/api/space-weather?from={from_ts}&to={now}&agg=hour")
+    from_ts = int(hour_start.timestamp())
+    to_ts = from_ts + 3600
+    resp = client.get(f"/api/space-weather?from={from_ts}&to={to_ts}&agg=hour")
     assert resp.status_code == 200
     body = resp.json()
     assert body["agg"] == "hour"
@@ -124,17 +130,28 @@ def test_raw_mode_returns_all_rows(client: TestClient, db_path: Path) -> None:
 
 
 def test_kp_index_averaging(client: TestClient, db_path: Path) -> None:
-    """Two rows with kp=2.0 and kp=4.0 in same hour -> AVG = 3.0."""
+    """Two rows with kp=2.0 and kp=4.0 in same hour bucket -> AVG = 3.0."""
+    # Use a fixed epoch that starts at an exact UTC hour boundary + a few seconds,
+    # so both rows (+0s and +120s) land in the same UTC hour bucket regardless of
+    # when this test runs.
+    import datetime
+
     now = int(time.time())
+    # Align base to the start of the current UTC hour + 30s so both rows are safely inside.
+    dt_now = datetime.datetime.fromtimestamp(now, tz=datetime.UTC)
+    hour_start = dt_now.replace(minute=0, second=0, microsecond=0)
+    base = int(hour_start.timestamp()) + 30  # 30s past the hour
+
     conn = sqlite3.connect(str(db_path))
-    base = now - 3600 + 60
     _insert_sw(conn, base, kp_index=2.0, solar_wind_kms=350.0)
-    _insert_sw(conn, base + 1800, kp_index=4.0, solar_wind_kms=450.0)
+    _insert_sw(conn, base + 120, kp_index=4.0, solar_wind_kms=450.0)
     conn.commit()
     conn.close()
 
-    from_ts = now - 3600
-    resp = client.get(f"/api/space-weather?from={from_ts}&to={now}&agg=hour")
+    # Query the full current UTC hour
+    from_ts = int(hour_start.timestamp())
+    to_ts = from_ts + 3600
+    resp = client.get(f"/api/space-weather?from={from_ts}&to={to_ts}&agg=hour")
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["rows"]) == 1
