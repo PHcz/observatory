@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildMuonPlot, buildTempPlot, rollingAverage } from '$lib/charts/plotHelpers';
+import { buildMuonPlot, buildTempPlot, rollingAverage, withinSafetyMargin } from '$lib/charts/plotHelpers';
 import type { MuonPoint } from '$lib/types';
 
 describe('plotHelpers', () => {
@@ -89,19 +89,54 @@ describe('rollingAverage', () => {
   });
 });
 
-describe('buildMuonPlot excludes in-progress minute bucket', () => {
-  it('drops the final point when ts is within current minute', () => {
-    // Build dataset where the LAST point falls within currentMinuteStart..now;
-    // earlier points are in prior minutes. We assert by rendering and confirming
-    // no exception + Element is returned. The visual smoke check on full suite
-    // (build + UAT) verifies the right-edge drop is gone.
-    const nowSec = Math.floor(Date.now() / 1000);
-    const currentMinuteStart = nowSec - (nowSec % 60);
+describe('withinSafetyMargin (90s right-edge guard)', () => {
+  it('drops a point 30 seconds old', () => {
+    const nowMs = 1_700_000_000_000;
+    const data: MuonPoint[] = [{ ts: Math.floor(nowMs / 1000) - 30, rate_per_min: 5 }];
+    expect(withinSafetyMargin(data, nowMs)).toEqual([]);
+  });
+
+  it('keeps a point 120 seconds old', () => {
+    const nowMs = 1_700_000_000_000;
+    const data: MuonPoint[] = [{ ts: Math.floor(nowMs / 1000) - 120, rate_per_min: 80 }];
+    expect(withinSafetyMargin(data, nowMs)).toHaveLength(1);
+  });
+
+  it('keeps a point exactly 90 seconds old (boundary inclusive)', () => {
+    const nowMs = 1_700_000_000_000;
+    const data: MuonPoint[] = [{ ts: Math.floor(nowMs / 1000) - 90, rate_per_min: 70 }];
+    expect(withinSafetyMargin(data, nowMs)).toHaveLength(1);
+  });
+
+  it('drops a point 89 seconds old (just inside the margin)', () => {
+    const nowMs = 1_700_000_000_000;
+    const data: MuonPoint[] = [{ ts: Math.floor(nowMs / 1000) - 89, rate_per_min: 70 }];
+    expect(withinSafetyMargin(data, nowMs)).toEqual([]);
+  });
+
+  it('mixed array: keeps old, drops recent', () => {
+    const nowMs = 1_700_000_000_000;
+    const nowSec = Math.floor(nowMs / 1000);
     const data: MuonPoint[] = [
-      { ts: currentMinuteStart - 600, rate_per_min: 80 },
-      { ts: currentMinuteStart - 300, rate_per_min: 82 },
-      { ts: currentMinuteStart - 60,  rate_per_min: 84 }, // last completed minute
-      { ts: nowSec,                   rate_per_min: 5  }, // in-progress, must be dropped
+      { ts: nowSec - 3600, rate_per_min: 60 }, // 1h old, keep
+      { ts: nowSec - 600,  rate_per_min: 62 }, // 10m old, keep
+      { ts: nowSec - 91,   rate_per_min: 64 }, // 91s old, keep (boundary)
+      { ts: nowSec - 30,   rate_per_min: 5  }, // 30s old, drop
+    ];
+    const out = withinSafetyMargin(data, nowMs);
+    expect(out).toHaveLength(3);
+    expect(out.map(p => p.ts)).toEqual([nowSec - 3600, nowSec - 600, nowSec - 91]);
+  });
+});
+
+describe('buildMuonPlot integrates the 90s safety margin', () => {
+  it('renders without exception when data contains a still-filling recent point', () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const data: MuonPoint[] = [
+      { ts: nowSec - 3600, rate_per_min: 80 },
+      { ts: nowSec - 600,  rate_per_min: 82 },
+      { ts: nowSec - 120,  rate_per_min: 84 }, // 2min old, kept by smoothing
+      { ts: nowSec,        rate_per_min: 5  }, // in-progress, dropped
     ];
     const node = buildMuonPlot(data, 600);
     expect(node).toBeInstanceOf(Element);
