@@ -58,12 +58,60 @@ describe('muon store buffer', () => {
     expect(state.history).toHaveLength(1);
   });
 
-  it('updates rate from last flushed event', () => {
+  it('computes live rate from rolling 60s event count on flush', () => {
     const nowSec = Math.floor(Date.now() / 1000);
-    // Create an event-like object with rate_per_min (as the flush code casts it)
-    const evt = { ts: nowSec, latest_event_ts: nowSec, detector_pressure_hpa: null, detector_temp_c: null, rate_per_min: 42 } as unknown as MuonEvent;
-    bufferMuonEvent(evt);
+    // Buffer 30 events, all within the last 60s
+    for (let i = 0; i < 30; i++) {
+      const ts = nowSec - (i % 60); // all within [nowSec-59 .. nowSec]
+      bufferMuonEvent({ ts, latest_event_ts: ts, detector_pressure_hpa: null, detector_temp_c: null });
+    }
     flushMuonBuffer();
-    expect(get(muonStore).rate).toBe(42);
+    expect(get(muonStore).rate).toBe(30);
+  });
+
+  it('expires events older than 60s from rolling rate window', () => {
+    vi.useFakeTimers();
+    try {
+      const startMs = 1_700_000_000_000;
+      vi.setSystemTime(startMs);
+      const startSec = Math.floor(startMs / 1000);
+
+      // First flush: 30 events all within last 60s
+      for (let i = 0; i < 30; i++) {
+        const ts = startSec - (i % 60);
+        bufferMuonEvent({ ts, latest_event_ts: ts, detector_pressure_hpa: null, detector_temp_c: null });
+      }
+      flushMuonBuffer();
+      expect(get(muonStore).rate).toBe(30);
+
+      // Advance time by 120s; buffer 5 fresh events
+      vi.setSystemTime(startMs + 120_000);
+      const nowSec2 = Math.floor((startMs + 120_000) / 1000);
+      for (let i = 0; i < 5; i++) {
+        const ts = nowSec2 - i;
+        bufferMuonEvent({ ts, latest_event_ts: ts, detector_pressure_hpa: null, detector_temp_c: null });
+      }
+      flushMuonBuffer();
+      // Old 30 events are now >60s old; only the 5 fresh ones count
+      expect(get(muonStore).rate).toBe(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('flush with no buffered events leaves rate unchanged', () => {
+    muonStore.set({ current: null, history: [], rate: 77, lastUpdateTs: null });
+    flushMuonBuffer();
+    expect(get(muonStore).rate).toBe(77);
+  });
+
+  it('history continues to extend with each flush', () => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    bufferMuonEvent({ ts: nowSec - 10, latest_event_ts: nowSec - 10, detector_pressure_hpa: null, detector_temp_c: null });
+    bufferMuonEvent({ ts: nowSec - 5, latest_event_ts: nowSec - 5, detector_pressure_hpa: null, detector_temp_c: null });
+    flushMuonBuffer();
+    bufferMuonEvent({ ts: nowSec, latest_event_ts: nowSec, detector_pressure_hpa: null, detector_temp_c: null });
+    flushMuonBuffer();
+    expect(get(muonStore).history).toHaveLength(3);
   });
 });
