@@ -1,0 +1,13 @@
+[Unit]
+Description=Observatory NOAA poller schedule (every 15 min)
+Requires=obs-noaa-poll.service
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+RandomizedDelaySec=30
+Persistent=true
+Unit=obs-noaa-poll.service
+
+[Install]
+WantedBy=timers.target
