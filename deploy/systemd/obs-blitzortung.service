@@ -1,0 +1,30 @@
+[Unit]
+Description=Observatory Blitzortung lightning WebSocket ingest (long-running)
+Documentation=https://www.blitzortung.org/
+After=network-online.target chrony.service time-sync.target
+Wants=network-online.target chrony.service
+
+[Service]
+# Type=notify long-running service (NOT a timer). Blitzortung's data shape
+# is a continuous stream, not a periodic snapshot. WatchdogSec=60s gives
+# headroom for the 30s reconnect backoff plus a one-flush-cycle margin;
+# the client pings WATCHDOG=1 every ~20s gated on frame-or-flush activity.
+Type=notify
+User=observatory
+Group=observatory
+EnvironmentFile=/etc/observatory/observatory.env
+WorkingDirectory=/opt/observatory
+ExecStart=/opt/observatory/.venv/bin/python -m observatory.pollers.blitzortung
+Restart=on-failure
+RestartSec=10s
+WatchdogSec=60s
+TimeoutStopSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=obs-blitzortung
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target

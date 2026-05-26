@@ -260,15 +260,32 @@ def test_client_logs_degraded_when_no_data_arrives(patched_db: Path) -> None:
 
 
 def test_no_lightningmaps_imports() -> None:
-    """Open Q 2 — CONTEXT amended 2026-05-26 to drop LightningMaps."""
+    """Open Q 2 — CONTEXT amended 2026-05-26 to drop LightningMaps.
+
+    Guards against any import, package directory, or settings key referencing
+    LightningMaps. Docstring/comment mentions of the historical context (e.g.
+    "NO LightningMaps fallback") are allowed — we look for active code use
+    via import statements, env var names, and module paths.
+    """
     import pathlib
+    import re
 
     root = pathlib.Path(__file__).resolve().parents[3]
+    forbidden = [
+        re.compile(r"^\s*import\s+.*lightningmaps", re.MULTILINE | re.IGNORECASE),
+        re.compile(r"^\s*from\s+.*lightningmaps", re.MULTILINE | re.IGNORECASE),
+        re.compile(r"LIGHTNINGMAPS_[A-Z_]+"),  # env-var/settings key
+    ]
     for sub in ("observatory", "tests", "deploy", "scripts"):
-        for p in (root / sub).rglob("*.py"):
+        d = root / sub
+        if not d.exists():
+            continue
+        for p in d.rglob("*.py"):
             text = p.read_text(errors="ignore")
-            assert "lightningmaps" not in text.lower(), f"{p}: contains lightningmaps"
-            assert "LIGHTNINGMAPS" not in text, f"{p}: contains LIGHTNINGMAPS"
+            for rx in forbidden:
+                assert not rx.search(text), f"{p}: matches forbidden pattern {rx.pattern}"
+    # Also no lightningmaps package directory
+    assert not (root / "observatory" / "pollers" / "lightningmaps").exists()
 
 
 def test_subscribe_message_in_client() -> None:
