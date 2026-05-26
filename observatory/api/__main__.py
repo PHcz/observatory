@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import signal
+import socket
 from typing import Final
 
 import sdnotify
@@ -36,11 +37,46 @@ log = structlog.get_logger(__name__)
 READY_POLL_INTERVAL_SEC: Final[float] = 0.05
 
 
+def resolve_lan_ip() -> str:
+    """Return the Pi's first non-loopback IPv4 address.
+
+    Uses ``socket.gethostname()`` + ``socket.getaddrinfo()`` (IPv4 only).
+    The first address not starting with ``127.`` is returned.
+
+    Raises:
+        RuntimeError: If no non-loopback IPv4 address is found.
+    """
+    hostname = socket.gethostname()
+    results = socket.getaddrinfo(hostname, None, socket.AF_INET)
+    for info in results:
+        sockaddr = info[4]
+        addr = str(sockaddr[0])
+        if not addr.startswith("127."):
+            return addr
+    raise RuntimeError(f"No non-loopback IPv4 found for hostname {hostname!r}")
+
+
 async def _serve() -> None:
     notifier = sdnotify.SystemdNotifier()
+
+    # Resolve bind host — "auto" means detect the Pi's LAN IP dynamically.
+    if settings.api_bind_host == "auto":
+        try:
+            bind_host = resolve_lan_ip()
+        except RuntimeError as exc:
+            log.error("api_lan_ip_detect_failed", error=str(exc))
+            raise SystemExit(1) from exc
+        log.info(
+            "api_bind_host_resolved",
+            resolved=bind_host,
+            hostname=socket.gethostname(),
+        )
+    else:
+        bind_host = settings.api_bind_host
+
     config = uvicorn.Config(
         app=app,
-        host=settings.api_bind_host,
+        host=bind_host,
         port=settings.api_bind_port,
         log_level="info",
         access_log=False,
@@ -57,7 +93,7 @@ async def _serve() -> None:
         notifier.notify("READY=1")
         log.info(
             "api_ready",
-            host=settings.api_bind_host,
+            host=bind_host,
             port=settings.api_bind_port,
         )
         # Watchdog ping loop. WatchdogSec=30s in the unit; default ping=10s.
