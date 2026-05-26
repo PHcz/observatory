@@ -2,22 +2,51 @@
   import { earthquakeStore } from '$lib/stores/earthquakes';
   import MagnitudePill from '$lib/atoms/MagnitudePill.svelte';
   import SourceBadge from '$lib/atoms/SourceBadge.svelte';
-  import { formatAgeCaption } from '$lib/utils/time';
+  import { formatAgeCaption, ageSeconds } from '$lib/utils/time';
+  import { healthStore } from '$lib/stores/health';
+  import { deriveStaleness } from '$lib/utils/staleness';
+  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import type { StalenessLevel } from '$lib/utils/staleness';
 
   const MAX_ROWS = 10;
+
+  $: quakeLevel = (() => {
+    const ext = $healthStore.data?.external;
+    if (!ext) return 'fresh' as StalenessLevel;
+    const levels: StalenessLevel[] = (['usgs', 'emsc', 'bgs'] as const).map(k => {
+      const s = ext[k];
+      if (!s?.last_event_ts || !s?.staleness_threshold_sec) return 'fresh';
+      return deriveStaleness(ageSeconds(s.last_event_ts), s.staleness_threshold_sec);
+    });
+    if (levels.includes('red')) return 'red' as StalenessLevel;
+    if (levels.includes('amber')) return 'amber' as StalenessLevel;
+    return 'fresh' as StalenessLevel;
+  })();
+
+  $: quakeLastTs = (() => {
+    const ext = $healthStore.data?.external;
+    if (!ext) return null;
+    const tsList = (['usgs', 'emsc', 'bgs'] as const)
+      .map(k => ext[k]?.last_event_ts ?? null)
+      .filter((t): t is number => t != null);
+    return tsList.length > 0 ? Math.max(...tsList) : null;
+  })();
 
   $: recent = $earthquakeStore.recent;
   $: displayed = recent.slice(0, MAX_ROWS);
   $: hasMore = recent.length > MAX_ROWS;
 </script>
 
-<section class="earthquake-list">
+<section class="earthquake-list" class:is-stale-amber={quakeLevel === 'amber'} class:is-stale-red={quakeLevel === 'red'}>
   <header class="section-header">
     <div class="section-title-row">
       <h2 class="section-title">Earthquakes</h2>
       <span class="section-meta">USGS · EMSC</span>
     </div>
     <p class="section-sub">Magnitude 4.0+ globally, all detectable UK events</p>
+    {#if quakeLevel !== 'fresh'}
+      <StalenessCaption lastTs={quakeLastTs} />
+    {/if}
   </header>
 
   {#if displayed.length === 0}
