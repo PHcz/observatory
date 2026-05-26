@@ -52,13 +52,17 @@ _NO_EVENT_AGE_SEC: int = 10**9
 def _max_ts(conn: sqlite3.Connection, table: str, source_filter: str | None) -> int | None:
     if table not in _ALLOWED_TABLES:
         raise ValueError(f"table not in whitelist: {table!r}")
+    # SQL identifiers (table names) cannot be parameter-bound in sqlite3; we
+    # interpolate via f-string after validating `table` against a fixed
+    # _ALLOWED_TABLES allowlist (no user input reaches this string). Values
+    # (source_filter) ARE parameter-bound. Bandit B608 false positive.
     if source_filter is not None:
         row = conn.execute(
-            f"SELECT MAX(ts) AS m FROM {table} WHERE source=?",
+            f"SELECT MAX(ts) AS m FROM {table} WHERE source=?",  # nosec B608
             (source_filter,),
         ).fetchone()
     else:
-        row = conn.execute(f"SELECT MAX(ts) AS m FROM {table}").fetchone()
+        row = conn.execute(f"SELECT MAX(ts) AS m FROM {table}").fetchone()  # nosec B608
     if not row:
         return None
     m = row["m"]
