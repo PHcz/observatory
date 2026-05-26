@@ -61,9 +61,9 @@
     <div class="sparkline-section">
       <svg viewBox="0 0 100 80" preserveAspectRatio="none" class="sparkline-svg" aria-hidden="true">
         {#each hourlyBuckets as bucket, i}
-          {@const height = maxBucket > 0 ? (bucket / maxBucket) * 70 : 0}
+          {@const height = maxBucket > 0 ? (bucket / maxBucket) * 80 : 0}
           {@const x = i * CELL_W}
-          {@const y = 80 - height - 10}
+          {@const y = 80 - height}
           <rect
             x={x}
             y={y}
@@ -72,8 +72,8 @@
             fill="#5a6b5a"
           />
         {/each}
-        <text x="0" y="78" font-size="9" font-weight="600" fill="#5a6b5a" letter-spacing="0.20em">STRIKES/HR · LAST 24H</text>
       </svg>
+      <span class="sparkline-label">STRIKES/HR · LAST 24H</span>
     </div>
   {/if}
 </section>
@@ -176,5 +176,14 @@
     width: 100%;
     height: 80px;
     display: block;
+  }
+
+  .sparkline-label {
+    display: block;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.20em;
+    color: var(--accent-soft);
+    margin-top: 4px;
   }
 </style>
