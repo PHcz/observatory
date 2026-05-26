@@ -62,8 +62,9 @@ describe('WS watchdog — inter-message silence detection', () => {
     expect(get(wsStatus)).toBe('connected');
     expect(ws.closeCount).toBe(0);
 
-    // Advance another 2s — total 61s of silence — watchdog fires
-    vi.advanceTimersByTime(2_000);
+    // Advance another 1.001s — total 60.001s — watchdog fires but reconnect
+    // backoff (1000ms after watchdog) has not yet re-set state to 'connecting'
+    vi.advanceTimersByTime(1_001);
     expect(get(wsStatus)).toBe('disconnected');
     expect(ws.closeCount).toBeGreaterThanOrEqual(1);
 
@@ -83,8 +84,9 @@ describe('WS watchdog — inter-message silence detection', () => {
     vi.advanceTimersByTime(55_000);
     expect(get(wsStatus)).toBe('connected');
 
-    // Advance to t=92s — 62s since last ping — disconnected
-    vi.advanceTimersByTime(7_000);
+    // Advance to t=90.001s — watchdog fires (60s after ping) but reconnect
+    // backoff (+1000ms) has not yet bumped state back to 'connecting'
+    vi.advanceTimersByTime(5_001);
     expect(get(wsStatus)).toBe('disconnected');
 
     cleanup();
@@ -104,7 +106,8 @@ describe('WS watchdog — inter-message silence detection', () => {
     vi.advanceTimersByTime(55_000);
     expect(get(wsStatus)).toBe('connected');
 
-    vi.advanceTimersByTime(7_000);
+    // Watchdog fires at t=90s (60s after muon msg); assert before reconnect at t=91s
+    vi.advanceTimersByTime(5_001);
     expect(get(wsStatus)).toBe('disconnected');
 
     cleanup();
@@ -133,11 +136,11 @@ describe('WS watchdog — inter-message silence detection', () => {
     ws1.simulateOpen();
     expect(get(wsStatus)).toBe('connected');
 
-    // Silence triggers watchdog
-    vi.advanceTimersByTime(61_000);
+    // Silence triggers watchdog at t=60s; assert before reconnect at t=61s
+    vi.advanceTimersByTime(60_001);
     expect(get(wsStatus)).toBe('disconnected');
 
-    // Advance through reconnect backoff (>=1s)
+    // Advance past reconnect backoff (fires at t=61s; we're at t=60.001s)
     vi.advanceTimersByTime(2_000);
 
     // A new WS should have been constructed
