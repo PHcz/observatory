@@ -33,8 +33,9 @@
   })();
 
   $: recent = $earthquakeStore.recent;
-  $: displayed = recent.slice(0, MAX_ROWS);
-  $: hasMore = recent.length > MAX_ROWS;
+  $: filtered = recent.filter(e => e.source === 'bgs' || (e.magnitude != null && e.magnitude >= 4.0));
+  $: displayed = filtered.slice(0, MAX_ROWS);
+  $: hasMore = filtered.length > MAX_ROWS;
 </script>
 
 <section class="earthquake-list" class:is-stale-amber={quakeLevel === 'amber'} class:is-stale-red={quakeLevel === 'red'}>
@@ -66,7 +67,7 @@
       {/each}
     </div>
     {#if hasMore}
-      <p class="more-caption">(showing 10 of {recent.length})</p>
+      <p class="more-caption">(showing 10 of {filtered.length})</p>
     {/if}
   {/if}
 </section>
