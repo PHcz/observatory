@@ -60,14 +60,10 @@ class Settings(BaseSettings):
     poller_noaa_solar_wind_url: str = (
         "https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json"
     )
-    poller_noaa_xray_url: str = (
-        "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json"
-    )
+    poller_noaa_xray_url: str = "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json"
 
     # --- AuroraWatch UK (Phase 5) ---
-    poller_aurora_url: str = (
-        "https://aurorawatch-api.lancs.ac.uk/0.2/status/current-status.xml"
-    )
+    poller_aurora_url: str = "https://aurorawatch-api.lancs.ac.uk/0.2/status/current-status.xml"
 
     # --- Blitzortung lightning (Phase 5) ---
     # Port (8056 vs 443) probed at 05-04 first-task; URL list defaults to wss:// (443).
@@ -86,7 +82,7 @@ class Settings(BaseSettings):
 
     # --- API (Phase 5 scaffold; Phase 6 may tighten) ---
     # LAN topology is the trust boundary; Phase 6 may tighten if remote access is added.
-    api_bind_host: str = "0.0.0.0"  # noqa: S104
+    api_bind_host: str = "0.0.0.0"  # nosec B104  # LAN-only Pi per CLAUDE.md trust boundary
     api_bind_port: int = Field(default=8000, ge=1, le=65535)
     api_watchdog_ping_interval_sec: int = Field(default=10, ge=2, le=60)
 
