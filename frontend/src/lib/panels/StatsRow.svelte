@@ -1,1 +1,136 @@
-<script lang="ts">/* STUB UI-03 — implemented by Plan 07-02 */</script><section data-stub="StatsRow"></section>
+<script lang="ts">
+  import { weatherStore } from '$lib/stores/weather';
+  import { muonStore } from '$lib/stores/muon';
+  import { dewPointC } from '$lib/utils/dewpoint';
+
+  $: weather = $weatherStore.current;
+  $: muon = $muonStore;
+
+  $: pressureStr = weather?.pressure_hpa != null
+    ? weather.pressure_hpa.toFixed(0)
+    : null;
+
+  $: pressureMeta = 'hPa · steady';
+
+  $: humidityStr = weather?.humidity_pct != null
+    ? weather.humidity_pct.toFixed(0)
+    : null;
+
+  $: dewPtStr = (weather?.temp_c != null && weather?.humidity_pct != null)
+    ? `${dewPointC(weather.temp_c, weather.humidity_pct)}°C`
+    : '—';
+
+  $: humidityMeta = `steady · dew point ${dewPtStr}`;
+
+  $: muonStr = muon.rate != null
+    ? muon.rate.toFixed(0)
+    : null;
+
+  $: luxStr = weather?.lux != null
+    ? weather.lux.toFixed(0)
+    : null;
+
+  // Determine day/night from lux: >10 lux = day
+  $: luxMeta = (() => {
+    if (weather?.lux == null) return 'night · max today was —';
+    return weather.lux > 10
+      ? 'max today was —'
+      : 'night · max today was —';
+  })();
+</script>
+
+<section class="stats-row" aria-label="Statistics">
+  <div class="stat">
+    <div class="stat-label">Pressure</div>
+    <div class="stat-value">
+      {#if pressureStr !== null}
+        {pressureStr}
+      {:else}
+        —
+      {/if}
+    </div>
+    <div class="stat-meta">{pressureMeta}</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-label">Humidity</div>
+    <div class="stat-value">
+      {#if humidityStr !== null}
+        {humidityStr}<span class="stat-unit">%</span>
+      {:else}
+        —
+      {/if}
+    </div>
+    <div class="stat-meta">{humidityMeta}</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-label">Muons</div>
+    <div class="stat-value">
+      {#if muonStr !== null}
+        {muonStr}
+      {:else}
+        —
+      {/if}
+    </div>
+    <div class="stat-meta">per minute · pressure corrected</div>
+  </div>
+
+  <div class="stat">
+    <div class="stat-label">UV</div>
+    <div class="stat-value">
+      {#if luxStr !== null}
+        {luxStr}
+      {:else}
+        —
+      {/if}
+    </div>
+    <div class="stat-meta">{luxMeta}</div>
+  </div>
+</section>
+
+<style>
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 48px;
+    margin-bottom: 80px;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.20em;
+    color: var(--accent-soft);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .stat-value {
+    font-size: 44px;
+    font-weight: 400;
+    line-height: 1.0;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  .stat-unit {
+    font-size: 24px;
+    font-weight: 400;
+    margin-left: 2px;
+  }
+
+  .stat-meta {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+</style>

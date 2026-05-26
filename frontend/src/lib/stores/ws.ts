@@ -7,6 +7,8 @@ import { setSpaceWeather } from '$lib/stores/spaceWeather';
 import { setLightning } from '$lib/stores/lightning';
 import { setAurora } from '$lib/stores/aurora';
 import { prependEarthquake, setEarthquakes } from '$lib/stores/earthquakes';
+import { setAstronomy } from '$lib/stores/astronomy';
+import type { AstronomyData } from '$lib/types';
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -51,6 +53,7 @@ export function routeMessage(raw: string): void {
       if (snap.lightning_summary?.data) setLightning(snap.lightning_summary.data as LightningSummary);
       if (snap.aurora?.data) setAurora(snap.aurora.data as AuroraData);
       if (snap.earthquakes_recent) setEarthquakes(snap.earthquakes_recent as EarthquakeItem[]);
+      if (snap.astronomy) setAstronomy(snap.astronomy as AstronomyData);
       break;
     }
     case 'weather':
