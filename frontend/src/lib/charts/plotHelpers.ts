@@ -12,10 +12,12 @@ const FILL_DOT = '#6b8e6b';
  * backend aggregation lag (the most recent minute can still be filling).
  * Exported for unit testing.
  *
- * STUB (RED): returns input unchanged — replaced with real predicate in GREEN step.
+ * Predicate: a point is KEPT iff (nowMs - p.ts * 1000) >= 90_000 — i.e. its
+ * timestamp is at least 90 seconds old. Boundary is inclusive (exactly 90s old
+ * is kept; 89s old is dropped).
  */
-export function withinSafetyMargin(data: MuonPoint[], _nowMs: number = Date.now()): MuonPoint[] {
-  return data;
+export function withinSafetyMargin(data: MuonPoint[], nowMs: number = Date.now()): MuonPoint[] {
+  return data.filter(p => (nowMs - p.ts * 1000) >= 90_000);
 }
 
 /**
@@ -40,14 +42,13 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
   const start = new Date(now - WINDOW_SEC * 1000);
   const end = new Date(now);
 
-  // Exclude the in-progress minute bucket so the right edge never shows a
-  // sudden drop while the current minute is still filling.
-  const nowSec = Math.floor(now / 1000);
-  const currentMinuteStart = nowSec - (nowSec % 60);
-  const completed = data.filter(p => p.ts < currentMinuteStart);
+  // Exclude any point within the last 90 seconds of wall-clock time.
+  // Belt-and-braces against client/server clock skew and the still-filling
+  // current minute bucket (UAT gap 4 round 2).
+  const safe = withinSafetyMargin(data, now);
 
   // Smooth raw per-minute Poisson noise with a 5-point centered rolling average.
-  const smoothed = rollingAverage(completed, 5);
+  const smoothed = rollingAverage(safe, 5);
   const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
 
   return Plot.plot({
