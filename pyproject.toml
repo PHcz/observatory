@@ -15,6 +15,7 @@ dependencies = [
   "fastapi>=0.115,<0.120",
   "uvicorn[standard]>=0.32,<0.40",
   "websockets>=14,<17",
+  "astral>=3.0",
 ]
 
 [project.optional-dependencies]

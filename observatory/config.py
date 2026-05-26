@@ -86,6 +86,17 @@ class Settings(BaseSettings):
     api_bind_port: int = Field(default=8000, ge=1, le=65535)
     api_watchdog_ping_interval_sec: int = Field(default=10, ge=2, le=60)
 
+    # --- API server (Phase 6 additions) ---
+    obs_env: str = Field(default="production", pattern="^(production|development)$")
+    api_ws_queue_maxsize: int = Field(default=100, ge=1, le=10000)
+    api_ws_ping_interval_sec: float = Field(default=30.0, ge=0.01, le=600.0)
+    api_ws_pong_timeout_sec: float = Field(default=60.0, ge=0.05, le=600.0)
+    api_db_watcher_interval_sec: float = Field(default=5.0, ge=0.1, le=60.0)
+    api_origin_allowlist: str = Field(
+        default="192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,localhost,127.0.0.1,observatory.local"
+    )
+    api_static_bundle_dir: str = Field(default="/opt/observatory/frontend/build")
+
     # --- Pi thermal monitoring (Phase 5) ---
     pi_temp_warning_c: float = Field(default=70.0, ge=40.0, le=90.0)
     pi_temp_critical_c: float = Field(default=80.0, ge=50.0, le=100.0)
