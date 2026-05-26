@@ -2,6 +2,10 @@
   import { weatherStore } from '$lib/stores/weather';
   import { muonStore } from '$lib/stores/muon';
   import { dewPointC } from '$lib/utils/dewpoint';
+  import { healthStore } from '$lib/stores/health';
+  import { deriveStaleness } from '$lib/utils/staleness';
+  import { ageSeconds } from '$lib/utils/time';
+  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   $: weather = $weatherStore.current;
   $: muon = $muonStore;
@@ -31,6 +35,12 @@
     : null;
 
   // Determine day/night from lux: >10 lux = day
+  $: weatherHealth = $healthStore.data?.local?.weather;
+  $: weatherLastTs = weather?.ts ?? weatherHealth?.last_event_ts ?? null;
+  $: weatherLevel = (weatherLastTs != null && weatherHealth?.staleness_threshold_sec)
+    ? deriveStaleness(ageSeconds(weatherLastTs), weatherHealth.staleness_threshold_sec)
+    : 'fresh';
+
   $: luxMeta = (() => {
     if (weather?.lux == null) return 'night · max today was —';
     return weather.lux > 10
@@ -39,7 +49,7 @@
   })();
 </script>
 
-<section class="stats-row" aria-label="Statistics">
+<section class="stats-row" aria-label="Statistics" class:is-stale-amber={weatherLevel === 'amber'} class:is-stale-red={weatherLevel === 'red'}>
   <div class="stat">
     <div class="stat-label">Pressure</div>
     <div class="stat-value">
@@ -50,6 +60,9 @@
       {/if}
     </div>
     <div class="stat-meta">{pressureMeta}</div>
+    {#if weatherLevel !== 'fresh'}
+      <StalenessCaption lastTs={weatherLastTs} />
+    {/if}
   </div>
 
   <div class="stat">

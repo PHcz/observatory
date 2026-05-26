@@ -1,5 +1,9 @@
 <script lang="ts">
   import { lightningStore } from '$lib/stores/lightning';
+  import { healthStore } from '$lib/stores/health';
+  import { deriveStaleness } from '$lib/utils/staleness';
+  import { ageSeconds } from '$lib/utils/time';
+  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   $: summary = $lightningStore.summary;
   // NOTE: /api/lightning/summary does not expose hourly buckets (Phase 6 Plan 06-04).
@@ -9,6 +13,12 @@
     ? $lightningStore.hourlyBuckets
     : new Array(24).fill(0);
 
+  $: blitz = $healthStore.data?.external?.blitzortung;
+  $: blitzLastTs = summary?.ts ?? blitz?.last_event_ts ?? null;
+  $: blitzLevel = (blitzLastTs != null && blitz?.staleness_threshold_sec)
+    ? deriveStaleness(ageSeconds(blitzLastTs), blitz.staleness_threshold_sec)
+    : 'fresh';
+
   $: isEmpty = summary == null || summary.past_24h === 0;
 
   $: maxBucket = Math.max(...hourlyBuckets, 1);
@@ -17,12 +27,15 @@
   const CELL_W = 100 / 24;
 </script>
 
-<section class="lightning-panel">
+<section class="lightning-panel" class:is-stale-amber={blitzLevel === 'amber'} class:is-stale-red={blitzLevel === 'red'}>
   <div class="section-header">
     <span class="section-title">Lightning</span>
     <span class="section-meta">Blitzortung · UK + Ireland</span>
   </div>
   <p class="section-sub">Real-time strike detection across the British Isles</p>
+  {#if blitzLevel !== 'fresh'}
+    <StalenessCaption lastTs={blitzLastTs} />
+  {/if}
 
   {#if isEmpty}
     <p class="empty">No strikes in the last 24h.</p>

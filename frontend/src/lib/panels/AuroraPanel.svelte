@@ -1,6 +1,10 @@
 <script lang="ts">
   import { auroraStore } from '$lib/stores/aurora';
   import StatusDot from '$lib/atoms/StatusDot.svelte';
+  import { healthStore } from '$lib/stores/health';
+  import { deriveStaleness } from '$lib/utils/staleness';
+  import { ageSeconds } from '$lib/utils/time';
+  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   const AURORA_COPY: Record<'green' | 'yellow' | 'amber' | 'red', string> = {
     green:  'Green · No significant activity',
@@ -10,9 +14,18 @@
   };
 
   $: data = $auroraStore.current;
+
+  $: auroraHealth = $healthStore.data?.external?.aurora;
+  $: auroraLastTs = data?.ts ?? auroraHealth?.last_event_ts ?? null;
+  $: auroraLevel = (auroraLastTs != null && auroraHealth?.staleness_threshold_sec)
+    ? deriveStaleness(ageSeconds(auroraLastTs), auroraHealth.staleness_threshold_sec)
+    : 'fresh';
 </script>
 
-<section class="aurora-panel">
+<section class="aurora-panel" class:is-stale-amber={auroraLevel === 'amber'} class:is-stale-red={auroraLevel === 'red'}>
+  {#if auroraLevel !== 'fresh'}
+    <StalenessCaption lastTs={auroraLastTs} />
+  {/if}
   <div class="section-header">
     <span class="section-title">Aurora visibility</span>
     <span class="section-meta">AuroraWatch UK · Lancaster</span>

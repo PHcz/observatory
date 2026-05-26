@@ -3,6 +3,10 @@
   import { muonStore, flushMuonBuffer, seedMuonHistory } from '$lib/stores/muon';
   import { fetchMuonHistory } from '$lib/api/rest';
   import { buildMuonPlot } from '$lib/charts/plotHelpers';
+  import { healthStore } from '$lib/stores/health';
+  import { deriveStaleness } from '$lib/utils/staleness';
+  import { ageSeconds } from '$lib/utils/time';
+  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;
@@ -46,6 +50,14 @@
     }
   });
 
+  $: muonHealth = $healthStore.data?.local?.muon;
+  $: muonLastTs = $muonStore.history.length > 0
+    ? $muonStore.history[$muonStore.history.length - 1].ts
+    : muonHealth?.last_event_ts ?? null;
+  $: muonLevel = (muonLastTs != null && muonHealth?.staleness_threshold_sec)
+    ? deriveStaleness(ageSeconds(muonLastTs), muonHealth.staleness_threshold_sec)
+    : 'fresh';
+
   onDestroy(() => {
     if (intervalId) clearInterval(intervalId);
     if (observer) observer.disconnect();
@@ -54,12 +66,15 @@
   });
 </script>
 
-<section class="section">
+<section class="section" class:is-stale-amber={muonLevel === 'amber'} class:is-stale-red={muonLevel === 'red'}>
   <header class="section-header">
     <div class="section-title">Muons</div>
     <div class="section-meta">Past 24 hours</div>
   </header>
   <p class="section-sub">Events per minute, corrected for atmospheric pressure</p>
+  {#if muonLevel !== 'fresh'}
+    <StalenessCaption lastTs={muonLastTs} />
+  {/if}
   <div bind:this={container} data-chart="muon" class="chart-container"></div>
 </section>
 

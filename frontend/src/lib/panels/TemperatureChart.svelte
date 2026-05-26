@@ -3,6 +3,10 @@
   import { weatherStore, seedWeatherHistory } from '$lib/stores/weather';
   import { fetchWeatherHistory } from '$lib/api/rest';
   import { buildTempPlot } from '$lib/charts/plotHelpers';
+  import { healthStore } from '$lib/stores/health';
+  import { deriveStaleness } from '$lib/utils/staleness';
+  import { ageSeconds } from '$lib/utils/time';
+  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;
@@ -44,6 +48,12 @@
     }
   });
 
+  $: weatherHealth = $healthStore.data?.local?.weather;
+  $: tempLastTs = $weatherStore.current?.ts ?? weatherHealth?.last_event_ts ?? null;
+  $: tempLevel = (tempLastTs != null && weatherHealth?.staleness_threshold_sec)
+    ? deriveStaleness(ageSeconds(tempLastTs), weatherHealth.staleness_threshold_sec)
+    : 'fresh';
+
   onDestroy(() => {
     if (observer) observer.disconnect();
     if (unsubscribe) unsubscribe();
@@ -51,11 +61,14 @@
   });
 </script>
 
-<section class="section">
+<section class="section" class:is-stale-amber={tempLevel === 'amber'} class:is-stale-red={tempLevel === 'red'}>
   <header class="section-header">
     <div class="section-title">Temperature today</div>
     <div class="section-meta">Outside sensor</div>
   </header>
+  {#if tempLevel !== 'fresh'}
+    <StalenessCaption lastTs={tempLastTs} />
+  {/if}
   <div bind:this={container} data-chart="temperature" class="chart-container"></div>
 </section>
 

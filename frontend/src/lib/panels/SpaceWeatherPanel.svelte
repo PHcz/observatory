@@ -1,6 +1,10 @@
 <script lang="ts">
   import { spaceWeatherStore } from '$lib/stores/spaceWeather';
   import KpBar from '$lib/atoms/KpBar.svelte';
+  import { healthStore } from '$lib/stores/health';
+  import { deriveStaleness } from '$lib/utils/staleness';
+  import { ageSeconds } from '$lib/utils/time';
+  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   $: current = $spaceWeatherStore.current;
   $: kp_index = current?.kp_index ?? null;
@@ -18,15 +22,24 @@
   $: kpMeta = kp_index != null && kp_index >= 5
     ? 'Active · storm threshold reached'
     : 'Quiet · scale 0–9, storm threshold is 5';
+
+  $: noaa = $healthStore.data?.external?.noaa;
+  $: swLastTs = $spaceWeatherStore.current?.ts ?? noaa?.last_event_ts ?? null;
+  $: swLevel = (swLastTs != null && noaa?.staleness_threshold_sec)
+    ? deriveStaleness(ageSeconds(swLastTs), noaa.staleness_threshold_sec)
+    : 'fresh';
 </script>
 
-<section class="space-weather-panel">
+<section class="space-weather-panel" class:is-stale-amber={swLevel === 'amber'} class:is-stale-red={swLevel === 'red'}>
   <header class="section-header">
     <div class="section-title-row">
       <h2 class="section-title">Space weather</h2>
       <span class="section-meta">NOAA SWPC</span>
     </div>
     <p class="section-sub">Solar activity affects cosmic ray flux. A geomagnetic storm 24–72 hours from now would typically show as a dip in the muon chart above.</p>
+    {#if swLevel !== 'fresh'}
+      <StalenessCaption lastTs={swLastTs} />
+    {/if}
   </header>
 
   <div class="solar-cards">

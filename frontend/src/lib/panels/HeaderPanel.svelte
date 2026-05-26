@@ -5,7 +5,10 @@
   import { earthquakeStore } from '$lib/stores/earthquakes';
   import { astronomyStore } from '$lib/stores/astronomy';
   import { composeSubtitle } from '$lib/utils/narrative';
-  import { tsToLocalTime } from '$lib/utils/time';
+  import { tsToLocalTime, ageSeconds } from '$lib/utils/time';
+  import { healthStore } from '$lib/stores/health';
+  import { deriveStaleness } from '$lib/utils/staleness';
+  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   // Current local time, updated every minute
   let currentTimeSec = Math.floor(Date.now() / 1000);
@@ -59,9 +62,15 @@
   $: moonPhaseStr = $astronomyStore
     ? `${moonPhaseName($astronomyStore.moon_phase)} · ${Math.round($astronomyStore.moon_illumination_pct)}% illuminated`
     : '—';
+
+  $: weatherHealth = $healthStore.data?.local?.weather;
+  $: weatherLastTs = $weatherStore.current?.ts ?? weatherHealth?.last_event_ts ?? null;
+  $: weatherLevel = (weatherLastTs != null && weatherHealth?.staleness_threshold_sec)
+    ? deriveStaleness(ageSeconds(weatherLastTs), weatherHealth.staleness_threshold_sec)
+    : 'fresh';
 </script>
 
-<header class="header">
+<header class="header" class:is-stale-amber={weatherLevel === 'amber'} class:is-stale-red={weatherLevel === 'red'}>
   <div class="header-main">
     <span class="hero-overline">Outside · Right now</span>
     <h1 class="hero" aria-label="Current outside temperature">
@@ -72,6 +81,9 @@
       {/if}
     </h1>
     <p class="subtitle">{subtitle}</p>
+    {#if weatherLevel !== 'fresh'}
+      <StalenessCaption lastTs={weatherLastTs} />
+    {/if}
   </div>
 
   <aside class="aside">
