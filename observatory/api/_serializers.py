@@ -5,9 +5,12 @@ Implemented by Plan 06-01. Consumed by time-series routers in Plans 06-03..06.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
+
+DEFAULT_WINDOW_SEC: int = 86400  # 24h
+MAX_ROWS: int = 5000  # hard cap defensive
 
 AggLiteral = Literal["raw", "minute", "hour", "day", "auto"]
 AGG_VALUES: tuple[str, ...] = ("raw", "minute", "hour", "day", "auto")
@@ -26,6 +29,25 @@ BUCKET_SQL_STRFTIME: dict[str, str] = {
     "hour": "strftime('%Y-%m-%d %H:00', datetime(ts, 'unixepoch'))",
     "day": "strftime('%Y-%m-%d', datetime(ts, 'unixepoch'))",
 }
+
+
+class TimeSeriesResponse(BaseModel):
+    """Shared response shape for all time-series REST endpoints.
+
+    Serializes as::
+
+        {
+            "window": {"from": int, "to": int},
+            "bucket_size_sec": int,
+            "agg": str,
+            "rows": [...]
+        }
+    """
+
+    window: dict[str, int]
+    bucket_size_sec: int
+    agg: str
+    rows: list[dict[str, Any]]
 
 
 class Window(BaseModel):
