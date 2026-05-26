@@ -9,7 +9,7 @@ describe('muon store buffer', () => {
     _resetMuonRateWindow();
   });
 
-  it('buffers events and flushes them to store history', () => {
+  it('buffers events and flushes them into a single minute bucket (07-22: bucket-aggregation)', () => {
     const nowSec = Math.floor(Date.now() / 1000);
     const evt: MuonEvent = { ts: nowSec, latest_event_ts: nowSec, detector_pressure_hpa: null, detector_temp_c: null };
     bufferMuonEvent(evt);
@@ -17,7 +17,9 @@ describe('muon store buffer', () => {
     bufferMuonEvent(evt);
     flushMuonBuffer();
     const state = get(muonStore);
-    expect(state.history).toHaveLength(3);
+    // Three events at the same ts collapse to one bucket entry with count=3
+    expect(state.history).toHaveLength(1);
+    expect(state.history[0].rate_per_min).toBe(3);
   });
 
   it('flush with no buffered events is a no-op', () => {
