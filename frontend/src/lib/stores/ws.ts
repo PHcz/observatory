@@ -20,6 +20,8 @@ let ws: WebSocket | null = null;
 let attempt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let manualClose = false;
+let offlineListener: (() => void) | null = null;
+let onlineListener: (() => void) | null = null;
 
 // WATCHDOG: Inter-message silence detection. The TCP onclose event can take
 // minutes to fire when the network is severed (only fires on next send-attempt
@@ -147,12 +149,46 @@ export function initWs(): () => void {
   manualClose = false;
   attempt = 0;
   connect();
+
+  // Browser network-state listeners: react to wifi toggles within ~1s
+  // instead of waiting for the 60s watchdog. SSR-safe via window guard.
+  if (typeof window !== 'undefined') {
+    offlineListener = () => {
+      clearWatchdog();
+      wsStatus.set('disconnected');
+      if (ws) {
+        try { ws.close(); } catch { /* swallow */ }
+      }
+    };
+    onlineListener = () => {
+      // Immediate reconnect, bypass exponential backoff.
+      if (reconnectTimer != null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      attempt = 0;
+      connect();
+    };
+    window.addEventListener('offline', offlineListener);
+    window.addEventListener('online', onlineListener);
+  }
+
   return () => {
     manualClose = true;
     clearWatchdog();
     if (reconnectTimer != null) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
+    }
+    if (typeof window !== 'undefined') {
+      if (offlineListener) {
+        window.removeEventListener('offline', offlineListener);
+        offlineListener = null;
+      }
+      if (onlineListener) {
+        window.removeEventListener('online', onlineListener);
+        onlineListener = null;
+      }
     }
     if (ws) {
       ws.onclose = null;
