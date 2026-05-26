@@ -1,4 +1,4 @@
-"""Normalized event shapes shared across pollers (Phase 4 earthquakes + Phase 5 aurora)."""
+"""Normalized event shapes shared across pollers (Phase 4 earthquakes + Phase 5)."""
 
 from __future__ import annotations
 
@@ -53,3 +53,20 @@ class AuroraSnapshot:
     ts: int  # UTC unix epoch seconds (from <updated><datetime>)
     status: str  # 'green' | 'yellow' | 'amber' | 'red' (lowercased)
     detail: str | None  # colon-joined project_id:site_id, or None when both empty
+
+
+@dataclass(frozen=True, slots=True)
+class LightningStrike:
+    """One Blitzortung lightning strike inside the configured radius (POLL-05).
+
+    ``distance_km`` is pre-computed by the poller (haversine vs ``settings.home_lat``
+    / ``home_lon``) so the dashboard query is a trivial column scan rather than
+    a per-row recomputation. Strikes outside ``settings.poller_lightning_radius_km``
+    are dropped before construction; this dataclass only carries strikes that
+    will be written.
+    """
+
+    ts: int  # UTC unix epoch seconds (Blitzortung emits ns; poller divides)
+    latitude: float
+    longitude: float
+    distance_km: float

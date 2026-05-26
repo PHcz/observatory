@@ -13,7 +13,12 @@ import structlog
 
 from observatory.config import settings
 from observatory.db.connection import get_write_conn
-from observatory.pollers._types import AuroraSnapshot, EarthquakeEvent, SpaceWeatherSnapshot
+from observatory.pollers._types import (
+    AuroraSnapshot,
+    EarthquakeEvent,
+    LightningStrike,
+    SpaceWeatherSnapshot,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -199,6 +204,93 @@ def write_space_weather(
             events_error = f"{type(exc).__name__}: {exc}"
             written = 0
             log.error("write_space_weather_db_failure", source=source, error=str(exc))
+
+    # --- Transaction 2: audit row (always attempted) ---
+    ended_at = int(time.time())
+    try:
+        with get_write_conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO poller_runs "
+                "(source, started_at, ended_at, status, events_fetched, "
+                "events_written, error_summary) VALUES (?,?,?,?,?,?,?)",
+                (
+                    source,
+                    started_at,
+                    ended_at,
+                    events_status,
+                    fetched,
+                    written,
+                    events_error[:200] if events_error else None,
+                ),
+            )
+            conn.execute("COMMIT")
+    except sqlite3.Error as exc:
+        log.error("poller_runs_emit_failed", source=source, error=str(exc))
+
+    return fetched, written
+
+
+def write_lightning_batch(
+    strikes: list[LightningStrike],
+    started_at: int,
+    status: str,
+    error_summary: str | None = None,
+) -> tuple[int, int]:
+    """Batch-insert ``lightning_strikes`` + always emit one ``poller_runs`` row (POLL-05).
+
+    Two transactions (insert first, then audit) so the poller_runs row
+    survives any insert-side rollback. ``INSERT OR IGNORE`` is unnecessary
+    in production (Blitzortung's volunteer feed emits each strike once and
+    the schema lacks a UNIQUE constraint) but using a plain INSERT keeps
+    the path simple.
+
+    Called from ``BlitzortungClient._flush`` every
+    ``settings.poller_blitzortung_flush_interval_sec`` (default 30s).
+    Empty-buffer flushes still emit the audit row so /api/health and
+    ``last_poll_status`` stay fresh during quiet stretches.
+
+    Args:
+        strikes: in-radius strikes accumulated since the last flush. May
+            be empty (legitimate quiet window).
+        started_at: this flush's started_at (unix epoch seconds).
+        status: ``poller_runs.status`` — typically ``'success'`` on a
+            normal flush, ``'transient_fail'`` when the WS is down.
+        error_summary: short human-readable context for the audit row
+            (truncated to 200 chars).
+
+    Returns:
+        ``(fetched, written)`` — both equal ``len(strikes)`` on success.
+    """
+    source = "blitzortung"
+    fetched = len(strikes)
+    written = 0
+    events_status = status
+    events_error = error_summary
+
+    # --- Transaction 1: strikes insert (best-effort) ---
+    if strikes:
+        try:
+            with get_write_conn() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    for s in strikes:
+                        cur = conn.execute(
+                            "INSERT INTO lightning_strikes "
+                            "(ts, latitude, longitude, distance_km) "
+                            "VALUES (?,?,?,?)",
+                            (s.ts, s.latitude, s.longitude, s.distance_km),
+                        )
+                        written += cur.rowcount
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
+        except (sqlite3.Error, sqlite3.ProgrammingError, sqlite3.InterfaceError) as exc:
+            events_status = "db_fail"
+            events_error = f"{type(exc).__name__}: {exc}"
+            written = 0
+            log.error("write_lightning_batch_db_failure", source=source, error=str(exc))
 
     # --- Transaction 2: audit row (always attempted) ---
     ended_at = int(time.time())
