@@ -26,9 +26,21 @@ function timeDescriptor(hourLocal: number): string {
   return 'night';
 }
 
+// Adjective for the leading sentence "A {adjective} {descriptor}." — eliminates
+// the ungrammatical "A evening" / "A afternoon" article+vowel fragment (UAT
+// gap 1, plan 07-09) and gives a coherent fallback tone when all data phrases
+// are null.
+function timeAdjective(hourLocal: number): string {
+  if (hourLocal >= 5 && hourLocal <= 11) return 'quiet';
+  if (hourLocal >= 12 && hourLocal <= 17) return 'calm';
+  if (hourLocal >= 18 && hourLocal <= 21) return 'calm';
+  return 'still';
+}
+
 export function composeSubtitle(params: SubtitleParams): string {
   const { hourLocal, pressureTrendHpaPerHr, muonRate, ukSmallQuakeCount, ukMaxMag } = params;
   const descriptor = timeDescriptor(hourLocal);
+  const adjective = timeAdjective(hourLocal);
 
   const phrases: string[] = [];
 
@@ -43,10 +55,13 @@ export function composeSubtitle(params: SubtitleParams): string {
     }
   }
 
-  // Muon phrase
+  // Muon phrase — numberToWord('') for non-positive/non-finite values, in
+  // which case we suppress the phrase entirely to avoid "  muons per minute".
   if (muonRate !== null && isFinite(muonRate)) {
     const count = numberToWord(Math.round(muonRate));
-    phrases.push(`${count} muons per minute`);
+    if (count !== '') {
+      phrases.push(`${count} muons per minute`);
+    }
   }
 
   // Quake phrase
@@ -57,5 +72,5 @@ export function composeSubtitle(params: SubtitleParams): string {
   }
 
   const body = phrases.length > 0 ? ` ${phrases.join(', ')}.` : '';
-  return `A ${descriptor}.${body}`;
+  return `A ${adjective} ${descriptor}.${body}`;
 }
