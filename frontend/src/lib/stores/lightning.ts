@@ -12,3 +12,7 @@ export const lightningStore: Writable<LightningState> = writable({
   hourlyBuckets: [],
   lastUpdateTs: null,
 });
+
+export function setLightning(data: LightningSummary): void {
+  lightningStore.update(s => ({ ...s, summary: data, lastUpdateTs: Math.floor(Date.now() / 1000) }));
+}
