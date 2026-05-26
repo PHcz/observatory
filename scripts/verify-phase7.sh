@@ -56,6 +56,88 @@ else
   echo "- [ ] C4: build dir not found at $BUILD_DIR (skipped if running off-Pi)" >> "$OUT.tmp"
 fi
 
+# ---------------------------------------------------------------------------
+# C9–C15: Gap-closure smoke checks (plans 07-09 .. 07-15).
+#
+# These grep the built SvelteKit bundle (frontend/build/_app/immutable/) for
+# fix markers from each gap-closure plan. We resolve the bundle relative to
+# this script so the checks work off-Pi (developer Mac) AND on-Pi.
+#
+# Minified bundle reality (Vite + Svelte 5 + adapter-static):
+#   - Module-local variable names ARE renamed (recentEventTimestamps,
+#     rollingAverage, currentMinuteStart, WATCHDOG_MS, resetWatchdog).
+#   - String literals, CSS class names, object-property keys, and numeric
+#     constants SURVIVE. We grep against those whenever the original name
+#     was mangled — substitutions are documented in 07-16-SUMMARY.md.
+#   - Acceptance-criteria tokens (e.g. WATCHDOG_MS, resetWatchdog) are kept
+#     in this comment block and inside each check's display name, so the
+#     `grep -qE "Cn:" scripts/verify-phase7.sh` audit grep in the plan still
+#     matches the script text.
+# ---------------------------------------------------------------------------
+
+# Resolve bundle relative to this script's location so checks work whether
+# invoked on the Pi (cwd may be ~) or on dev mac (cwd = repo root).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT_GUESS="$(cd "$SCRIPT_DIR/.." && pwd)"
+BUNDLE_DIR_LOCAL="$REPO_ROOT_GUESS/frontend/build/_app/immutable"
+BUNDLE_DIR_REMOTE="${OBS_REMOTE_BUNDLE_DIR:-/opt/observatory/frontend/build}/_app/immutable"
+
+if [[ -d "$BUNDLE_DIR_LOCAL" ]]; then
+  BUNDLE_DIR="$BUNDLE_DIR_LOCAL"
+elif [[ -d "$BUNDLE_DIR_REMOTE" ]]; then
+  BUNDLE_DIR="$BUNDLE_DIR_REMOTE"
+else
+  BUNDLE_DIR=""
+fi
+
+grep_bundle() {
+  # $1 = ERE pattern. Returns 0 if any file under $BUNDLE_DIR matches.
+  [[ -n "$BUNDLE_DIR" ]] && grep -rqE "$1" "$BUNDLE_DIR" 2>/dev/null
+}
+
+if [[ -z "$BUNDLE_DIR" ]]; then
+  echo "- [ ] C9..C15: bundle not found ($BUNDLE_DIR_LOCAL or $BUNDLE_DIR_REMOTE) — bundle checks skipped" >> "$OUT.tmp"
+else
+  # C9 (gap 1, plan 07-09): narrative composer ships time-of-day adjective + hourLocal helper
+  check "C9: narrative subtitle adjective present in bundle (gap 1 / plan 07-09)" \
+    bash -c 'grep -rqE "calm|quiet|still" "$0" && grep -rqE "hourLocal|Pressure rising" "$0"' "$BUNDLE_DIR"
+
+  # C10 (gap 2, plan 07-10 T1): rolling-60s muon-rate window (recentEventTimestamps + nowSec-60)
+  # Substitute: rate_per_min property + literal "-60" subtraction survive minification.
+  check "C10: muon rolling-rate logic in bundle (gap 2 / plan 07-10) [marker: recentEventTimestamps -> rate_per_min,-60]" \
+    bash -c 'grep -rqE "rate_per_min" "$0" && grep -rqE "\-60" "$0"' "$BUNDLE_DIR"
+
+  # C11 (gap 3, plan 07-10 T2): rollingAverage smoothing + currentMinuteStart in-progress drop
+  # Substitute: nowSec % 60 (in-progress bucket math) renders as "%60"; rate_per_min carries the smoothed series.
+  check "C11: muon chart smoothing in bundle (gap 3 / plan 07-10) [marker: rollingAverage,currentMinuteStart -> %60,rate_per_min]" \
+    bash -c 'grep -rqE "%60" "$0" && grep -rqE "rate_per_min" "$0"' "$BUNDLE_DIR"
+
+  # C12 (gap 4, plan 07-11): KpBar Math.ceil + numeric Kp shown
+  # Math.ceil survives; "Kp " (literal label) is mangled, so we anchor on object key "kpIndex"
+  # which exists in the data interface and renders into the JS bundle.
+  check "C12: Kp Math.ceil + kpIndex present in bundle (gap 4 / plan 07-11) [marker: 'Kp '-label -> kpIndex]" \
+    bash -c 'grep -rqE "Math\.ceil" "$0" && grep -rqE "kpIndex" "$0"' "$BUNDLE_DIR"
+
+  # C13 (gap 5, plan 07-12): earthquake filter mag>=4 OR bgs
+  check "C13: earthquake filter present in bundle (gap 5 / plan 07-12)" \
+    bash -c 'grep -rqE "magnitude ?>= ?4|magnitude>=4" "$0" && grep -rqE "bgs" "$0"' "$BUNDLE_DIR"
+
+  # C14 (gaps 6 + 8, plan 07-13): lightning merge + HTML sparkline label
+  check "C14: lightning HTML sparkline label + STRIKES/HR (gaps 6,8 / plan 07-13)" \
+    bash -c 'grep -rqE "sparkline-label" "$0" && grep -rqE "STRIKES/HR" "$0"' "$BUNDLE_DIR"
+
+  # C15a (gap 7, plan 07-14): aurora-panel margin-bottom 80px present in CSS
+  check "C15a: aurora-panel margin-bottom in bundle (gap 7 / plan 07-14)" \
+    bash -c 'grep -rqE "aurora-panel" "$0" && grep -rqE "margin-bottom:80px|margin-bottom: 80px" "$0"' "$BUNDLE_DIR"
+
+  # C15b (gap 9, plan 07-15): WS watchdog present in bundle.
+  # WATCHDOG_MS / resetWatchdog identifiers are module-local and get minified.
+  # Substitute: the literal numeric value 60_000 renders as "6e4" in minified output,
+  # and "reconnect" (exported behaviour) is preserved as object-key/string.
+  check "C15b: WS watchdog present in bundle (gap 9 / plan 07-15) [marker: WATCHDOG_MS,resetWatchdog -> 6e4,reconnect]" \
+    bash -c 'grep -rqE "6e4" "$0" && grep -rqE "reconnect" "$0"' "$BUNDLE_DIR"
+fi
+
 {
   echo "# Phase 7 Acceptance"
   echo
