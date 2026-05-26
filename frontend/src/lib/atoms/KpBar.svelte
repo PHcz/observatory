@@ -2,11 +2,11 @@
   export let kpIndex: number | null = null;
 
   const CELLS = 9;
-  $: filled = kpIndex == null ? 0 : Math.max(0, Math.min(CELLS, Math.floor(kpIndex)));
+  $: filled = kpIndex == null ? 0 : Math.max(0, Math.min(CELLS, Math.ceil(kpIndex)));
   $: tier = filled <= 3 ? 'low' : filled <= 5 ? 'mid' : 'high';
 </script>
 
-<div class="kp-bar" role="img" aria-label={kpIndex == null ? 'Kp unknown' : `Kp ${kpIndex}`}>
+<div class="kp-bar" role="img" aria-label={kpIndex == null ? 'Kp unknown' : `Kp ${kpIndex.toFixed(1)}`}>
   {#each Array(CELLS) as _, i}
     <span
       class="kp-cell"
