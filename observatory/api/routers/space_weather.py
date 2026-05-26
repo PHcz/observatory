@@ -117,5 +117,41 @@ def get_space_weather(
 
 
 @router.get("/space-weather/current")
-def get_space_weather_current() -> dict:  # type: ignore[type-arg]
-    raise NotImplementedError("Plan 06-04 implements")
+def get_space_weather_current() -> dict[str, object]:
+    """Return the latest space_weather row.
+
+    Response shape::
+
+        {
+            "ts": int,
+            "kp_index": float | None,      # rounded to 2dp
+            "solar_wind_kms": float | None, # rounded to 1dp
+            "flare_class": str | None,
+            "flare_peak_ts": int | None
+        }
+
+    Raises 404 if no space_weather rows exist.
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT ts, kp_index, solar_wind_kms, flare_class, flare_peak_ts
+            FROM space_weather
+            ORDER BY ts DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="No space_weather rows yet")
+
+    r = dict(row)
+    return {
+        "ts": r["ts"],
+        "kp_index": round(r["kp_index"], 2) if r["kp_index"] is not None else None,
+        "solar_wind_kms": (
+            round(r["solar_wind_kms"], 1) if r["solar_wind_kms"] is not None else None
+        ),
+        "flare_class": r["flare_class"],
+        "flare_peak_ts": r["flare_peak_ts"],
+    }
