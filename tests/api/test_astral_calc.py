@@ -1,10 +1,100 @@
-"""Phase 6 — tests for astral_calc. RED stubs filled in by Plan 06-01."""
+"""Phase 6 — tests for astral_calc (Plan 06-01 RED/GREEN TDD)."""
 
 from __future__ import annotations
 
-import pytest
+import datetime
+
+from observatory.api.astral_calc import compute_moon_illumination, get_astronomy
 
 
-@pytest.mark.skip(reason="06-00 scaffold — Plan 06-01 implements")
-def test_astral_calc_placeholder() -> None:
-    raise AssertionError("Plan 06-01 must replace this")
+class TestComputeMoonIllumination:
+    """Pure cosine formula helper: (1 - cos(2π * phase_days / 29.53)) / 2 * 100."""
+
+    def test_new_moon_zero(self) -> None:
+        result = compute_moon_illumination(0.0)
+        assert abs(result - 0.0) < 0.01
+
+    def test_full_moon_hundred(self) -> None:
+        result = compute_moon_illumination(29.53 / 2)
+        assert abs(result - 100.0) < 0.5
+
+    def test_first_quarter_fifty(self) -> None:
+        result = compute_moon_illumination(29.53 / 4)
+        assert abs(result - 50.0) < 0.5
+
+
+class TestGetAstronomy:
+    """Integration tests using known moon-phase dates (UTC)."""
+
+    LON = -0.1278  # London
+    LAT = 51.5074
+
+    def test_returns_all_four_keys(self) -> None:
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 11))
+        assert set(result.keys()) == {
+            "sunrise_ts",
+            "sunset_ts",
+            "moon_phase",
+            "moon_illumination_pct",
+        }
+
+    def test_types(self) -> None:
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 11))
+        assert isinstance(result["sunrise_ts"], int)
+        assert isinstance(result["sunset_ts"], int)
+        assert isinstance(result["moon_phase"], float)
+        assert isinstance(result["moon_illumination_pct"], float)
+
+    def test_new_moon_illumination_near_zero(self) -> None:
+        # 2024-01-11 was a new moon
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 11))
+        assert result["moon_illumination_pct"] < 5.0
+
+    def test_first_quarter_illumination_midrange(self) -> None:
+        # 2024-01-18 was first quarter
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 18))
+        assert 40.0 <= result["moon_illumination_pct"] <= 60.0
+
+    def test_full_moon_illumination_near_hundred(self) -> None:
+        # 2024-01-25 was full moon
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 25))
+        assert result["moon_illumination_pct"] > 95.0
+
+    def test_last_quarter_illumination_midrange(self) -> None:
+        # 2024-02-02 was last quarter
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 2, 2))
+        assert 40.0 <= result["moon_illumination_pct"] <= 60.0
+
+    def test_moon_phase_in_range(self) -> None:
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 11))
+        assert 0.0 <= result["moon_phase"] < 1.0
+
+    def test_moon_illumination_in_range(self) -> None:
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 11))
+        assert 0.0 <= result["moon_illumination_pct"] <= 100.0
+
+    def test_moon_phase_always_in_range_multiple_dates(self) -> None:
+        dates = [
+            datetime.date(2024, 1, 11),
+            datetime.date(2024, 1, 18),
+            datetime.date(2024, 1, 25),
+            datetime.date(2024, 2, 2),
+        ]
+        for d in dates:
+            result = get_astronomy(self.LAT, self.LON, today=d)
+            assert 0.0 <= result["moon_phase"] < 1.0, f"moon_phase out of range for {d}"
+            assert 0.0 <= result["moon_illumination_pct"] <= 100.0, (
+                f"moon_illumination_pct out of range for {d}"
+            )
+
+    def test_london_summer_solstice_sunrise_range(self) -> None:
+        # London, 2024-06-21 (summer solstice), sunrise ~04:43 UTC
+        # Expected ts: approx 1718942580 ± 600s
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 6, 21))
+        assert abs(result["sunrise_ts"] - 1718942580) < 600, (
+            f"sunrise_ts {result['sunrise_ts']} not in expected range"
+        )
+
+    def test_sunrise_before_sunset(self) -> None:
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 6, 21))
+        assert result["sunrise_ts"] < result["sunset_ts"]
