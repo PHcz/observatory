@@ -259,6 +259,21 @@ systemctl enable obs-blitzortung.service
 systemctl enable obs-api.service
 # Sanity-check tip for the operator: `curl http://observatory.local:8000/api/health | jq`
 
+# --- SECTION 15: install journald drop-in for log rotation (OPS-03) ---
+log "Section 15: journald drop-in for log rotation"
+install -d -m 755 /etc/systemd/journald.conf.d
+JOURNAL_DST=/etc/systemd/journald.conf.d/observatory.conf
+JOURNAL_SRC="$REPO_ROOT/deploy/journald/observatory.conf"
+
+# Idempotent: only restart journald if the file content actually changed.
+if [[ ! -f "$JOURNAL_DST" ]] || ! cmp -s "$JOURNAL_SRC" "$JOURNAL_DST"; then
+  install -m 644 "$JOURNAL_SRC" "$JOURNAL_DST"
+  systemctl restart systemd-journald
+  log "Section 15: journald restarted with new SystemMaxUse=500M, SystemKeepFree=200M, MaxFileSec=1week."
+else
+  log "Section 15: journald drop-in already current (no restart needed)."
+fi
+
 log "Bootstrap complete."
 log "Next steps for the operator:"
 log "  0. Add YOUR login user (the one you SSH in as, e.g. 'ph' or 'pi') to the 'observatory' group"
