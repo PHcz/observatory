@@ -8,6 +8,39 @@ from typing import Any
 
 import pytest
 
+import observatory.config as _config_mod
+from observatory.config import Settings
+
+
+@pytest.fixture(autouse=True)
+def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Materialize observatory.config.settings for pi tests.
+
+    Mirrors tests/pollers/conftest.py: the module-level singleton is None
+    when import-time env is incomplete (HOME_LAT/HOME_LON unset on dev /
+    CI machines). thermal.derive_status reads ``settings.pi_temp_*`` at
+    call time, so install a valid Settings() and rebind the name in
+    observatory.pi.thermal so its by-name import sees the live instance.
+    """
+    monkeypatch.setenv("HOME_LAT", "51.5074")
+    monkeypatch.setenv("HOME_LON", "-0.1278")
+    s = Settings()
+    monkeypatch.setattr(_config_mod, "settings", s)
+    import observatory.pi.thermal as _thermal_mod
+
+    monkeypatch.setattr(_thermal_mod, "settings", s, raising=False)
+    # The test module captured `settings` (None) at import time via
+    # `from observatory.config import settings` — rebind that name too so
+    # assertions like `args[0] == settings.pi_vcgencmd_path` and
+    # `monkeypatch.setattr(settings, "pi_temp_warning_c", ...)` work.
+    import importlib
+
+    try:
+        _test_mod = importlib.import_module("tests.pi.test_thermal")
+        monkeypatch.setattr(_test_mod, "settings", s, raising=False)
+    except ModuleNotFoundError:
+        pass
+
 
 @pytest.fixture
 def fake_vcgencmd(monkeypatch: pytest.MonkeyPatch) -> Any:

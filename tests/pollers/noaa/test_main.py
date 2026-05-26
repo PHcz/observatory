@@ -18,7 +18,6 @@ import observatory.pollers.noaa.__main__ as noaa_main
 from observatory.db import connection as db_conn_mod
 from observatory.pollers._http import RetriesExhausted
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
