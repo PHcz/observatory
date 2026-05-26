@@ -82,7 +82,9 @@ class Settings(BaseSettings):
 
     # --- API (Phase 5 scaffold; Phase 6 may tighten) ---
     # LAN topology is the trust boundary; Phase 6 may tighten if remote access is added.
-    api_bind_host: str = "0.0.0.0"  # nosec B104  # LAN-only Pi per CLAUDE.md trust boundary
+    # Phase 6 SEC-04: default to "auto" (resolve LAN IPv4 at startup via __main__.resolve_lan_ip).
+    # "0.0.0.0" remains valid for local dev; explicit IP also accepted.
+    api_bind_host: str = "auto"
     api_bind_port: int = Field(default=8000, ge=1, le=65535)
     api_watchdog_ping_interval_sec: int = Field(default=10, ge=2, le=60)
 

@@ -134,7 +134,7 @@ db_exec_sudo() {
 # Pre-flight: required binaries
 # ---------------------------------------------------------------------------
 hdr "Pre-flight: required binaries"
-REQ_BINS=(sqlite3 systemctl journalctl curl jq python3 ss sudo sg awk)
+REQ_BINS=(sqlite3 systemctl journalctl curl jq ss sudo sg awk)
 for bin in "${REQ_BINS[@]}"; do
   if ! command -v "$bin" >/dev/null 2>&1; then
     fail "missing required binary: ${bin}"
@@ -142,6 +142,14 @@ for bin in "${REQ_BINS[@]}"; do
   fi
 done
 pass "required binaries present (${REQ_BINS[*]})"
+
+# The websockets package lives in the obs-api venv, not system python3.
+VENV_PY="/opt/observatory/.venv/bin/python"
+if [ ! -x "$VENV_PY" ]; then
+  fail "missing venv python at ${VENV_PY} — run scripts/bootstrap-pi.sh first"
+  exit 1
+fi
+pass "venv python present at ${VENV_PY}"
 
 # ---------------------------------------------------------------------------
 # Pre-flight: running on the Pi (informational)
@@ -292,12 +300,12 @@ C2_EPOCH="$(date +%s)"
 info "running Python WS fanout test (insert muon row → expect 'muon' envelope within 12s)..."
 
 WS_TEST_EXIT=0
-python3 - <<'PYEOF' 2>&1 || WS_TEST_EXIT=$?
+"$VENV_PY" - <<'PYEOF' 2>&1 || WS_TEST_EXIT=$?
 import asyncio, json, sqlite3, sys, time
 try:
     from websockets.sync.client import connect
 except ImportError:
-    print("FATAL: websockets package not installed — run: pip install websockets", file=sys.stderr)
+    print("FATAL: websockets package not installed in venv — uv sync from /opt/observatory", file=sys.stderr)
     sys.exit(2)
 
 DB = "/var/lib/observatory/observatory.db"
@@ -370,7 +378,7 @@ fi
 info "connecting + immediately closing WS to trigger dead-client cleanup log..."
 
 DISCONNECT_TEST_EPOCH="$(date +%s)"
-python3 - <<'PYEOF' 2>/dev/null || true
+"$VENV_PY" - <<'PYEOF' 2>/dev/null || true
 import sys
 try:
     from websockets.sync.client import connect
@@ -441,7 +449,7 @@ else
   echo ""
   echo "  Steps:"
   echo "  1. Open a second terminal and connect a WS client:"
-  echo "     python3 -m websockets ws://localhost:8000/ws"
+  echo "     /opt/observatory/.venv/bin/python -m websockets ws://localhost:8000/ws"
   echo ""
   echo "  2. From a Mac or laptop on the same network, open:"
   echo "     http://observatory.local:8000/"
@@ -507,7 +515,7 @@ else
 fi
 
 # 4b: Non-LAN Origin → 403
-HTTP_EVIL="$(curl -fsS -o /dev/null -w '%{http_code}' "${API_BASE}/api/health" -H 'Origin: http://evil.example.com' 2>/dev/null || echo '000')"
+HTTP_EVIL="$(curl -sS -o /dev/null -w '%{http_code}' "${API_BASE}/api/health" -H 'Origin: http://evil.example.com' 2>/dev/null || echo '000')"
 info "non-LAN Origin=http://evil.example.com → HTTP ${HTTP_EVIL}"
 if [ "$HTTP_EVIL" = "403" ]; then
   pass "Criterion 4b: non-LAN Origin rejected with 403"
@@ -520,7 +528,7 @@ else
 fi
 
 # 4c: No Origin header → 200 (curl, server-to-server pass-through)
-HTTP_NO_ORIGIN="$(curl -fsS -o /dev/null -w '%{http_code}' "${API_BASE}/api/health" 2>/dev/null || echo '000')"
+HTTP_NO_ORIGIN="$(curl -sS -o /dev/null -w '%{http_code}' "${API_BASE}/api/health" 2>/dev/null || echo '000')"
 info "no Origin header → HTTP ${HTTP_NO_ORIGIN}"
 if [ "$HTTP_NO_ORIGIN" = "200" ]; then
   pass "Criterion 4c: request without Origin header returns 200 (curl pass-through)"
