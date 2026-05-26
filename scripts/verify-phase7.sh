@@ -118,9 +118,9 @@ else
   check "C12: Kp Math.ceil + kpIndex present in bundle (gap 4 / plan 07-11) [marker: 'Kp '-label -> kpIndex]" \
     bash -c 'grep -rqE "Math\.ceil" "$0" && grep -rqE "kpIndex" "$0"' "$BUNDLE_DIR"
 
-  # C13 (gap 5, plan 07-12): earthquake filter mag>=4 OR bgs
-  check "C13: earthquake filter present in bundle (gap 5 / plan 07-12)" \
-    bash -c 'grep -rqE "magnitude ?>= ?4|magnitude>=4" "$0" && grep -rqE "bgs" "$0"' "$BUNDLE_DIR"
+  # C13 (gap 5, plan 07-12, retuned by 07-18): earthquake filter mag>=3 OR bgs
+  check "C13: earthquake filter present in bundle (gap 5 / plan 07-18 retune to M>=3)" \
+    bash -c 'grep -rqE "magnitude ?>= ?3|magnitude>=3|>=3\.0" "$0" && grep -rqE "bgs" "$0"' "$BUNDLE_DIR"
 
   # C14 (gaps 6 + 8, plan 07-13): lightning merge + HTML sparkline label
   check "C14: lightning HTML sparkline label + STRIKES/HR (gaps 6,8 / plan 07-13)" \
@@ -136,6 +136,22 @@ else
   # and "reconnect" (exported behaviour) is preserved as object-key/string.
   check "C15b: WS watchdog present in bundle (gap 9 / plan 07-15) [marker: WATCHDOG_MS,resetWatchdog -> 6e4,reconnect]" \
     bash -c 'grep -rqE "6e4" "$0" && grep -rqE "reconnect" "$0"' "$BUNDLE_DIR"
+
+  # Round-2 gap closures (plans 07-17..07-20)
+  # C16 (round-2 gap 4, plan 07-17): muon chart 90-second safety margin
+  # Marker: the literal 90_000 renders as "9e4" in minified output.
+  check "C16: muon chart 90s safety margin in bundle (round-2 gap 4 / plan 07-17) [marker: 90_000 -> 9e4]" \
+    bash -c 'grep -rqE "9e4" "$0"' "$BUNDLE_DIR"
+
+  # C17 (round-2 gap 7, plan 07-19): lightning panel scope copy "Europe" not "UK + Ireland"
+  check "C17: lightning panel uses Europe scope copy (round-2 gap 7 / plan 07-19)" \
+    bash -c 'grep -rqE "across Europe" "$0" && ! grep -rqE "across the British Isles" "$0"' "$BUNDLE_DIR"
+
+  # C18 (round-2 gap 11, plan 07-20): WS browser online/offline listeners.
+  # Vite/Svelte emits string literals as backtick template strings, so grep for
+  # addEventListener(`offline`,...) and addEventListener(`online`,...).
+  check "C18: WS browser online/offline listeners in bundle (round-2 gap 11 / plan 07-20)" \
+    bash -c 'grep -rqE "addEventListener\(\`offline\`" "$0" && grep -rqE "addEventListener\(\`online\`" "$0"' "$BUNDLE_DIR"
 fi
 
 {
