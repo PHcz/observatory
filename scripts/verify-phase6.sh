@@ -54,7 +54,10 @@ done
 # Config
 # ---------------------------------------------------------------------------
 DB="${OBSERVATORY_DB:-/var/lib/observatory/observatory.db}"
-API_BASE="${OBSERVATORY_API_BASE:-http://localhost:8000}"
+# API_BASE auto-detects from the listening socket below (Phase 6 SEC-04: API
+# binds to LAN IP only — `localhost` is intentionally refused). Override with
+# OBSERVATORY_API_BASE for dev environments.
+API_BASE="${OBSERVATORY_API_BASE:-}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ACC_PRIMARY="${REPO_ROOT}/.planning/phases/06-fastapi-api-core-websocket/06-08-ACCEPTANCE.md"
 ACC_FALLBACK="/tmp/06-08-ACCEPTANCE.md"
@@ -182,6 +185,18 @@ if ! systemctl is-active obs-api.service >/dev/null 2>&1; then
 fi
 pass "obs-api.service is active"
 
+# Auto-detect the LAN bind address from ss if API_BASE wasn't overridden.
+# Phase 6 SEC-04 binds to a single LAN IPv4 — localhost intentionally refused.
+if [ -z "$API_BASE" ]; then
+  DETECTED_BIND="$(sudo ss -tlnp '( sport = :8000 )' 2>/dev/null | awk 'NR>1 && /:8000/ {print $4; exit}')"
+  if [ -z "$DETECTED_BIND" ]; then
+    fail "could not detect obs-api bind address from ss — is the service listening?"
+    exit 1
+  fi
+  API_BASE="http://${DETECTED_BIND}"
+  info "auto-detected API_BASE=${API_BASE} from ss"
+fi
+
 if ! curl -fsS -o /dev/null -w '%{http_code}' "${API_BASE}/api/health" | grep -q '^200$'; then
   fail "GET ${API_BASE}/api/health did not return 200 — obs-api.service may still be starting"
   exit 1
@@ -299,9 +314,12 @@ C2_EPOCH="$(date +%s)"
 # 2a: WS fanout test using Python websockets (installed in Phase 5 venv)
 info "running Python WS fanout test (insert muon row → expect 'muon' envelope within 12s)..."
 
+# Derive ws:// URL from API_BASE (e.g. http://192.168.0.75:8000 → ws://192.168.0.75:8000/ws)
+export OBS_WS_URL="${API_BASE/http:/ws:}/ws"
+
 WS_TEST_EXIT=0
 "$VENV_PY" - <<'PYEOF' 2>&1 || WS_TEST_EXIT=$?
-import asyncio, json, sqlite3, sys, time
+import asyncio, json, os, sqlite3, sys, time
 try:
     from websockets.sync.client import connect
 except ImportError:
@@ -309,10 +327,11 @@ except ImportError:
     sys.exit(2)
 
 DB = "/var/lib/observatory/observatory.db"
+WS_URL = os.environ["OBS_WS_URL"]
 
 def main():
     try:
-        with connect("ws://localhost:8000/ws", open_timeout=5) as ws:
+        with connect(WS_URL, open_timeout=5) as ws:
             # Expect snapshot on connect
             try:
                 first_raw = ws.recv(timeout=8)
@@ -379,14 +398,14 @@ info "connecting + immediately closing WS to trigger dead-client cleanup log..."
 
 DISCONNECT_TEST_EPOCH="$(date +%s)"
 "$VENV_PY" - <<'PYEOF' 2>/dev/null || true
-import sys
+import os, sys
 try:
     from websockets.sync.client import connect
 except ImportError:
     sys.exit(0)
 
 try:
-    with connect("ws://localhost:8000/ws", open_timeout=5) as ws:
+    with connect(os.environ["OBS_WS_URL"], open_timeout=5) as ws:
         # receive one frame then close — simulates browser tab close
         ws.recv(timeout=5)
 except Exception:
@@ -449,7 +468,7 @@ else
   echo ""
   echo "  Steps:"
   echo "  1. Open a second terminal and connect a WS client:"
-  echo "     /opt/observatory/.venv/bin/python -m websockets ws://localhost:8000/ws"
+  echo "     /opt/observatory/.venv/bin/python -m websockets ${OBS_WS_URL}"
   echo ""
   echo "  2. From a Mac or laptop on the same network, open:"
   echo "     http://observatory.local:8000/"
