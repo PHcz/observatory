@@ -10,3 +10,7 @@ export const auroraStore: Writable<AuroraState> = writable({
   current: null,
   lastUpdateTs: null,
 });
+
+export function setAurora(data: AuroraData): void {
+  auroraStore.update(s => ({ ...s, current: data, lastUpdateTs: Math.floor(Date.now() / 1000) }));
+}

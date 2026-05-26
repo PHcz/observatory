@@ -12,3 +12,11 @@ export const weatherStore: Writable<WeatherState> = writable({
   history: [],
   lastUpdateTs: null,
 });
+
+export function setWeather(data: WeatherData): void {
+  weatherStore.update(s => ({ ...s, current: data, lastUpdateTs: Math.floor(Date.now() / 1000) }));
+}
+
+export function seedWeatherHistory(points: WeatherPoint[]): void {
+  weatherStore.update(s => ({ ...s, history: points }));
+}
