@@ -20,7 +20,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
     marginBottom: 28,
     marginTop: 8,
     x: { type: 'time', domain: [start, end] },
-    y: { label: null, grid: true, tickCount: 4 },
+    y: { label: null, grid: true, ticks: 4 },
     marks: [
       Plot.gridY({ stroke: STROKE_GRID, strokeWidth: 1 }),
       Plot.line(data, {
@@ -60,7 +60,7 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
     marginBottom: 28,
     marginTop: 8,
     x: { type: 'time', domain: [start, end] },
-    y: { label: null, grid: true, tickCount: 3 },
+    y: { label: null, grid: true, ticks: 3 },
     marks: [
       Plot.gridY({ stroke: STROKE_GRID, strokeWidth: 1 }),
       Plot.line(valid, {
