@@ -187,7 +187,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 _done.set()
                 try:
                     await ws.close()
-                except Exception:
+                except Exception:  # nosec B110 — best-effort close after pong timeout; remote already gone
                     pass
                 return
 
