@@ -186,3 +186,59 @@ def test_response_shape(client: TestClient) -> None:
     body = resp.json()
     assert set(body.keys()) == {"window", "bucket_size_sec", "agg", "rows"}
     assert set(body["window"].keys()) == {"from", "to"}
+
+
+# ---------------------------------------------------------------------------
+# /api/space-weather/current (Plan 06-04 addition)
+# ---------------------------------------------------------------------------
+
+
+def test_current_empty_db_returns_404(client: TestClient) -> None:
+    resp = client.get("/api/space-weather/current")
+    assert resp.status_code == 404
+
+
+def test_current_returns_latest_row_by_ts(client: TestClient, db_path: Path) -> None:
+    now = int(time.time())
+    conn = sqlite3.connect(str(db_path))
+    _insert_sw(conn, now - 300, kp_index=1.0, solar_wind_kms=350.0, flare_class="B1.0")
+    _insert_sw(conn, now - 100, kp_index=5.0, solar_wind_kms=600.0, flare_class="X2.1")  # latest
+    _insert_sw(conn, now - 200, kp_index=2.0, solar_wind_kms=400.0, flare_class="C1.0")
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/space-weather/current")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["kp_index"] == round(5.0, 2)
+    assert body["ts"] == now - 100
+    assert body["flare_class"] == "X2.1"
+
+
+def test_current_response_shape(client: TestClient, db_path: Path) -> None:
+    now = int(time.time())
+    conn = sqlite3.connect(str(db_path))
+    _insert_sw(conn, now - 100)
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/space-weather/current")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body.keys()) == {"ts", "kp_index", "solar_wind_kms", "flare_class", "flare_peak_ts"}
+
+
+def test_current_rounding(client: TestClient, db_path: Path) -> None:
+    now = int(time.time())
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        "INSERT INTO space_weather (ts, kp_index, solar_wind_kms, flare_class) VALUES (?,?,?,?)",
+        (now - 50, 3.789, 412.345, "C3.1"),
+    )
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/space-weather/current")
+    body = resp.json()
+    assert body["kp_index"] == round(3.789, 2)
+    assert body["solar_wind_kms"] == round(412.345, 1)
