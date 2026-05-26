@@ -38,22 +38,54 @@ READY_POLL_INTERVAL_SEC: Final[float] = 0.05
 
 
 def resolve_lan_ip() -> str:
-    """Return the Pi's first non-loopback IPv4 address.
+    """Return the Pi's outbound LAN IPv4 address.
 
-    Uses ``socket.gethostname()`` + ``socket.getaddrinfo()`` (IPv4 only).
-    The first address not starting with ``127.`` is returned.
+    Uses the standard "connect a UDP socket to a TEST-NET address" trick:
+    no packets are actually sent (UDP is connectionless), but the kernel
+    selects the outbound interface based on the routing table and binds
+    the socket to that interface's IP. ``getsockname()`` then reveals it.
+
+    This is robust against Debian's default /etc/hosts mapping
+    (``hostname → 127.0.1.1``) which defeats the naive
+    ``gethostname()+getaddrinfo()`` approach.
+
+    Falls back to ``getaddrinfo()`` if the UDP trick fails (e.g. in CI
+    sandboxes that block socket creation).
 
     Raises:
-        RuntimeError: If no non-loopback IPv4 address is found.
+        RuntimeError: If no non-loopback IPv4 address can be determined.
     """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # 192.0.2.0/24 is TEST-NET-1 (RFC 5737) — guaranteed unroutable,
+        # no packets leave the host. Any non-loopback target works.
+        sock.connect(("192.0.2.1", 1))
+        addr = str(sock.getsockname()[0])
+    except OSError:
+        addr = ""
+    finally:
+        sock.close()
+
+    if addr and not addr.startswith("127."):
+        return addr
+
+    # Fallback for test/CI environments where socket.connect is blocked.
     hostname = socket.gethostname()
-    results = socket.getaddrinfo(hostname, None, socket.AF_INET)
+    try:
+        results = socket.getaddrinfo(hostname, None, socket.AF_INET)
+    except OSError as exc:
+        raise RuntimeError(
+            f"Cannot resolve LAN IP via UDP-connect trick or getaddrinfo "
+            f"for hostname {hostname!r}: {exc}"
+        ) from exc
     for info in results:
-        sockaddr = info[4]
-        addr = str(sockaddr[0])
-        if not addr.startswith("127."):
-            return addr
-    raise RuntimeError(f"No non-loopback IPv4 found for hostname {hostname!r}")
+        candidate = str(info[4][0])
+        if not candidate.startswith("127."):
+            return candidate
+    raise RuntimeError(
+        f"No non-loopback IPv4 found for hostname {hostname!r} "
+        f"(UDP-connect trick also failed — host may have no LAN interface up)"
+    )
 
 
 async def _serve() -> None:
