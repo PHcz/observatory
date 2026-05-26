@@ -47,6 +47,13 @@
 <style>
   .aurora-panel {
     padding: 0;
+    margin-bottom: 80px;
+  }
+
+  @media (max-width: 900px) {
+    .aurora-panel {
+      margin-bottom: 48px;
+    }
   }
 
   .section-header {
