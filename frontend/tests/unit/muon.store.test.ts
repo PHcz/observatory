@@ -105,14 +105,84 @@ describe('muon store buffer', () => {
     flushMuonBuffer();
     expect(get(muonStore).rate).toBe(77);
   });
+});
 
-  it('history continues to extend with each flush', () => {
-    const nowSec = Math.floor(Date.now() / 1000);
-    bufferMuonEvent({ ts: nowSec - 10, latest_event_ts: nowSec - 10, detector_pressure_hpa: null, detector_temp_c: null });
-    bufferMuonEvent({ ts: nowSec - 5, latest_event_ts: nowSec - 5, detector_pressure_hpa: null, detector_temp_c: null });
-    flushMuonBuffer();
-    bufferMuonEvent({ ts: nowSec, latest_event_ts: nowSec, detector_pressure_hpa: null, detector_temp_c: null });
-    flushMuonBuffer();
-    expect(get(muonStore).history).toHaveLength(3);
+describe('flushMuonBuffer — minute-bucket aggregation', () => {
+  beforeEach(() => {
+    muonStore.set({ current: null, history: [], rate: null, lastUpdateTs: null });
+    _resetMuonRateWindow();
+  });
+
+  it('two events in the SAME minute produce ONE history entry with count=2', () => {
+    vi.useFakeTimers();
+    try {
+      // Fix wall-clock so plan-spec timestamps (1716800000) survive the 24h trim
+      vi.setSystemTime(1716800100 * 1000);
+      // Both ts fall in bucket Math.floor(1716800000/60)*60 = 1716799980
+      bufferMuonEvent({ ts: 1716800000, latest_event_ts: 1716800000, detector_pressure_hpa: null, detector_temp_c: null });
+      bufferMuonEvent({ ts: 1716800030, latest_event_ts: 1716800030, detector_pressure_hpa: null, detector_temp_c: null });
+      flushMuonBuffer();
+      const state = get(muonStore);
+      expect(state.history).toHaveLength(1);
+      expect(state.history[0].ts).toBe(1716799980);
+      expect(state.history[0].rate_per_min).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('five events spanning TWO minutes produce TWO history entries (not five)', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(1716800100 * 1000);
+      // bucket 1716799980: ts 1716800010, 1716800020, 1716800030 (count 3)
+      // bucket 1716800040: ts 1716800070, 1716800080 (count 2)
+      bufferMuonEvent({ ts: 1716800010, latest_event_ts: 1716800010, detector_pressure_hpa: null, detector_temp_c: null });
+      bufferMuonEvent({ ts: 1716800020, latest_event_ts: 1716800020, detector_pressure_hpa: null, detector_temp_c: null });
+      bufferMuonEvent({ ts: 1716800030, latest_event_ts: 1716800030, detector_pressure_hpa: null, detector_temp_c: null });
+      bufferMuonEvent({ ts: 1716800070, latest_event_ts: 1716800070, detector_pressure_hpa: null, detector_temp_c: null });
+      bufferMuonEvent({ ts: 1716800080, latest_event_ts: 1716800080, detector_pressure_hpa: null, detector_temp_c: null });
+      flushMuonBuffer();
+      const state = get(muonStore);
+      expect(state.history).toHaveLength(2);
+      expect(state.history[0]).toEqual({ ts: 1716799980, rate_per_min: 3 });
+      expect(state.history[1]).toEqual({ ts: 1716800040, rate_per_min: 2 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('event for an existing bucket increments the existing entry', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(1716800100 * 1000);
+      seedMuonHistory([{ ts: 1716799980, rate_per_min: 5 }]);
+      // ts 1716800010 → bucket 1716799980 (same as seeded)
+      bufferMuonEvent({ ts: 1716800010, latest_event_ts: 1716800010, detector_pressure_hpa: null, detector_temp_c: null });
+      flushMuonBuffer();
+      const state = get(muonStore);
+      expect(state.history).toHaveLength(1);
+      expect(state.history[0].rate_per_min).toBe(6);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('state.rate still equals the rolling-60s event count after bucket rework', () => {
+    vi.useFakeTimers();
+    try {
+      const nowMs = 1716800100 * 1000;
+      vi.setSystemTime(nowMs);
+      // 3 events within last 60s of now=1716800100
+      bufferMuonEvent({ ts: 1716800050, latest_event_ts: 1716800050, detector_pressure_hpa: null, detector_temp_c: null });
+      bufferMuonEvent({ ts: 1716800070, latest_event_ts: 1716800070, detector_pressure_hpa: null, detector_temp_c: null });
+      bufferMuonEvent({ ts: 1716800090, latest_event_ts: 1716800090, detector_pressure_hpa: null, detector_temp_c: null });
+      // 1 event older than 60s window (1716800100 - 60 = 1716800040; 1716800010 < that)
+      bufferMuonEvent({ ts: 1716800010, latest_event_ts: 1716800010, detector_pressure_hpa: null, detector_temp_c: null });
+      flushMuonBuffer();
+      expect(get(muonStore).rate).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
