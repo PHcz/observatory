@@ -1,1 +1,159 @@
-<script lang="ts">export let past_24h: number = 0;</script><section data-stub="LightningPanel"><!-- STUB UI-07 — implemented by Plan 07-05 --></section>
+<script lang="ts">
+  import { lightningStore } from '$lib/stores/lightning';
+
+  $: summary = $lightningStore.summary;
+  // NOTE: /api/lightning/summary does not expose hourly buckets (Phase 6 Plan 06-04).
+  // hourlyBuckets is populated by the store but always comes in as 24 zeros until
+  // a future API update adds per-hour counts. Sparkline renders zero-height bars until then.
+  $: hourlyBuckets = $lightningStore.hourlyBuckets.length === 24
+    ? $lightningStore.hourlyBuckets
+    : new Array(24).fill(0);
+
+  $: isEmpty = summary == null || summary.past_24h === 0;
+
+  $: maxBucket = Math.max(...hourlyBuckets, 1);
+  $: nearestDisplay = summary?.nearest_km != null ? summary.nearest_km.toFixed(0) : '—';
+
+  const CELL_W = 100 / 24;
+</script>
+
+<section class="lightning-panel">
+  <div class="section-header">
+    <span class="section-title">Lightning</span>
+    <span class="section-meta">Blitzortung · UK + Ireland</span>
+  </div>
+  <p class="section-sub">Real-time strike detection across the British Isles</p>
+
+  {#if isEmpty}
+    <p class="empty">No strikes in the last 24h.</p>
+  {:else}
+    <div class="metrics-row">
+      <div class="metric-cell">
+        <span class="metric-label">Past hour</span>
+        <span class="metric-value lightning-num">{summary?.past_hour ?? '—'}</span>
+      </div>
+      <div class="metric-cell">
+        <span class="metric-label">Past 24h</span>
+        <span class="metric-value lightning-num">{summary?.past_24h ?? '—'}</span>
+      </div>
+      <div class="metric-cell">
+        <span class="metric-label">Nearest today</span>
+        <span class="metric-value nearest-value event-value-bold">{nearestDisplay}</span>
+        {#if summary?.nearest_km != null}
+          <span class="metric-unit">km</span>
+        {/if}
+      </div>
+    </div>
+
+    <div class="sparkline-section">
+      <svg viewBox="0 0 100 80" preserveAspectRatio="none" class="sparkline-svg" aria-hidden="true">
+        {#each hourlyBuckets as bucket, i}
+          {@const height = maxBucket > 0 ? (bucket / maxBucket) * 70 : 0}
+          {@const x = i * CELL_W}
+          {@const y = 80 - height - 10}
+          <rect
+            x={x}
+            y={y}
+            width={CELL_W - 0.5}
+            height={height}
+            fill="#5a6b5a"
+          />
+        {/each}
+        <text x="0" y="78" font-size="9" font-weight="600" fill="#5a6b5a" letter-spacing="0.20em">STRIKES/HR · LAST 24H</text>
+      </svg>
+    </div>
+  {/if}
+</section>
+
+<style>
+  .lightning-panel {
+    padding: 0;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text);
+  }
+
+  .section-meta {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+  }
+
+  .section-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .empty {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .metrics-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+  }
+
+  .metric-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+  }
+
+  .lightning-num {
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.0;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  .event-value-bold {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.0;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  .metric-unit {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .sparkline-section {
+    padding-top: 8px;
+  }
+
+  .sparkline-svg {
+    width: 100%;
+    height: 80px;
+    display: block;
+  }
+</style>
