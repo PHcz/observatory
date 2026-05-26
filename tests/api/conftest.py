@@ -49,6 +49,11 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 
     monkeypatch.setattr(_health_mod, "settings", s, raising=False)
 
+    # Rebind on current router (06-05) — uses settings.home_lat/home_lon.
+    import observatory.api.routers.current as _current_mod
+
+    monkeypatch.setattr(_current_mod, "settings", s, raising=False)
+
     # Also rebind thermal module's settings so derive_status thresholds are valid.
     import observatory.pi.thermal as _thermal_mod
 
