@@ -117,9 +117,17 @@
   }
 
   .metrics-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 24px;
     margin-bottom: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .metrics-row {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
   }
 
   .metric-cell {

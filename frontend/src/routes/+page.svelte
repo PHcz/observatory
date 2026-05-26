@@ -61,6 +61,8 @@
     .two-col {
       grid-template-columns: 1fr;
       gap: 48px;
+      margin-bottom: 48px;
     }
+    :global(.section) { margin-bottom: 48px !important; }
   }
 </style>

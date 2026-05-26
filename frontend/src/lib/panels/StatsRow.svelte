@@ -110,6 +110,21 @@
     margin-bottom: 80px;
   }
 
+  @media (max-width: 900px) {
+    .stats-row {
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      margin-bottom: 48px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .stats-row {
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+  }
+
   .stat {
     display: flex;
     flex-direction: column;
