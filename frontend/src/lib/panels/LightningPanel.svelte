@@ -1,7 +1,7 @@
 <script lang="ts">
   import { lightningStore } from '$lib/stores/lightning';
   import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
+  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
@@ -15,8 +15,8 @@
 
   $: blitz = $healthStore.data?.external?.blitzortung;
   $: blitzLastTs = summary?.ts ?? blitz?.last_event_ts ?? null;
-  $: blitzLevel = (blitzLastTs != null && blitz?.staleness_threshold_sec)
-    ? deriveStaleness(ageSeconds(blitzLastTs), blitz.staleness_threshold_sec)
+  $: blitzLevel = blitzLastTs != null
+    ? deriveStaleness(ageSeconds(blitzLastTs), blitz?.staleness_threshold_sec ?? DEFAULT_STALENESS_THRESHOLD_SEC)
     : 'fresh';
 
   $: isEmpty = summary == null || summary.past_24h === 0;

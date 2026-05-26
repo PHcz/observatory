@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveStaleness } from '$lib/utils/staleness';
+import { DEFAULT_STALENESS_THRESHOLD_SEC, deriveStaleness } from '$lib/utils/staleness';
 
 describe('deriveStaleness', () => {
   it('returns fresh when age < threshold', () => {
@@ -23,5 +23,15 @@ describe('deriveStaleness', () => {
     expect(deriveStaleness(-5, 100)).toBe('red');
     expect(deriveStaleness(Infinity, 100)).toBe('red');
     expect(deriveStaleness(50, Infinity)).toBe('red');
+  });
+});
+
+describe('DEFAULT_STALENESS_THRESHOLD_SEC', () => {
+  it('is exported as 300 (5 minutes)', () => {
+    expect(DEFAULT_STALENESS_THRESHOLD_SEC).toBe(300);
+  });
+  it('used as fallback: data 60s old with default threshold reads as fresh', () => {
+    // Simulates the panel call site: deriveStaleness(ageSec, threshold ?? DEFAULT)
+    expect(deriveStaleness(60, DEFAULT_STALENESS_THRESHOLD_SEC)).toBe('fresh');
   });
 });

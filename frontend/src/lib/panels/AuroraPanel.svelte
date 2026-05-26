@@ -2,7 +2,7 @@
   import { auroraStore } from '$lib/stores/aurora';
   import StatusDot from '$lib/atoms/StatusDot.svelte';
   import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
+  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
@@ -17,8 +17,8 @@
 
   $: auroraHealth = $healthStore.data?.external?.aurora;
   $: auroraLastTs = data?.ts ?? auroraHealth?.last_event_ts ?? null;
-  $: auroraLevel = (auroraLastTs != null && auroraHealth?.staleness_threshold_sec)
-    ? deriveStaleness(ageSeconds(auroraLastTs), auroraHealth.staleness_threshold_sec)
+  $: auroraLevel = auroraLastTs != null
+    ? deriveStaleness(ageSeconds(auroraLastTs), auroraHealth?.staleness_threshold_sec ?? DEFAULT_STALENESS_THRESHOLD_SEC)
     : 'fresh';
 </script>
 
