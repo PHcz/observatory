@@ -53,6 +53,11 @@ def seeded_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     s = Settings()
     monkeypatch.setattr(_config_mod, "settings", s)
 
+    # Also patch settings on the db_watcher module (uses from-import at module level)
+    import observatory.api.db_watcher as _dw_mod
+
+    monkeypatch.setattr(_dw_mod, "settings", s, raising=False)
+
     return db_path
 
 
@@ -236,9 +241,13 @@ async def test_db_watcher_cancels_cleanly(seeded_db: Path, monkeypatch: pytest.M
 
 @pytest.mark.asyncio
 async def test_db_watcher_per_tick_limit(seeded_db: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Insert 200 rows between ticks → first tick emits 100, next emits 100."""
+    """Insert 200 rows between ticks → first tick emits 100, next tick emits remaining 100.
+
+    Uses 0.2s interval so ticks are cleanly separated.
+    """
     s = _config_mod.settings
-    monkeypatch.setattr(s, "api_db_watcher_interval_sec", 0.05, raising=False)
+    # Larger interval: 0.2s so we can precisely capture per-tick counts
+    monkeypatch.setattr(s, "api_db_watcher_interval_sec", 0.2, raising=False)
 
     received: list[dict] = []  # type: ignore[type-arg]
 
@@ -250,10 +259,10 @@ async def test_db_watcher_per_tick_limit(seeded_db: Path, monkeypatch: pytest.Mo
     from observatory.api.db_watcher import db_watcher_loop
 
     task = asyncio.create_task(db_watcher_loop())
-    await asyncio.sleep(0.08)  # bootstrap
+    await asyncio.sleep(0.05)  # wait for bootstrap SQL query to complete
 
     # Insert 200 weather rows with future timestamps
-    now = int(time.time()) + 200
+    now = int(time.time()) + 10
     conn = sqlite3.connect(str(seeded_db))
     for i in range(200):
         conn.execute(
@@ -263,12 +272,12 @@ async def test_db_watcher_per_tick_limit(seeded_db: Path, monkeypatch: pytest.Mo
     conn.commit()
     conn.close()
 
-    # Wait for exactly one tick
-    await asyncio.sleep(0.1)
+    # Wait for exactly one tick (0.2s interval; 0.25s gives a generous margin)
+    await asyncio.sleep(0.25)
     first_tick_count = len([e for e in received if e["type"] == "weather"])
 
-    # Wait for a second tick
-    await asyncio.sleep(0.1)
+    # Wait for the second tick
+    await asyncio.sleep(0.25)
     second_tick_total = len([e for e in received if e["type"] == "weather"])
 
     task.cancel()
