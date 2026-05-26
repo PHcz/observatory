@@ -117,6 +117,15 @@
     min-width: 0;
   }
 
+  @media (max-width: 900px) {
+    .header {
+      flex-direction: column;
+      gap: 32px;
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+    }
+  }
+
   .hero-overline {
     display: block;
     font-size: 11px;

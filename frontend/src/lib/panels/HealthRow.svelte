@@ -96,6 +96,16 @@
     min-width: 80px;
   }
 
+  @media (max-width: 900px) {
+    .health-row {
+      gap: 16px;
+      margin-top: 48px;
+    }
+    .health-entry {
+      min-width: 0;
+    }
+  }
+
   .health-label {
     font-size: 11px;
     font-weight: 600;
