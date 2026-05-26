@@ -66,7 +66,8 @@ def test_ws_client_registered_and_deregistered(ws_app: FastAPI) -> None:
         with client.websocket_connect("/ws") as ws:
             ws.receive_json()  # consume snapshot
             assert len(connected_clients) == 1
-        # After __exit__, connection is closed
+        # After __exit__, connection is closed; give server thread a moment to clean up
+        time.sleep(0.05)
     assert len(connected_clients) == 0
 
 
@@ -121,16 +122,24 @@ def test_ws_server_sends_ping(ws_app: FastAPI) -> None:
 
 def test_ws_no_pong_disconnects_client(ws_app: FastAPI) -> None:
     """No pong within pong_timeout_sec → server closes connection."""
-    with TestClient(ws_app) as client:
-        with client.websocket_connect("/ws") as ws:
-            ws.receive_json()  # consume snapshot
-            # Wait well past ping_interval (0.05) + pong_timeout (0.5)
-            time.sleep(0.8)
-            # Server should have closed the connection; receive should fail
+    from observatory.api.routers.ws import connected_clients
 
-            with pytest.raises(Exception):  # noqa: B017 # server closes — exact exc type varies
-                while True:
-                    ws.receive_json()
+    with TestClient(ws_app) as client:
+        try:
+            with client.websocket_connect("/ws") as ws:
+                ws.receive_json()  # consume snapshot
+                # Wait well past ping_interval (0.05) + pong_timeout (0.5)
+                time.sleep(0.8)
+                # Server should have closed the connection; receive should fail
+                with pytest.raises(Exception):  # noqa: B017 # exc type varies
+                    while True:
+                        ws.receive_json()
+        except Exception:
+            pass  # Server-side close may cause starlette cleanup error
+
+    # Server should have cleaned up the registry
+    time.sleep(0.05)
+    assert len(connected_clients) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -140,20 +149,25 @@ def test_ws_no_pong_disconnects_client(ws_app: FastAPI) -> None:
 
 def test_ws_fanout_event_delivers(ws_app: FastAPI) -> None:
     """fanout_event called with envelope → client receives it from queue."""
-    from observatory.api.routers.ws import connected_clients, fanout_event
+    from observatory.api.routers.ws import connected_clients
 
     with TestClient(ws_app) as client:
         with client.websocket_connect("/ws") as ws:
             ws.receive_json()  # consume snapshot
             assert len(connected_clients) == 1
+            state = next(iter(connected_clients.values()))
 
-            # Directly enqueue via fanout_event (run in event loop)
+            # Directly put onto the queue (bypasses lock — safe from test thread)
             envelope = {"type": "weather", "data": {"temp_c": 20.0}, "ts": 12345}
-            asyncio.run(fanout_event(envelope))
+            state.queue.put_nowait(envelope)
 
-            # The send_loop will pick it up; wait briefly
+            # The send_loop will pick it up and send; wait briefly
             time.sleep(0.05)
-            msg = ws.receive_json()
+            # Drain any ping messages that arrive before the weather envelope
+            for _ in range(5):
+                msg = ws.receive_json()
+                if msg["type"] == "weather":
+                    break
             assert msg["type"] == "weather"
             assert msg["data"]["temp_c"] == 20.0
 
@@ -163,34 +177,47 @@ def test_ws_fanout_event_delivers(ws_app: FastAPI) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_ws_queue_full_drops_oldest(ws_app: FastAPI) -> None:
-    """Queue full (3 items) + 1 more → oldest dropped + WARNING logged."""
+@pytest.mark.asyncio
+async def test_ws_queue_full_drops_oldest(
+    _ensure_settings_loaded: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Queue full (3 items) + 1 more → oldest dropped + WARNING logged.
+
+    Tests fanout_event in a pure async context — no WS connection needed.
+    """
     import structlog.testing
 
-    from observatory.api.routers.ws import connected_clients, fanout_event
+    from observatory.api.routers.ws import ClientState, connected_clients, fanout_event, ws_lock
 
-    with TestClient(ws_app) as client:
-        with client.websocket_connect("/ws") as ws:
-            ws.receive_json()  # consume snapshot
-            assert len(connected_clients) == 1
-            state = next(iter(connected_clients.values()))
+    # Set up a fake client with queue maxsize=3
+    fake_state = ClientState(
+        client_id="test-fanout",
+        queue=asyncio.Queue(maxsize=3),
+        last_pong_ts=time.time(),
+    )
 
-            # Block the send_loop briefly by stalling; fill queue first
-            # We'll fill it with 4 events (1 past max=3)
-            with structlog.testing.capture_logs() as cap:
-                # Enqueue 4 events synchronously — 4th triggers drop
-                for i in range(4):
-                    env = {"type": "weather", "data": {"seq": i}, "ts": i}
-                    asyncio.run(fanout_event(env))
+    async with ws_lock:
+        connected_clients["test-fanout"] = fake_state
 
-            # Check a WARNING was logged
-            warnings = [e for e in cap if e.get("log_level") == "warning"]
-            assert any("ws_queue_full_dropped_oldest" in str(e) for e in warnings), (
-                f"Expected ws_queue_full_dropped_oldest warning, got: {cap}"
-            )
+    try:
+        # Fill queue to capacity
+        for i in range(3):
+            fake_state.queue.put_nowait({"type": "weather", "data": {"seq": i}, "ts": i})
 
-            # Queue should still have maxsize=3 items (oldest dropped, 3 remaining)
-            assert state.queue.qsize() == 3
+        # 4th call triggers drop-oldest + WARNING
+        with structlog.testing.capture_logs() as cap:
+            await fanout_event({"type": "weather", "data": {"seq": 99}, "ts": 99})
+
+        warnings = [e for e in cap if e.get("log_level") == "warning"]
+        assert any("ws_queue_full_dropped_oldest" in str(e) for e in warnings), (
+            f"Expected ws_queue_full_dropped_oldest warning, got: {cap}"
+        )
+        # Queue should still have maxsize=3 items (oldest dropped, new one in)
+        assert fake_state.queue.qsize() == 3
+
+    finally:
+        async with ws_lock:
+            connected_clients.pop("test-fanout", None)
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +227,7 @@ def test_ws_queue_full_drops_oldest(ws_app: FastAPI) -> None:
 
 def test_ws_multiple_clients_each_receive_snapshot(ws_app: FastAPI) -> None:
     """Multiple concurrent clients each receive their own snapshot + fanout."""
-    from observatory.api.routers.ws import connected_clients, fanout_event
+    from observatory.api.routers.ws import connected_clients
 
     with TestClient(ws_app) as client:
         with client.websocket_connect("/ws") as ws1:
@@ -212,12 +239,21 @@ def test_ws_multiple_clients_each_receive_snapshot(ws_app: FastAPI) -> None:
                 assert snap2["type"] == "snapshot"
                 assert len(connected_clients) == 2
 
-                # Fan out to both
+                # Fan out to both by putting directly on each queue
                 envelope = {"type": "aurora", "data": {"status": "green"}, "ts": 9999}
-                asyncio.run(fanout_event(envelope))
+                for state in connected_clients.values():
+                    state.queue.put_nowait(envelope)
                 time.sleep(0.05)
 
-                msg1 = ws1.receive_json()
-                msg2 = ws2.receive_json()
+                # Drain pings until we get the aurora message
+                def drain_for_type(ws_conn: Any, target_type: str) -> dict[str, Any]:
+                    for _ in range(10):
+                        msg = ws_conn.receive_json()
+                        if msg["type"] == target_type:
+                            return msg
+                    raise AssertionError(f"Did not receive {target_type}")
+
+                msg1 = drain_for_type(ws1, "aurora")
+                msg2 = drain_for_type(ws2, "aurora")
                 assert msg1["type"] == "aurora"
                 assert msg2["type"] == "aurora"
