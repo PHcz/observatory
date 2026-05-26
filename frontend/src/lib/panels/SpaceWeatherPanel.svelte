@@ -2,7 +2,7 @@
   import { spaceWeatherStore } from '$lib/stores/spaceWeather';
   import KpBar from '$lib/atoms/KpBar.svelte';
   import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
+  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
@@ -25,8 +25,8 @@
 
   $: noaa = $healthStore.data?.external?.noaa;
   $: swLastTs = $spaceWeatherStore.current?.ts ?? noaa?.last_event_ts ?? null;
-  $: swLevel = (swLastTs != null && noaa?.staleness_threshold_sec)
-    ? deriveStaleness(ageSeconds(swLastTs), noaa.staleness_threshold_sec)
+  $: swLevel = swLastTs != null
+    ? deriveStaleness(ageSeconds(swLastTs), noaa?.staleness_threshold_sec ?? DEFAULT_STALENESS_THRESHOLD_SEC)
     : 'fresh';
 </script>
 
