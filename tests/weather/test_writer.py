@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from structlog.testing import capture_logs
 
 from observatory.weather.payload import parse_envelope
 from observatory.weather.writer import write_reading
@@ -94,7 +93,13 @@ def test_duplicate_returns_false(tmp_db: Path, load_payload: Any) -> None:
 def test_db_error_returns_false_no_raise(
     tmp_db: Path, load_payload: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A simulated sqlite3.OperationalError is caught, logged ERROR, returns False."""
+    """A simulated sqlite3.OperationalError is caught, logged ERROR, returns False.
+
+    The shared tests/weather/conftest.py autouse-configures structlog with
+    cache_logger_on_first_use=True (Plan 03-00 deliverable), which defeats
+    ``structlog.testing.capture_logs()``. We sidestep that by recording
+    log calls directly on the writer module's bound logger.
+    """
     env = parse_envelope(load_payload("canonical_payload.json"))
 
     def _broken(*_a: Any, **_kw: Any) -> Any:
@@ -102,13 +107,23 @@ def test_db_error_returns_false_no_raise(
 
     monkeypatch.setattr("observatory.weather.writer.get_write_conn", _broken)
 
-    with capture_logs() as logs:
-        result = write_reading(env, db_path=str(tmp_db))
+    recorded: list[tuple[str, dict[str, Any]]] = []
+
+    class _RecordingLogger:
+        def info(self, event: str, **kw: Any) -> None:
+            recorded.append(("info", {"event": event, **kw}))
+
+        def error(self, event: str, **kw: Any) -> None:
+            recorded.append(("error", {"event": event, **kw}))
+
+    monkeypatch.setattr("observatory.weather.writer.log", _RecordingLogger())
+
+    result = write_reading(env, db_path=str(tmp_db))
 
     assert result is False
     assert any(
-        e.get("event") == "weather_write_error" and e.get("log_level") == "error" for e in logs
-    ), f"expected weather_write_error at ERROR level in logs, got: {logs}"
+        level == "error" and entry["event"] == "weather_write_error" for level, entry in recorded
+    ), f"expected weather_write_error at ERROR level, got: {recorded}"
 
 
 def test_writes_to_configured_db_path(tmp_db: Path, load_payload: Any) -> None:
