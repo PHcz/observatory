@@ -155,8 +155,12 @@ class FakeMqttClient:
         async def _gen() -> Any:
             for m in msgs:
                 yield m
-            # After exhausting, sleep forever (subscriber should be stopped by stop_event)
-            await asyncio.sleep(3600)
+            # Exhausted — return rather than blocking. The subscriber's
+            # outer `while not stop_event.is_set()` loop will spin: exit
+            # async-with, re-enter, re-subscribe. The stopper task
+            # eventually sets stop_event, which the outer loop checks.
+            # Tiny sleep yields control so the test's stopper task runs.
+            await asyncio.sleep(0.02)
 
         return _gen()
 

@@ -13,6 +13,9 @@ from typing import Any
 import pytest
 import structlog
 
+import observatory.config as _config_mod
+from observatory.config import Settings
+
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 SCHEMA_0001 = MIGRATIONS_DIR / "0001_initial_schema.sql"
 SCHEMA_0003 = MIGRATIONS_DIR / "0003_weather_unique.sql"
@@ -48,6 +51,34 @@ def _configure_structlog(monkeypatch: pytest.MonkeyPatch) -> None:
     import observatory.logging as _obs_logging
 
     monkeypatch.setattr(_obs_logging, "configure_logging", lambda level="INFO": None)
+
+
+@pytest.fixture(autouse=True)
+def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Materialize observatory.config.settings for weather tests.
+
+    The module-level singleton is None when import-time env is incomplete
+    (HOME_LAT/HOME_LON not set globally). Weather library code reads
+    settings.* at call time, so we install a valid Settings() with London
+    placeholder coords for each test, and rebind the singleton in modules
+    that captured `settings` by name on import.
+    """
+    monkeypatch.setenv("HOME_LAT", "51.5074")
+    monkeypatch.setenv("HOME_LON", "-0.1278")
+    s = Settings()
+    monkeypatch.setattr(_config_mod, "settings", s)
+    # Weather modules that imported `settings` by name — rebind their refs.
+    import importlib
+
+    for mod_path in (
+        "observatory.weather.subscriber",
+        "observatory.weather.writer",
+    ):
+        try:
+            _m = importlib.import_module(mod_path)
+            monkeypatch.setattr(_m, "settings", s, raising=False)
+        except ModuleNotFoundError:
+            pass
 
 
 @pytest.fixture
