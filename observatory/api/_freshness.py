@@ -27,7 +27,7 @@ STALE_MULT: Final[int] = 4
 
 # Per-source intervals (seconds). Locked verbatim from 05-CONTEXT.md table.
 INTERVALS_SEC: Final[dict[str, int]] = {
-    "weather": 300,
+    "weather": 900,  # 900s → HEALTHY_MULT(2)*900 == 1800s threshold per 03-CONTEXT.md
     "muon": 5,
     "usgs": 300,
     "emsc": 300,
