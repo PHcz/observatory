@@ -30,6 +30,7 @@ from observatory.api._freshness import (
     freshness,
     worst,
 )
+from observatory.config import settings
 from observatory.db.connection import get_conn
 from observatory.pi.thermal import ThermalReadError, read_temp_c, read_throttled
 from observatory.pi.thermal import derive_status as derive_pi_status
@@ -115,12 +116,17 @@ def health() -> dict[str, Any]:
             last = _max_ts(conn, table, src_filter)
             age = (now - last) if last is not None else _NO_EVENT_AGE_SEC
             f = freshness(age, interval)
-            out["local"][name] = {
+            entry: dict[str, Any] = {
                 "last_event_ts": last,
                 "freshness": f,
                 "staleness_threshold_sec": HEALTHY_MULT * interval,
                 "last_poll_status": None,
             }
+            if name == "weather":
+                # CONTEXT.md §specifics: surface configured nickname so future
+                # multi-node deploys propagate via env var, not code edits.
+                entry["source"] = settings.weather_nickname
+            out["local"][name] = entry
             worst_f = worst(worst_f, f)
 
         for name in EXTERNAL_SOURCES:

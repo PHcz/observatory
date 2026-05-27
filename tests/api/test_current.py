@@ -210,7 +210,7 @@ def test_empty_db_earthquakes_recent_empty(client: TestClient) -> None:
 def test_weather_healthy(client: TestClient, db_path: Path) -> None:
     now = int(time.time())
     conn = sqlite3.connect(str(db_path))
-    _insert_weather(conn, now - 60)  # age 60 < 2*300=600 -> healthy
+    _insert_weather(conn, now - 60)  # age 60 < 2*900=1800 -> healthy
     conn.commit()
     conn.close()
 
@@ -224,7 +224,7 @@ def test_weather_healthy(client: TestClient, db_path: Path) -> None:
 def test_weather_stale(client: TestClient, db_path: Path) -> None:
     now = int(time.time())
     conn = sqlite3.connect(str(db_path))
-    _insert_weather(conn, now - 700)  # age 700 >= 2*300=600, < 4*300=1200 -> stale
+    _insert_weather(conn, now - 1900)  # age 1900 >= 2*900=1800, < 4*900=3600 -> stale
     conn.commit()
     conn.close()
 
@@ -236,7 +236,7 @@ def test_weather_stale(client: TestClient, db_path: Path) -> None:
 def test_weather_down(client: TestClient, db_path: Path) -> None:
     now = int(time.time())
     conn = sqlite3.connect(str(db_path))
-    _insert_weather(conn, now - 1500)  # age 1500 >= 4*300=1200 -> down
+    _insert_weather(conn, now - 3700)  # age 3700 >= 4*900=3600 -> down
     conn.commit()
     conn.close()
 

@@ -30,6 +30,7 @@ from observatory.api.routers import stats as stats_router
 from observatory.api.routers import weather as weather_router
 from observatory.api.routers import ws as ws_router
 from observatory.config import settings
+from observatory.weather.subscriber import run_subscriber
 
 log = structlog.get_logger(__name__)
 
@@ -37,16 +38,23 @@ log = structlog.get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("api_lifespan_starting")
-    task = asyncio.create_task(db_watcher_loop())
+    stop_event = asyncio.Event()
+    db_task = asyncio.create_task(db_watcher_loop(), name="db_watcher")
+    subscriber_task = asyncio.create_task(run_subscriber(stop_event), name="weather_subscriber")
     try:
         yield
     finally:
         log.info("api_lifespan_stopping")
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+        stop_event.set()  # graceful signal to subscriber loop
+        for t in (db_task, subscriber_task):
+            t.cancel()
+        for t in (db_task, subscriber_task):
+            try:
+                await t
+            except asyncio.CancelledError:
+                pass
+            except Exception as exc:
+                log.warning("lifespan_task_exit_error", task=t.get_name(), error=str(exc))
 
 
 _docs_url = "/docs" if (settings is not None and settings.obs_env == "development") else None

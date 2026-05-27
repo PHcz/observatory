@@ -110,15 +110,20 @@ def test_empty_db_all_sources_down(
     assert set(body.keys()) == {"status", "timestamp", "local", "external", "pi"}
     assert isinstance(body["timestamp"], int)
 
-    # All local sources present with shape
+    # All local sources present with shape. `weather` carries an extra `source`
+    # key per CONTEXT.md §specifics (added in 03-04, value=settings.weather_nickname).
     for name in LOCAL_SOURCES:
         s = body["local"][name]
-        assert set(s.keys()) == {
+        expected_keys = {
             "last_event_ts",
             "freshness",
             "staleness_threshold_sec",
             "last_poll_status",
         }
+        if name == "weather":
+            expected_keys = expected_keys | {"source"}
+            assert s["source"] == "observatory-weather"
+        assert set(s.keys()) == expected_keys
         assert s["last_event_ts"] is None
         assert s["freshness"] == "down"
         assert s["last_poll_status"] is None
