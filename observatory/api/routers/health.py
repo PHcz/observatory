@@ -85,7 +85,10 @@ def _pi_block() -> dict[str, Any]:
     try:
         temp = read_temp_c()
         throttled = read_throttled()
-    except ThermalReadError as exc:
+    except (ThermalReadError, FileNotFoundError, OSError) as exc:
+        # ThermalReadError: vcgencmd ran but returned non-zero / unparseable output
+        # FileNotFoundError: vcgencmd binary missing (e.g. dev Mac, broken install)
+        # OSError: catch-all for other subprocess-spawn failures
         log.warning("pi_thermal_unavailable", error=str(exc))
         return {
             "temp_c": None,
