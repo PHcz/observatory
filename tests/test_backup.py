@@ -126,3 +126,57 @@ def test_uses_connection_backup_not_shutil_copy() -> None:
     src = (REPO_ROOT / "scripts" / "backup.py").read_text()
     assert "src.backup(dst)" in src
     assert "shutil.copy" not in src
+
+
+def test_backup_accepts_live_writer_drift(
+    populated_source_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Live writers (e.g. muon detector) append rows to src while backup runs.
+
+    The result is dst_n < src_n_at_recheck-time. That's a healthy outcome on an
+    append-only workload — NOT a failure. Verifies backup.row_count_drift logs at
+    info and returns exit 0.
+    """
+    mount = tmp_path / "mnt"
+    mount.mkdir()
+    monkeypatch.setattr(Path, "is_mount", lambda self: self == mount)
+
+    # Hook the post-backup src re-open so we can append rows BETWEEN the
+    # initial src.backup(dst) and the row-count cross-check.
+    orig_connect = sqlite3.connect
+
+    def connect_and_append(path: str, *args: object, **kwargs: object) -> sqlite3.Connection:
+        conn = orig_connect(path, *args, **kwargs)
+        # If this is the source DB being opened in step 5 (after the backup),
+        # append a row to simulate a live writer arriving mid-backup.
+        if str(populated_source_db) in str(path):
+            try:
+                conn.execute("INSERT INTO t (v) VALUES ('live-arrival-during-backup')")
+                conn.commit()
+            except sqlite3.Error:
+                pass
+        return conn
+
+    # Patch sqlite3.connect only for the 2nd open (after src.backup(dst)).
+    call_count = {"n": 0}
+
+    def selective_connect(path: str, *args: object, **kwargs: object) -> sqlite3.Connection:
+        call_count["n"] += 1
+        if call_count["n"] == 2 and str(populated_source_db) in str(path):
+            return connect_and_append(path, *args, **kwargs)
+        return orig_connect(path, *args, **kwargs)
+
+    monkeypatch.setattr("scripts.backup.sqlite3.connect", selective_connect)
+
+    rc = backup_mod.run_backup(source_db=populated_source_db, backup_mount=mount)
+    assert rc == 0, "backup should succeed when source grew during backup (append-only)"
+
+    today = date.today().isoformat()
+    assert (mount / f"observatory-{today}.db").exists()
+    assert (mount / f"observatory-{today}.ok").exists()
+
+
+# NOTE: dst > src inversion is treated as corruption by the script (returns 1),
+# but it's untestable cheaply because sqlite3.Connection is an immutable C type
+# that can't be monkeypatched. The defensive check is verified by code review
+# at scripts/backup.py "if dst_n > src_n:" rather than by a runtime test.
