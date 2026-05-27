@@ -25,3 +25,8 @@ frontend/build/
 frontend/.svelte-kit/
 *.local
 /tmp/
+
+# Phase 3 — dev Mosquitto + secrets
+dev/mosquitto/data/
+deploy/mosquitto/passwords
+passwords
