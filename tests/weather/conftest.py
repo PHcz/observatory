@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
+import sys
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
-
-from observatory.logging import configure_logging
+import structlog
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 SCHEMA_0001 = MIGRATIONS_DIR / "0001_initial_schema.sql"
@@ -19,9 +20,34 @@ FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
 
 @pytest.fixture(autouse=True)
-def _configure_structlog() -> None:
-    """Ensure structlog is configured so capsys can see JSON log output."""
-    configure_logging(level="DEBUG")
+def _configure_structlog(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Per-test structlog config WITHOUT cached loggers + no-op prod configure.
+
+    Mirrors tests/pollers/conftest.py:22-69. Two interlocking issues this fixes:
+      1. structlog.testing.capture_logs() patches the processor chain in
+         place, but cached bound loggers retain a stale reference. We set
+         cache_logger_on_first_use=False so the lazy proxy re-resolves
+         each call and sees the LogCapture processor.
+      2. Production code calls observatory.logging.configure_logging()
+         which sets cache_logger_on_first_use=True — locking module
+         loggers to the prod JSON-renderer chain. We monkeypatch
+         configure_logging to a no-op so prod code doesn't fight us.
+    """
+    logging.basicConfig(format="%(message)s", stream=sys.stdout, level=logging.DEBUG)
+    structlog.reset_defaults()
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.JSONRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
+        cache_logger_on_first_use=False,
+    )
+    import observatory.logging as _obs_logging
+
+    monkeypatch.setattr(_obs_logging, "configure_logging", lambda level="INFO": None)
 
 
 @pytest.fixture
