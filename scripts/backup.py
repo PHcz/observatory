@@ -106,17 +106,42 @@ def run_backup(
             dest_db.unlink(missing_ok=True)
             return 1
 
-        # 5. Cross-check row counts roughly match source
+        # 5. Cross-check row counts — direction-only.
+        #
+        # sqlite3.Connection.backup() is WAL-coherent: dst is a snapshot of src at
+        # the moment backup() returns. Re-reading src here happens AFTER backup()
+        # completes, so live writers (e.g. muon detector at ~80 events/min) will
+        # have appended more rows to src in the interim. That's expected and OK.
+        #
+        # The corruption signal we care about is dst_n > src_n (destination has
+        # rows the source doesn't — physically impossible for append-only tables;
+        # would indicate write corruption or wrong file). Equality and src_n >=
+        # dst_n are both healthy outcomes.
         src_conn = sqlite3.connect(str(source))
         try:
             for table in _all_tables(src_conn):
                 src_n = _row_count(src_conn, table)
                 dst_n = _row_count(check, table)
-                if src_n != dst_n:
-                    log.error("backup.row_count_mismatch", table=table, src=src_n, dst=dst_n)
+                if dst_n > src_n:
+                    log.error(
+                        "backup.row_count_inverted",
+                        table=table,
+                        src=src_n,
+                        dst=dst_n,
+                        hint="destination has more rows than source — corruption or wrong file",
+                    )
                     check.close()
                     dest_db.unlink(missing_ok=True)
                     return 1
+                if src_n != dst_n:
+                    # Healthy drift — log at info so operators can see live-write activity
+                    log.info(
+                        "backup.row_count_drift",
+                        table=table,
+                        src=src_n,
+                        dst=dst_n,
+                        drift=src_n - dst_n,
+                    )
         finally:
             src_conn.close()
     finally:
