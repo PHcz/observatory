@@ -1,0 +1,13 @@
+{
+  "nickname": "observatory-weather",
+  "model": "weather",
+  "uid": "e6614c775b8c4035",
+  "timestamp": "2026-05-27T12:00:00Z",
+  "readings": {
+    "temperature": 18.4,
+    "humidity": 61.2,
+    "pressure": 1012.3,
+    "light": 234.5,
+    "voltage": 2.7
+  }
+}

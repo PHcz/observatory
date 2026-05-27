@@ -1,0 +1,13 @@
+{
+  "nickname": "rogue-device",
+  "model": "weather",
+  "uid": "ffffffffffffffff",
+  "timestamp": "2026-05-27T12:15:00Z",
+  "readings": {
+    "temperature": 17.0,
+    "humidity": 65.0,
+    "pressure": 1011.0,
+    "light": 100.0,
+    "voltage": 2.5
+  }
+}
