@@ -58,3 +58,40 @@ def test_backup_fstab_template_has_uuid_placeholder() -> None:
     assert "/mnt/backup" in f
     assert "nofail" in f
     assert "uid=observatory" in f
+
+
+# === Phase 3: Weather Node Mosquitto bundle ===
+
+
+def test_mosquitto_conf_sec03_directives() -> None:
+    content = _read("deploy/mosquitto/mosquitto.conf")
+    assert "listener 1883 ${LAN_IP}" in content, "SEC-03: must bind to LAN-IP, not 0.0.0.0"
+    assert "allow_anonymous false" in content
+    assert "acl_file /etc/mosquitto/acl" in content
+    assert "password_file /etc/mosquitto/passwords" in content
+    assert "persistence true" in content
+
+
+def test_mosquitto_acl_two_users() -> None:
+    content = _read("deploy/mosquitto/acl.conf")
+    assert "user enviro-observatory-weather" in content
+    assert "topic write enviro/observatory-weather" in content
+    assert "user obs-api-subscriber" in content
+    assert "topic read enviro/#" in content
+
+
+def test_mosquitto_passwords_example_exists_not_real() -> None:
+    assert (REPO_ROOT / "deploy/mosquitto/passwords.example").is_file()
+    assert not (REPO_ROOT / "deploy/mosquitto/passwords").is_file(), (
+        "Real passwords file must not be committed (gitignored)"
+    )
+
+
+def test_mosquitto_readme_documents_passwd() -> None:
+    p = REPO_ROOT / "deploy/mosquitto/README.md"
+    assert p.is_file()
+    content = p.read_text()
+    assert "mosquitto_passwd" in content
+    assert "enviro-observatory-weather" in content
+    assert "obs-api-subscriber" in content
+    assert "ss -tlnp" in content
