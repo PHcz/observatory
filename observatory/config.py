@@ -28,8 +28,21 @@ class Settings(BaseSettings):
     observatory_db_path: str = "/var/lib/observatory/observatory.db"
 
     # --- MQTT (Phase 3+) ---
+    # TODO(phase-8): remove — superseded by mqtt_broker_host/mqtt_broker_port (Phase 3)
     mqtt_host: str = "localhost"
     mqtt_port: int = Field(default=1883, ge=1, le=65535)
+
+    # --- MQTT broker (Phase 3) ---
+    mqtt_broker_host: str = Field(default="localhost", min_length=1)
+    mqtt_broker_port: int = Field(default=1883, ge=1, le=65535)
+    mqtt_username: str = Field(default="obs-api-subscriber")
+    mqtt_password: str = Field(default="")  # gitignored secret; empty allowed for dev anon broker
+    # --- Weather node (Phase 3) ---
+    weather_nickname: str = Field(default="observatory-weather", min_length=1)
+    weather_staleness_sec: int = Field(default=1800, ge=60, le=86400)
+    weather_mqtt_topic_filter: str = Field(default="enviro/#")
+    weather_subscriber_backoff_initial_sec: float = Field(default=1.0, ge=0.1, le=30.0)
+    weather_subscriber_backoff_max_sec: float = Field(default=30.0, ge=1.0, le=600.0)
 
     # --- Muon detector (Phase 2) ---
     muon_serial_path: str = "/dev/picomuon"
