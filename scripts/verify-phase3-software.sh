@@ -108,17 +108,19 @@ pass "2: migrations applied to $DB_PATH"
 
 echo "[3/8] Starting FastAPI (uvicorn) in background on 127.0.0.1:8765..."
 # Throwaway env: dev broker (anon), throwaway DB, throwaway empty static bundle dir.
+# Env var names match pydantic-settings field names (no OBSERVATORY_ prefix except on
+# observatory_db_path itself). See tests/conftest.py:valid_env for canonical names.
 OBSERVATORY_DB_PATH="$DB_PATH" \
-OBSERVATORY_HOME_LAT=51.5 OBSERVATORY_HOME_LON=-0.1 \
-OBSERVATORY_MQTT_BROKER_HOST=localhost OBSERVATORY_MQTT_BROKER_PORT=1883 \
-OBSERVATORY_MQTT_USERNAME= OBSERVATORY_MQTT_PASSWORD= \
-OBSERVATORY_WEATHER_NICKNAME=observatory-weather \
-OBSERVATORY_API_BIND_HOST=127.0.0.1 OBSERVATORY_API_BIND_PORT=8765 \
-OBSERVATORY_API_ORIGIN_ALLOWLIST=localhost,127.0.0.1 \
-OBSERVATORY_API_STATIC_BUNDLE_DIR="$BUNDLE_DIR" \
+HOME_LAT=51.5 HOME_LON=-0.1 \
+MQTT_BROKER_HOST=localhost MQTT_BROKER_PORT=1883 \
+MQTT_USERNAME= MQTT_PASSWORD= \
+WEATHER_NICKNAME=observatory-weather \
+API_BIND_HOST=127.0.0.1 API_BIND_PORT=8765 \
+API_ORIGIN_ALLOWLIST=localhost,127.0.0.1 \
+API_STATIC_BUNDLE_DIR="$BUNDLE_DIR" \
 OBS_ENV=development \
   nohup uv run uvicorn observatory.api.main:app --host 127.0.0.1 --port 8765 \
-    >"$LOG_FILE" 2>&1 &
+    --lifespan on >"$LOG_FILE" 2>&1 &
 echo $! >"$PID_FILE"
 # Give lifespan time to start subscriber + connect to broker.
 sleep 4
@@ -132,10 +134,15 @@ fi
 pass "3: uvicorn running (pid=$(cat "$PID_FILE"))"
 
 echo "[4/8] Publishing burst of 5 messages..."
-timeout 6 uv run python scripts/fake-enviro.py \
+# Portable timeout: background + kill (macOS has no GNU `timeout`).
+uv run python scripts/fake-enviro.py \
   --broker-host localhost --broker-port 1883 \
   --nickname observatory-weather \
-  --interval 1 --burst-size 5 >/dev/null 2>&1 || true
+  --interval 1 --burst-size 5 >/dev/null 2>&1 &
+_pub_pid=$!
+sleep 6
+kill -TERM "$_pub_pid" 2>/dev/null || true
+wait "$_pub_pid" 2>/dev/null || true
 sleep 2
 pass "4: fake-enviro burst published (nickname=observatory-weather, size=5)"
 
@@ -168,10 +175,15 @@ pass "6: /api/health.local.weather has staleness_threshold_sec=1800 + source=obs
 
 echo "[7/8] Replaying burst — confirm UNIQUE(node_id, ts) dedup..."
 n_before=$n
-timeout 6 uv run python scripts/fake-enviro.py \
+# Portable timeout: background + kill (macOS has no GNU `timeout`).
+uv run python scripts/fake-enviro.py \
   --broker-host localhost --broker-port 1883 \
   --nickname observatory-weather \
-  --interval 1 --burst-size 5 >/dev/null 2>&1 || true
+  --interval 1 --burst-size 5 >/dev/null 2>&1 &
+_pub_pid=$!
+sleep 6
+kill -TERM "$_pub_pid" 2>/dev/null || true
+wait "$_pub_pid" 2>/dev/null || true
 sleep 2
 n_after=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM weather")
 # Some new rows are expected (wall-clock has advanced between bursts) but the
@@ -183,10 +195,14 @@ fi
 pass "7: replay rows before=$n_before after=$n_after (UNIQUE(node_id, ts) honoured)"
 
 echo "[8/8] Publishing with unknown nickname — expect WARN drop log..."
-timeout 5 uv run python scripts/fake-enviro.py \
+uv run python scripts/fake-enviro.py \
   --broker-host localhost --broker-port 1883 \
   --nickname rogue-device \
-  --interval 1 --burst-size 2 >/dev/null 2>&1 || true
+  --interval 1 --burst-size 2 >/dev/null 2>&1 &
+_pub_pid=$!
+sleep 5
+kill -TERM "$_pub_pid" 2>/dev/null || true
+wait "$_pub_pid" 2>/dev/null || true
 sleep 2
 if grep -q "weather_nickname_unknown" "$LOG_FILE"; then
   pass "8: unknown-nickname drop logged (weather_nickname_unknown)"
