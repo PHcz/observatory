@@ -28,5 +28,8 @@ frontend/.svelte-kit/
 
 # Phase 3 — dev Mosquitto + secrets
 dev/mosquitto/data/
+
+# Real Mosquitto password files (never commit) — only .example is tracked
 deploy/mosquitto/passwords
+/etc/mosquitto/passwords
 passwords
