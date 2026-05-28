@@ -7,7 +7,7 @@
     "temperature": 18.4,
     "humidity": 61.2,
     "pressure": 1012.3,
-    "light": 234.5,
+    "luminance": 234.5,
     "voltage": 2.7
   }
 }

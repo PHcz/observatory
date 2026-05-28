@@ -2,17 +2,25 @@
 
 Strict pydantic v2 models for the JSON shape published by Pimoroni's stock
 firmware to topic ``enviro/<nickname>``. Field aliases translate firmware
-names (temperature, humidity, pressure, light, voltage) to schema columns
+names (temperature, humidity, pressure, luminance, voltage) to schema columns
 (temp_c, humidity_pct, pressure_hpa, lux, battery_v) — locked in
 03-CONTEXT.md §Schema reconciliation.
 
-Extra firmware fields (wind_speed, wind_direction, rain, rain_per_second)
-are silently ignored — the Weather variant doesn't have those sensors but
-a future RJ11-expanded board would. ``extra='ignore'`` on both models keeps
-the parser future-proof against firmware additions while remaining strict
-on type drift of known fields.
+NOTE: The luminance field name was verified against the actual firmware
+shipped to the operator on 2026-05-28; earlier research (03-RESEARCH.md)
+predicted ``light`` based on a different firmware version. Real key is
+``luminance`` per pimoroni/enviro main branch (enviro/boards/weather.py).
 
-Missing ``voltage`` parses to ``battery_v=None``; all other readings are
+Extra firmware fields (wind_speed, wind_direction, rain, rain_per_second)
+are silently ignored — the Weather variant doesn't have anemometer / rain
+gauge attached in the bench config; an RJ11-expanded outdoor board may
+populate them later. ``extra='ignore'`` on both models keeps the parser
+future-proof against firmware additions while remaining strict on type
+drift of known fields.
+
+Missing ``voltage`` parses to ``battery_v=None`` — the Weather board's
+firmware doesn't include voltage in MQTT publishes for AA-powered units;
+the value is logged locally on the SD card. All other readings are
 required and will raise ``pydantic.ValidationError`` if absent or malformed.
 """
 
@@ -29,7 +37,7 @@ class WeatherPayload(BaseModel):
     temp_c: float = Field(alias="temperature")
     humidity_pct: float = Field(alias="humidity")
     pressure_hpa: float = Field(alias="pressure")
-    lux: float = Field(alias="light")
+    lux: float = Field(alias="luminance")
     battery_v: float | None = Field(default=None, alias="voltage")
 
 

@@ -7,6 +7,6 @@
     "temperature": 18.6,
     "humidity": 60.8,
     "pressure": 1012.4,
-    "light": 240.1
+    "luminance": 240.1
   }
 }

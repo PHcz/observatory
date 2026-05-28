@@ -1,0 +1,16 @@
+{
+  "readings": {
+    "pressure": 1018.97,
+    "rain": 0,
+    "wind_speed": 0,
+    "temperature": 27.33,
+    "humidity": 44.42,
+    "wind_direction": 90,
+    "rain_per_second": 0.0,
+    "luminance": 307.47
+  },
+  "nickname": "observatory-weather",
+  "model": "weather",
+  "uid": "e6614864d32f9936",
+  "timestamp": "2026-05-28T16:35:04Z"
+}

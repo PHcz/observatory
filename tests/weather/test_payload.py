@@ -64,7 +64,7 @@ def test_rejects_wrong_type() -> None:
     bad = (
         b'{"nickname":"x","timestamp":"2026-01-01T00:00:00Z",'
         b'"readings":{"temperature":"hot","humidity":50.0,'
-        b'"pressure":1000.0,"light":100.0}}'
+        b'"pressure":1000.0,"luminance":100.0}}'
     )
     with pytest.raises(ValidationError):
         parse_envelope(bad)
@@ -86,3 +86,24 @@ def test_timestamp_returned_as_string(load_payload: Callable[[str], bytes]) -> N
     # Raw ISO 8601 — ts conversion is the writer's job (03-02)
     assert env.timestamp == "2026-05-27T12:00:00Z"
     assert isinstance(env.timestamp, str)
+
+
+def test_parses_live_firmware_capture(load_payload: Callable[[str], bytes]) -> None:
+    """Regression: verbatim capture from the operator's actual Pimoroni Enviro
+    Weather board on 2026-05-28 (bench test, AA alkalines, firmware shipped
+    pre-flashed). Verifies all field aliases against ground-truth, including:
+
+    - ``luminance`` -> lux (NOT ``light`` — 03-RESEARCH.md predicted wrong key)
+    - voltage absent from Weather-board payloads -> battery_v=None
+    - extra fields (rain, wind_speed, wind_direction, rain_per_second) ignored
+    """
+    env = parse_envelope(load_payload("live_firmware_capture.json"))
+    assert env.nickname == "observatory-weather"
+    assert env.model == "weather"
+    assert env.uid == "e6614864d32f9936"
+    assert env.timestamp == "2026-05-28T16:35:04Z"
+    assert env.readings.temp_c == 27.33
+    assert env.readings.humidity_pct == 44.42
+    assert env.readings.pressure_hpa == 1018.97
+    assert env.readings.lux == 307.47
+    assert env.readings.battery_v is None  # Weather board firmware omits voltage
