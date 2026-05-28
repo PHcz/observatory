@@ -90,7 +90,7 @@
   </div>
 
   <div class="stat">
-    <div class="stat-label">UV</div>
+    <div class="stat-label">LIGHT</div>
     <div class="stat-value">
       {#if luxStr !== null}
         {luxStr}
