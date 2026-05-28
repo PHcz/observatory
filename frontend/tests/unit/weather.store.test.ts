@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { weatherStore, setWeather, seedWeatherHistory } from '$lib/stores/weather';
-import type { WeatherData } from '$lib/types';
+import { weatherStore, setWeather, seedWeatherHistory, maxLuxToday } from '$lib/stores/weather';
+import type { WeatherData, WeatherPoint } from '$lib/types';
 
 const makeReading = (ts: number, temp: number | null = 20): WeatherData => ({
   ts,
@@ -56,5 +56,59 @@ describe('weatherStore.setWeather appends to history for live chart updates', ()
     setWeather(makeReading(1_000_000, null));
     const state = get(weatherStore);
     expect(state.history[0].temp_c).toBeNull();
+  });
+});
+
+describe('maxLuxToday (UI-13)', () => {
+  beforeEach(() => {
+    weatherStore.set({ current: null, history: [], lastUpdateTs: null });
+  });
+
+  it('returns null when history is empty', () => {
+    expect(get(maxLuxToday)).toBeNull();
+  });
+
+  it('returns the max lux value from today', () => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const t = Math.floor(todayStart.getTime() / 1000);
+    seedWeatherHistory([
+      { ts: t + 3600, temp_c: 12, lux: 5000 } as WeatherPoint,
+      { ts: t + 7200, temp_c: 14, lux: 12000 } as WeatherPoint,
+      { ts: t + 10800, temp_c: 15, lux: 8000 } as WeatherPoint,
+    ]);
+    expect(get(maxLuxToday)).toBe(12000);
+  });
+
+  it('excludes yesterday from the max', () => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const t = Math.floor(todayStart.getTime() / 1000);
+    seedWeatherHistory([
+      { ts: t - 7200, temp_c: 10, lux: 50000 } as WeatherPoint, // yesterday — exclude
+      { ts: t + 3600, temp_c: 12, lux: 5000 } as WeatherPoint, // today
+    ]);
+    expect(get(maxLuxToday)).toBe(5000);
+  });
+
+  it('ignores null lux readings', () => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const t = Math.floor(todayStart.getTime() / 1000);
+    seedWeatherHistory([
+      { ts: t + 3600, temp_c: 12, lux: null } as WeatherPoint,
+      { ts: t + 7200, temp_c: 14, lux: 800 } as WeatherPoint,
+    ]);
+    expect(get(maxLuxToday)).toBe(800);
+  });
+
+  it('returns null when today has only null lux', () => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const t = Math.floor(todayStart.getTime() / 1000);
+    seedWeatherHistory([
+      { ts: t + 3600, temp_c: 12, lux: null } as WeatherPoint,
+    ]);
+    expect(get(maxLuxToday)).toBeNull();
   });
 });
