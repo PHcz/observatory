@@ -7,7 +7,7 @@
     "temperature": 19.1,
     "humidity": 59.4,
     "pressure": 1012.1,
-    "light": 312.7,
+    "luminance": 312.7,
     "voltage": 2.68,
     "wind_speed": 0.0,
     "wind_direction": 0,
