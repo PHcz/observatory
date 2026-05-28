@@ -122,6 +122,7 @@ export interface MuonPoint {
 export interface WeatherPoint {
   ts: number;
   temp_c: number | null;
+  lux?: number | null;
 }
 
 // Source keys and interval constants
