@@ -27,11 +27,6 @@ class Settings(BaseSettings):
     # --- Database ---
     observatory_db_path: str = "/var/lib/observatory/observatory.db"
 
-    # --- MQTT (Phase 3+) ---
-    # TODO(phase-8): remove — superseded by mqtt_broker_host/mqtt_broker_port (Phase 3)
-    mqtt_host: str = "localhost"
-    mqtt_port: int = Field(default=1883, ge=1, le=65535)
-
     # --- MQTT broker (Phase 3) ---
     mqtt_broker_host: str = Field(default="localhost", min_length=1)
     mqtt_broker_port: int = Field(default=1883, ge=1, le=65535)

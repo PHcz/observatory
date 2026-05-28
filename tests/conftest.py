@@ -37,7 +37,12 @@ def tmp_backup_mount(tmp_path: Path) -> Path:
 def isolated_env(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     """Clear OBSERVATORY_* and HOME_LAT/HOME_LON env vars for this test."""
     for k in list(os.environ.keys()):
-        if k.startswith("OBSERVATORY_") or k in {"HOME_LAT", "HOME_LON", "MQTT_HOST", "MQTT_PORT"}:
+        if k.startswith("OBSERVATORY_") or k in {
+            "HOME_LAT",
+            "HOME_LON",
+            "MQTT_BROKER_HOST",
+            "MQTT_BROKER_PORT",
+        }:
             monkeypatch.delenv(k, raising=False)
     yield
 
@@ -48,5 +53,5 @@ def valid_env(monkeypatch: pytest.MonkeyPatch, tmp_db_path: Path) -> None:
     monkeypatch.setenv("HOME_LAT", "51.5074")
     monkeypatch.setenv("HOME_LON", "-0.1278")
     monkeypatch.setenv("OBSERVATORY_DB_PATH", str(tmp_db_path))
-    monkeypatch.setenv("MQTT_HOST", "localhost")
-    monkeypatch.setenv("MQTT_PORT", "1883")
+    monkeypatch.setenv("MQTT_BROKER_HOST", "localhost")
+    monkeypatch.setenv("MQTT_BROKER_PORT", "1883")

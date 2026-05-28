@@ -45,7 +45,13 @@ def test_frontend_dir_reserved() -> None:
 
 def test_env_example_documents_all_required_keys() -> None:
     content = (REPO_ROOT / ".env.example").read_text()
-    for key in ["HOME_LAT", "HOME_LON", "OBSERVATORY_DB_PATH", "MQTT_HOST", "MQTT_PORT"]:
+    for key in [
+        "HOME_LAT",
+        "HOME_LON",
+        "OBSERVATORY_DB_PATH",
+        "MQTT_BROKER_HOST",
+        "MQTT_BROKER_PORT",
+    ]:
         assert f"{key}=" in content, f".env.example missing key {key}"
 
 
