@@ -12,8 +12,8 @@ def test_loads_with_valid_env(valid_env: None) -> None:
     s = Settings()
     assert s.home_lat == pytest.approx(51.5074)
     assert s.home_lon == pytest.approx(-0.1278)
-    assert s.mqtt_host == "localhost"
-    assert s.mqtt_port == 1883
+    assert s.mqtt_broker_host == "localhost"
+    assert s.mqtt_broker_port == 1883
 
 
 def test_missing_home_lat_raises(isolated_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -52,7 +52,7 @@ def test_home_lon_above_range_raises(isolated_env: None, monkeypatch: pytest.Mon
 def test_mqtt_port_above_range_raises(isolated_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME_LAT", "0.0")
     monkeypatch.setenv("HOME_LON", "0.0")
-    monkeypatch.setenv("MQTT_PORT", "70000")
+    monkeypatch.setenv("MQTT_BROKER_PORT", "70000")
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
 
@@ -60,7 +60,7 @@ def test_mqtt_port_above_range_raises(isolated_env: None, monkeypatch: pytest.Mo
 def test_mqtt_port_zero_raises(isolated_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME_LAT", "0.0")
     monkeypatch.setenv("HOME_LON", "0.0")
-    monkeypatch.setenv("MQTT_PORT", "0")
+    monkeypatch.setenv("MQTT_BROKER_PORT", "0")
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
 
