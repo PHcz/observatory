@@ -4,6 +4,7 @@
   import { initWs } from '$lib/stores/ws';
   import { initHealthPolling } from '$lib/stores/health';
   import Container from '$lib/Container.svelte';
+  import CadenceWarningBanner from '$lib/components/CadenceWarningBanner.svelte';
   import HeaderPanel from '$lib/panels/HeaderPanel.svelte';
   import StatsRow from '$lib/panels/StatsRow.svelte';
   import MuonChart from '$lib/panels/MuonChart.svelte';
@@ -33,6 +34,7 @@
 </svelte:head>
 
 <Container>
+  <CadenceWarningBanner />
   <HeaderPanel />
   <StatsRow />
   <MuonChart />
