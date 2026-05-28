@@ -6,12 +6,17 @@
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   $: summary = $lightningStore.summary;
-  // NOTE: /api/lightning/summary does not expose hourly buckets (Phase 6 Plan 06-04).
-  // hourlyBuckets is populated by the store but always comes in as 24 zeros until
-  // a future API update adds per-hour counts. Sparkline renders zero-height bars until then.
-  $: hourlyBuckets = $lightningStore.hourlyBuckets.length === 24
-    ? $lightningStore.hourlyBuckets
-    : new Array(24).fill(0);
+  // /api/lightning/summary now emits hourly_buckets (Phase 8 Plan 08-07). Read
+  // from summary.hourly_buckets first; fall back to state-level hourlyBuckets
+  // (legacy Phase 7 path); final fallback is 24 zeros so the SVG always renders
+  // a stable bar count. setLightning's spread-merge (Plan 07-13) preserves
+  // hourly_buckets across partial WS frames that omit it.
+  $: summaryBuckets = summary?.hourly_buckets;
+  $: hourlyBuckets = (summaryBuckets && summaryBuckets.length === 24)
+    ? summaryBuckets
+    : ($lightningStore.hourlyBuckets.length === 24
+        ? $lightningStore.hourlyBuckets
+        : new Array(24).fill(0));
 
   $: blitz = $healthStore.data?.external?.blitzortung;
   $: blitzLastTs = summary?.ts ?? blitz?.last_event_ts ?? null;
