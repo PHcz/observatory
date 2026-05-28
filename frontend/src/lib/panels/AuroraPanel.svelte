@@ -23,9 +23,7 @@
 </script>
 
 <section class="aurora-panel" class:is-stale-amber={auroraLevel === 'amber'} class:is-stale-red={auroraLevel === 'red'}>
-  {#if auroraLevel !== 'fresh'}
-    <StalenessCaption lastTs={auroraLastTs} />
-  {/if}
+  <StalenessCaption lastTs={auroraLastTs} level={auroraLevel} />
   <div class="section-header">
     <span class="section-title">Aurora visibility</span>
     <span class="section-meta">AuroraWatch UK · Lancaster</span>
