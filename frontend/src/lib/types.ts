@@ -88,6 +88,9 @@ export interface SourceHealth {
   staleness_threshold_sec: number;
   last_poll_status: string | null;
   last_poll_ts?: number;
+  // UI-20 (Phase 8 Plan 05): backend marks sources whose silence has crossed
+  // 2× expected interval. Drives CadenceWarningBanner + HealthRow amber tint.
+  cadence_warning?: boolean;
 }
 
 export interface HealthResponse {
