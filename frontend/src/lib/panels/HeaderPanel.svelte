@@ -108,6 +108,7 @@
     align-items: flex-start;
     gap: 64px;
     padding-bottom: 48px;
+    /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
     border-bottom: 1px solid var(--border);
   }
@@ -121,6 +122,7 @@
     .header {
       flex-direction: column;
       gap: 32px;
+      /* token: section-bottom-margin (UI-15) — 48px tier at ≤900px */
       margin-bottom: 48px;
       padding-bottom: 32px;
     }
@@ -156,6 +158,10 @@
     margin-left: 4px;
   }
 
+  /* token: subtitle-bottom-margin (UI-15) — narrative subtitle is the last element
+     in the header-main flow; section-bottom-margin (80px) on .header provides the
+     gap to the next sibling. caption-placement: below (StalenessCaption is
+     intentionally absent in HeaderPanel — hero number can't carry stale state). */
   .subtitle {
     font-size: 16px;
     font-weight: 600;

@@ -79,12 +79,19 @@
 
 <style>
   .section {
+    /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
   }
+  /* token: caption-placement (UI-15) — StalenessCaption rendered below the
+     section-sub (subscribed source is WS-pushed and hardcoded level='fresh',
+     so caption is permanently suppressed; placement contract intact). */
   .section-header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 24px
+       because MuonChart's section-header carries a bottom border separator and
+       needs extra breathing room above the section-sub. Flagged for follow-up. */
     margin-bottom: 24px;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--border);

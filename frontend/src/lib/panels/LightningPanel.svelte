@@ -79,6 +79,9 @@
 <style>
   .lightning-panel {
     padding: 0;
+    /* token: section-bottom-margin (UI-15) — Phase 7 plan 07-14 placed this on
+     +page.svelte's section wrapper rather than on the panel itself; preserve
+     external placement (panel root keeps 0 margin to avoid double-stacking). */
   }
 
   .section-header {
@@ -103,6 +106,11 @@
     color: var(--accent-soft);
   }
 
+  /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 16px
+     because LightningPanel's StalenessCaption renders between .section-sub and
+     .metrics-row; 16px keeps the caption visually grouped with the sub rather
+     than floating into the metrics. caption-placement: below — StalenessCaption
+     rendered after section-sub. Flagged for follow-up. */
   .section-sub {
     font-size: 13px;
     color: var(--text-muted);
@@ -117,6 +125,7 @@
   .metrics-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
+    /* token: metric-row-gap (UI-15) — matches spec (24px) */
     gap: 24px;
     margin-bottom: 16px;
   }
