@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     weather_subscriber_backoff_initial_sec: float = Field(default=1.0, ge=0.1, le=30.0)
     weather_subscriber_backoff_max_sec: float = Field(default=30.0, ge=1.0, le=600.0)
 
+    # --- Weather node cadence-drift early warning (Phase 8 / UI-20) ---
+    # Expected upload interval for the outdoor Enviro Weather node, in seconds.
+    # Production default = 1500s (25 min, matches Pimoroni firmware default cadence).
+    # Bench override: set WEATHER_EXPECTED_UPLOAD_SEC=300 during 5-min publish window
+    # (Phase 3 plan 03-09 acceptance Part A). UI-20 banner triggers when the broker
+    # hasn't received a publish for more than 2x this interval.
+    weather_expected_upload_sec: int = Field(default=1500, ge=60, le=14400)
+
     # --- Muon detector (Phase 2) ---
     muon_serial_path: str = "/dev/picomuon"
     muon_flush_interval_sec: int = Field(default=5, ge=1, le=60)

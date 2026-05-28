@@ -97,3 +97,43 @@ def cross_check_poller(
         if last_poll_status in ("success", "partial") and age >= down_threshold:
             return "down"
     return event_freshness
+
+
+# UI-20: expected upstream cadence per source (seconds). DISTINCT from
+# INTERVALS_SEC (the poller's CHECK cadence). When an upstream source hasn't
+# published for > 2x its expected interval, cadence_warning fires.
+#
+# weather is dynamic — read from settings at call time so bench overrides apply.
+EXPECTED_INTERVAL_SEC: Final[dict[str, int]] = {
+    "muon": 60,  # 1 event/min minimum heartbeat
+    "usgs": 300,  # 5min
+    "emsc": 300,  # 5min
+    "bgs": 1800,  # 30min
+    "noaa": 900,  # 15min
+    "blitzortung": 30,  # 30s
+    "aurora": 900,  # 15min
+}
+
+
+def cadence_warning(now: int, last_event_ts: int | None, source: str) -> bool:
+    """Return True when the source is overdue by 2x its expected upstream cadence.
+
+    For ``weather``, the expected interval is dynamic (read from
+    ``settings.weather_expected_upload_sec`` at call time so test/bench overrides
+    via env apply without re-import). For all other sources, the value is
+    fixed in EXPECTED_INTERVAL_SEC above.
+
+    Returns False when last_event_ts is None (no events yet) or when the
+    source is unknown to EXPECTED_INTERVAL_SEC.
+    """
+    if last_event_ts is None:
+        return False
+    if source == "weather":
+        from observatory.config import settings  # local import keeps tests cheap
+
+        expected = int(settings.weather_expected_upload_sec)
+    else:
+        expected = EXPECTED_INTERVAL_SEC.get(source, 0)
+    if expected <= 0:
+        return False
+    return (now - last_event_ts) > (2 * expected)
