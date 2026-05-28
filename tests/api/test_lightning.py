@@ -152,4 +152,100 @@ def test_response_shape(client: TestClient) -> None:
     resp = client.get("/api/lightning/summary")
     assert resp.status_code == 200
     body = resp.json()
-    assert set(body.keys()) == {"past_hour", "past_24h", "nearest_km", "total_today", "ts"}
+    assert set(body.keys()) == {
+        "past_hour",
+        "past_24h",
+        "nearest_km",
+        "total_today",
+        "hourly_buckets",
+        "ts",
+    }
+
+
+# ---------------------------------------------------------------------------
+# hourly_buckets[24] (Plan 08-07)
+# ---------------------------------------------------------------------------
+
+
+def test_empty_db_hourly_buckets_all_zero(client: TestClient) -> None:
+    """Empty lightning_strikes table → hourly_buckets is a length-24 array of zeros."""
+    resp = client.get("/api/lightning/summary")
+    body = resp.json()
+    assert "hourly_buckets" in body
+    assert isinstance(body["hourly_buckets"], list)
+    assert len(body["hourly_buckets"]) == 24
+    assert body["hourly_buckets"] == [0] * 24
+
+
+def test_hourly_buckets_shape(client: TestClient, db_path: Path) -> None:
+    """hourly_buckets is a 24-length integer array."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(db_path))
+    _insert_strike(conn, now - 100)
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/lightning/summary")
+    body = resp.json()
+    assert isinstance(body["hourly_buckets"], list)
+    assert len(body["hourly_buckets"]) == 24
+    assert all(isinstance(b, int) for b in body["hourly_buckets"])
+
+
+def test_hourly_buckets_sum_matches_past_24h(client: TestClient, db_path: Path) -> None:
+    """Sum of hourly_buckets equals past_24h count (strict equality)."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(db_path))
+    # Mix of strikes across the last 24h window
+    for i in range(5):
+        _insert_strike(conn, now - 1800 + i * 60)  # within last hour
+    for i in range(3):
+        _insert_strike(conn, now - 7200 + i * 100)  # 1-2h ago
+    for i in range(2):
+        _insert_strike(conn, now - 60000 + i * 100)  # ~16-17h ago
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/lightning/summary")
+    body = resp.json()
+    assert sum(body["hourly_buckets"]) == body["past_24h"]
+    assert sum(body["hourly_buckets"]) == 10
+
+
+def test_hourly_buckets_most_recent_at_index_23(client: TestClient, db_path: Path) -> None:
+    """hourly_buckets[23] = most-recent-hour count; hourly_buckets[0] = oldest hour."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(db_path))
+    # 4 strikes in the most recent hour (0-1h ago)
+    for i in range(4):
+        _insert_strike(conn, now - 60 - i * 60)
+    # 2 strikes 23h ago (i.e. oldest bucket — 23-24h ago)
+    _insert_strike(conn, now - 23 * 3600 - 600)
+    _insert_strike(conn, now - 23 * 3600 - 1200)
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/lightning/summary")
+    buckets = resp.json()["hourly_buckets"]
+    assert buckets[23] == 4
+    assert buckets[0] == 2
+    # No other strikes; all other buckets should be 0
+    assert sum(buckets[1:23]) == 0
+
+
+def test_hourly_buckets_excludes_older_than_24h(client: TestClient, db_path: Path) -> None:
+    """Strikes older than 24h are not counted in hourly_buckets."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(db_path))
+    # 1 strike well within 24h
+    _insert_strike(conn, now - 3600)
+    # 2 strikes older than 24h — must be excluded
+    _insert_strike(conn, now - 86400 - 60)
+    _insert_strike(conn, now - 90000)
+    conn.commit()
+    conn.close()
+
+    resp = client.get("/api/lightning/summary")
+    body = resp.json()
+    assert sum(body["hourly_buckets"]) == 1
+    assert sum(body["hourly_buckets"]) == body["past_24h"]
