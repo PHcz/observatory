@@ -72,9 +72,8 @@
     <div class="section-meta">Past 24 hours</div>
   </header>
   <p class="section-sub">Events per minute, corrected for atmospheric pressure</p>
-  {#if muonLevel !== 'fresh'}
-    <StalenessCaption lastTs={muonLastTs} />
-  {/if}
+  <!-- WS-pushed source: caption permanently hidden, UI-14 -->
+  <StalenessCaption lastTs={muonLastTs} level="fresh" />
   <div bind:this={container} data-chart="muon" class="chart-container"></div>
 </section>
 

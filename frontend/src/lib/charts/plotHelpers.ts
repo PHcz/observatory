@@ -1,5 +1,7 @@
 import * as Plot from '@observablehq/plot';
 import type { MuonPoint, WeatherPoint } from '$lib/types';
+import { loess } from '$lib/charts/loess';
+import { paddedYDomain } from '$lib/charts/domain';
 
 const WINDOW_SEC = 86400;
 const STROKE_DATA = '#111111';
@@ -47,9 +49,14 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
   // current minute bucket (UAT gap 4 round 2).
   const safe = withinSafetyMargin(data, now);
 
-  // Smooth raw per-minute Poisson noise with a 5-point centered rolling average.
-  const smoothed = rollingAverage(safe, 5);
+  // UI-13: dual-layer rendering. Raw 1-minute points in light grey behind,
+  // LOESS-smoothed line (span=0.15) on top. Pitfall 2: marks array order
+  // determines z-order, so raw line MUST come before smoothed line.
+  const rawYs = safe.map(p => p.rate_per_min);
+  const smoothedYs = loess(rawYs, 0.15);
+  const smoothed: MuonPoint[] = safe.map((p, i) => ({ ts: p.ts, rate_per_min: smoothedYs[i] }));
   const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
+  const domain = paddedYDomain([...rawYs, ...smoothedYs]);
 
   return Plot.plot({
     width,
@@ -59,9 +66,18 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
     marginBottom: 28,
     marginTop: 8,
     x: { type: 'time', domain: [start, end] },
-    y: { label: null, grid: true, ticks: 4 },
+    y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: STROKE_GRID, strokeWidth: 1 }),
+      // Raw line — BEHIND smoothed (array order = z-order; Pitfall 2)
+      Plot.line(safe, {
+        x: (d: MuonPoint) => new Date(d.ts * 1000),
+        y: 'rate_per_min',
+        stroke: '#cccccc',
+        strokeWidth: 0.5,
+        strokeOpacity: 0.4,
+      }),
+      // Smoothed line — on top
       Plot.line(smoothed, {
         x: (d: MuonPoint) => new Date(d.ts * 1000),
         y: 'rate_per_min',
