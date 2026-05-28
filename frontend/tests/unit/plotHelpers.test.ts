@@ -142,3 +142,20 @@ describe('buildMuonPlot integrates the 90s safety margin', () => {
     expect(node).toBeInstanceOf(Element);
   });
 });
+
+describe('buildMuonPlot dual-layer (UI-13)', () => {
+  it('produces an SVG/HTML element with raw + smoothed line marks', () => {
+    const now = Math.floor(Date.now() / 1000);
+    // 200 points spanning a few hours, comfortably past 90s safety margin
+    const data: MuonPoint[] = Array.from({ length: 200 }, (_, i) => ({
+      ts: now - 10000 + i * 50,
+      rate_per_min: 80 + Math.random() * 20,
+    }));
+    const el = buildMuonPlot(data, 800);
+    const html = (el as HTMLElement).outerHTML;
+    // Two line marks at the configured opacities/strokes
+    expect(html).toContain('stroke="#cccccc"');
+    expect(html).toContain('stroke-opacity="0.4"');
+    expect(html).toContain('stroke="#111111"');
+  });
+});
