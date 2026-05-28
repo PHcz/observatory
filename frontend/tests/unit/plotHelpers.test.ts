@@ -143,6 +143,32 @@ describe('buildMuonPlot integrates the 90s safety margin', () => {
   });
 });
 
+describe('buildTempPlot dual-layer (UI-13)', () => {
+  it('renders raw + smoothed lines with the configured strokes', () => {
+    const now = Math.floor(Date.now() / 1000);
+    const data = Array.from({ length: 50 }, (_, i) => ({
+      ts: now - (50 - i) * 1800,
+      temp_c: 12 + Math.sin(i / 5) * 2,
+    }));
+    const el = buildTempPlot(data, 800);
+    const html = (el as HTMLElement).outerHTML;
+    expect(html).toContain('stroke="#cccccc"');
+    expect(html).toContain('stroke="#111111"');
+  });
+
+  it('handles negative temps with padded domain', () => {
+    const now = Math.floor(Date.now() / 1000);
+    const data = Array.from({ length: 50 }, (_, i) => ({
+      ts: now - (50 - i) * 1800,
+      temp_c: -3 + i * 0.2,
+    }));
+    const el = buildTempPlot(data, 800);
+    const html = (el as HTMLElement).outerHTML;
+    expect(html).toContain('stroke="#cccccc"');
+    expect(html).toContain('stroke="#111111"');
+  });
+});
+
 describe('buildMuonPlot dual-layer (UI-13)', () => {
   it('produces an SVG/HTML element with raw + smoothed line marks', () => {
     const now = Math.floor(Date.now() / 1000);
