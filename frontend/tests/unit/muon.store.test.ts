@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
-import { muonStore, bufferMuonEvent, flushMuonBuffer, seedMuonHistory, _resetMuonRateWindow } from '$lib/stores/muon';
+import { muonStore, bufferMuonEvent, flushMuonBuffer, seedMuonHistory, setMuonSnapshot, _resetMuonRateWindow } from '$lib/stores/muon';
 import type { MuonEvent } from '$lib/types';
 
 describe('muon store buffer', () => {
@@ -186,5 +186,27 @@ describe('flushMuonBuffer — minute-bucket aggregation', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('muon bootstrap rate (UI-13)', () => {
+  beforeEach(() => {
+    muonStore.set({ current: null, history: [], rate: null, lastUpdateTs: null });
+    _resetMuonRateWindow();
+  });
+
+  it('seeds rate from REST snapshot rate_per_min', () => {
+    setMuonSnapshot({ ts: 1716908400, rate_per_min: 87 } as any);
+    expect(get(muonStore).rate).toBe(87);
+  });
+
+  it('handles null snapshot', () => {
+    setMuonSnapshot(null);
+    expect(get(muonStore).rate).toBeNull();
+  });
+
+  it('handles missing rate_per_min field', () => {
+    setMuonSnapshot({ ts: 1716908400 } as any);
+    expect(get(muonStore).rate).toBeNull();
   });
 });
