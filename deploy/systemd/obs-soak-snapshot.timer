@@ -1,0 +1,12 @@
+[Unit]
+Description=Observatory soak snapshot timer (09:00 Europe/London)
+Requires=obs-soak-snapshot.service
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Europe/London
+Persistent=true
+RandomizedDelaySec=120
+Unit=obs-soak-snapshot.service
+
+[Install]
+WantedBy=timers.target
