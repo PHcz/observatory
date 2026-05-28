@@ -37,9 +37,7 @@
       <span class="section-meta">NOAA SWPC</span>
     </div>
     <p class="section-sub">Solar activity affects cosmic ray flux. A geomagnetic storm 24–72 hours from now would typically show as a dip in the muon chart above.</p>
-    {#if swLevel !== 'fresh'}
-      <StalenessCaption lastTs={swLastTs} />
-    {/if}
+    <StalenessCaption lastTs={swLastTs} level={swLevel} />
   </header>
 
   <div class="solar-cards">

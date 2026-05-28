@@ -33,9 +33,7 @@
     <span class="section-meta">Blitzortung · Europe</span>
   </div>
   <p class="section-sub">Real-time strike detection across Europe</p>
-  {#if blitzLevel !== 'fresh'}
-    <StalenessCaption lastTs={blitzLastTs} />
-  {/if}
+  <StalenessCaption lastTs={blitzLastTs} level={blitzLevel} />
 
   {#if isEmpty}
     <p class="empty">No strikes in the last 24h.</p>

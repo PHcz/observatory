@@ -66,9 +66,8 @@
     <div class="section-title">Temperature today</div>
     <div class="section-meta">Outside sensor</div>
   </header>
-  {#if tempLevel !== 'fresh'}
-    <StalenessCaption lastTs={tempLastTs} />
-  {/if}
+  <!-- WS-pushed source: caption permanently hidden, UI-14 (same as MuonChart) -->
+  <StalenessCaption lastTs={tempLastTs} level="fresh" />
   <div bind:this={container} data-chart="temperature" class="chart-container"></div>
 </section>
 

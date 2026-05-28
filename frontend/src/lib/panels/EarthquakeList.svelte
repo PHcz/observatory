@@ -45,9 +45,7 @@
       <span class="section-meta">USGS · EMSC</span>
     </div>
     <p class="section-sub">Magnitude 3.0+ globally, all detectable UK events</p>
-    {#if quakeLevel !== 'fresh'}
-      <StalenessCaption lastTs={quakeLastTs} />
-    {/if}
+    <StalenessCaption lastTs={quakeLastTs} level={quakeLevel} />
   </header>
 
   {#if displayed.length === 0}
