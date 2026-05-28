@@ -35,6 +35,7 @@ export interface LightningSummary {
   past_24h: number;
   nearest_km: number | null;
   total_today: number;
+  hourly_buckets?: number[];  // length 24; [0]=oldest hour, [23]=most recent. Absent on partial WS frames (08-07).
   ts: number;
 }
 
