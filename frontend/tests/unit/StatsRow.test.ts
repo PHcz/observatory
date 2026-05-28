@@ -22,7 +22,7 @@ describe('StatsRow', () => {
     expect(screen.getByText('Pressure')).toBeTruthy();
     expect(screen.getByText('Humidity')).toBeTruthy();
     expect(screen.getByText('Muons')).toBeTruthy();
-    expect(screen.getByText('UV')).toBeTruthy();
+    expect(screen.getByText('LIGHT')).toBeTruthy();
   });
 
   it('renders pressure value when data available', async () => {
