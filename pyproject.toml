@@ -29,6 +29,7 @@ dev = [
   "pip-audit>=2.8",
   "pre-commit>=4.0",
   "types-PyYAML",
+  "testcontainers[mqtt]>=4.14,<5",
 ]
 
 [dependency-groups]
@@ -41,6 +42,7 @@ dev = [
   "pip-audit>=2.8",
   "pre-commit>=4.0",
   "types-PyYAML",
+  "testcontainers[mqtt]>=4.14,<5",
 ]
 
 [build-system]
@@ -53,10 +55,12 @@ packages = ["observatory"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-ra --strict-markers -m 'not network'"
+addopts = "-ra --strict-markers -m 'not network and not integration and not slow'"
 asyncio_mode = "auto"
 markers = [
   "network: requires live network access (skipped by default; run with -m network -s)",
+  "integration: requires Docker (Mosquitto container) and real SQLite; pre-release gate only",
+  "slow: long-running tests (>5s); excluded from default fast loop",
 ]
 
 [tool.ruff]
@@ -75,7 +79,7 @@ indent-style = "space"
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["observatory"]
+files = ["observatory", "tests", "scripts"]
 exclude = ["frontend", "migrations", ".venv", "tests/fixtures"]
 plugins = ["pydantic.mypy"]
 
