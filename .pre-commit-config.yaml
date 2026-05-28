@@ -65,6 +65,7 @@ repos:
           - httpx
           - defusedxml
           - fastapi
+          - aiomqtt
           - uvicorn
           - websockets
 
