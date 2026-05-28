@@ -1,4 +1,4 @@
-import { writable, type Writable } from 'svelte/store';
+import { derived, writable, type Readable, type Writable } from 'svelte/store';
 import type { WeatherData, WeatherPoint } from '$lib/types';
 
 export interface WeatherState {
@@ -26,7 +26,7 @@ export function setWeather(data: WeatherData): void {
     const alreadyInHistory = existing.some(p => p.ts === data.ts);
     const nextHistory = alreadyInHistory
       ? existing
-      : [...existing, { ts: data.ts, temp_c: data.temp_c }].sort((a, b) => a.ts - b.ts);
+      : [...existing, { ts: data.ts, temp_c: data.temp_c, lux: data.lux ?? null }].sort((a, b) => a.ts - b.ts);
     return {
       ...s,
       current: data,
@@ -39,3 +39,22 @@ export function setWeather(data: WeatherData): void {
 export function seedWeatherHistory(points: WeatherPoint[]): void {
   weatherStore.update(s => ({ ...s, history: points }));
 }
+
+/**
+ * Maximum lux observed since local midnight. Updates reactively as
+ * weatherStore.history grows. Returns null when no non-null lux readings
+ * exist for today (e.g. fresh page load at 00:01, sensor failure).
+ *
+ * Local midnight = today's start in the browser's local timezone, so the
+ * "today" definition tracks the user's wall clock and rolls over automatically.
+ */
+export const maxLuxToday: Readable<number | null> = derived(weatherStore, ($s) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const cutoffSec = Math.floor(todayStart.getTime() / 1000);
+  const luxValues = $s.history
+    .filter(p => p.ts >= cutoffSec && p.lux != null)
+    .map(p => p.lux as number);
+  if (luxValues.length === 0) return null;
+  return Math.max(...luxValues);
+});

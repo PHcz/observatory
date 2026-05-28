@@ -21,7 +21,7 @@ describe('weatherStore.setWeather appends to history for live chart updates', ()
     const state = get(weatherStore);
     expect(state.current?.ts).toBe(1_000_000);
     expect(state.history).toHaveLength(1);
-    expect(state.history[0]).toEqual({ ts: 1_000_000, temp_c: 20.5 });
+    expect(state.history[0]).toEqual({ ts: 1_000_000, temp_c: 20.5, lux: 100 });
   });
 
   it('dedups by ts when REST snapshot already has the live reading', () => {
