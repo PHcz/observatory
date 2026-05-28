@@ -119,6 +119,7 @@ def test_empty_db_all_sources_down(
             "freshness",
             "staleness_threshold_sec",
             "last_poll_status",
+            "cadence_warning",
         }
         if name == "weather":
             expected_keys = expected_keys | {"source"}
@@ -137,6 +138,7 @@ def test_empty_db_all_sources_down(
             "last_poll_status",
             "freshness",
             "staleness_threshold_sec",
+            "cadence_warning",
         }
         assert s["last_event_ts"] is None
         assert s["freshness"] == "down"

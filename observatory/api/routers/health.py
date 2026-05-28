@@ -26,6 +26,7 @@ from observatory.api._freshness import (
     HEALTHY_MULT,
     INTERVALS_SEC,
     Freshness,
+    cadence_warning,
     cross_check_poller,
     freshness,
     worst,
@@ -124,6 +125,7 @@ def health() -> dict[str, Any]:
                 "freshness": f,
                 "staleness_threshold_sec": HEALTHY_MULT * interval,
                 "last_poll_status": None,
+                "cadence_warning": cadence_warning(now, last, name),
             }
             if name == "weather":
                 # CONTEXT.md §specifics: surface configured nickname so future
@@ -146,6 +148,7 @@ def health() -> dict[str, Any]:
                 "last_poll_status": last_poll_status,
                 "freshness": f,
                 "staleness_threshold_sec": HEALTHY_MULT * interval,
+                "cadence_warning": cadence_warning(now, last, name),
             }
             worst_f = worst(worst_f, f)
 
