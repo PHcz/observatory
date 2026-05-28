@@ -72,9 +72,14 @@
 
 <style>
   .earthquake-list {
+    /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
   }
 
+  /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 24px to
+     give the quake-rows list block clear separation from the section-sub.
+     caption-placement: below — StalenessCaption rendered after section-sub in
+     template (above the rows). Flagged for follow-up. */
   .section-header {
     margin-bottom: 24px;
   }

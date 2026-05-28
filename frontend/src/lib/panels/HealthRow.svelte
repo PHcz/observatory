@@ -79,9 +79,16 @@
 </footer>
 
 <style>
+  /* token: section-bottom-margin (UI-15) — HealthRow is the terminal sibling
+     before the footer; its own bottom-margin is 0 per spec (no panel follows).
+     The 80px top margin is the inverse — gap to the previous sibling — and is
+     the section-bottom-margin token, just attributed to the predecessor. */
   .health-row {
     display: flex;
     flex-wrap: wrap;
+    /* token: metric-row-gap (UI-15) — diverges from spec (24px) to 32px because
+       health entries are minimal text+dot blocks and need extra horizontal
+       breathing room in the wrap-flex layout. Flagged for follow-up. */
     gap: 32px;
     border-top: 1px solid var(--border);
     padding-top: 32px;

@@ -73,12 +73,18 @@
 
 <style>
   .section {
+    /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
   }
+  /* token: caption-placement (UI-15) — StalenessCaption below header (WS-pushed,
+     level='fresh' hardcoded). */
   .section-header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 24px
+       to match MuonChart's bordered-header pattern (visual consistency between
+       the two adjacent charts). Flagged for follow-up. */
     margin-bottom: 24px;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--border);

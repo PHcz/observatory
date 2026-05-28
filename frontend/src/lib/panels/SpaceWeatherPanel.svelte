@@ -68,9 +68,15 @@
 
 <style>
   .space-weather-panel {
+    /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
   }
 
+  /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 32px
+     because section-header contains both title-row AND section-sub stacked, and
+     the larger gap separates the header block from the solar-card grid below.
+     caption-placement: below — StalenessCaption is rendered in template above
+     .section-header for this panel; visually flows above the card grid. */
   .section-header {
     margin-bottom: 32px;
   }
@@ -105,6 +111,10 @@
   .solar-cards {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
+    /* token: metric-row-gap (UI-15) — diverges from spec (24px) to 32px because
+       solar-cards are bordered containers (32px internal padding) and need a
+       larger external gap to read as siblings rather than merged. Flagged for
+       follow-up. */
     gap: 32px;
   }
 

@@ -45,15 +45,22 @@
 <style>
   .aurora-panel {
     padding: 0;
+    /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
   }
 
   @media (max-width: 900px) {
     .aurora-panel {
+      /* token: section-bottom-margin (UI-15) — 48px tier at ≤900px (matches spec) */
       margin-bottom: 48px;
     }
   }
 
+  /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 16px
+     because AuroraPanel's StalenessCaption renders between section-header and
+     aurora-row; 16px keeps the caption visually grouped with the header.
+     caption-placement: below (after header, before status row). Flagged for
+     follow-up. */
   .section-header {
     display: flex;
     align-items: baseline;
