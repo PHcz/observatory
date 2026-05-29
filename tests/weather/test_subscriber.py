@@ -64,11 +64,12 @@ async def test_handle_message_unknown_nickname_dropped(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[int] = []
-    monkeypatch.setattr(
-        sub_mod,
-        "write_reading",
-        lambda *a, **k: (calls.append(1), True)[1],
-    )
+
+    def _record_call(*a: object, **k: object) -> bool:
+        calls.append(1)
+        return True
+
+    monkeypatch.setattr(sub_mod, "write_reading", _record_call)
     monkeypatch.setattr(sub_mod.settings, "weather_nickname", "observatory-weather")
     with capture_logs() as logs:
         await sub_mod._handle_message(_msg(load_payload("unknown_nickname.json")), str(tmp_db))
@@ -85,11 +86,12 @@ async def test_handle_message_malformed_logged_dropped(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[int] = []
-    monkeypatch.setattr(
-        sub_mod,
-        "write_reading",
-        lambda *a, **k: (calls.append(1), True)[1],
-    )
+
+    def _record_call(*a: object, **k: object) -> bool:
+        calls.append(1)
+        return True
+
+    monkeypatch.setattr(sub_mod, "write_reading", _record_call)
     monkeypatch.setattr(sub_mod.settings, "weather_nickname", "observatory-weather")
     with capture_logs() as logs:
         await sub_mod._handle_message(_msg(b"not json"), str(tmp_db))
@@ -104,11 +106,12 @@ async def test_handle_message_no_readings_logged_dropped(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[int] = []
-    monkeypatch.setattr(
-        sub_mod,
-        "write_reading",
-        lambda *a, **k: (calls.append(1), True)[1],
-    )
+
+    def _record_call(*a: object, **k: object) -> bool:
+        calls.append(1)
+        return True
+
+    monkeypatch.setattr(sub_mod, "write_reading", _record_call)
     monkeypatch.setattr(sub_mod.settings, "weather_nickname", "observatory-weather")
     with capture_logs() as logs:
         await sub_mod._handle_message(_msg(load_payload("malformed_no_readings.json")), str(tmp_db))

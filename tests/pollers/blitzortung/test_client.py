@@ -53,7 +53,7 @@ def patched_db(monkeypatch: pytest.MonkeyPatch, tmp_db: Path) -> Path:
 
 
 @pytest.fixture
-def mock_ws_server(load_frames: Callable[[], list[bytes]]):
+def mock_ws_server(load_frames: Callable[[], list[bytes]]) -> Any:
     """Spawn a local websockets.sync.server on an ephemeral port.
 
     The server accepts ANY message (subscribe handshake) and streams the
@@ -133,7 +133,7 @@ def _make_client(
 
         client._backoff_sequence_sec = backoff_override  # type: ignore[attr-defined]
         # Also patch module constant in case run path reads it.
-        client_mod.BACKOFF_SEQUENCE_SEC = backoff_override  # type: ignore[attr-defined]
+        client_mod.BACKOFF_SEQUENCE_SEC = backoff_override
     return client, n
 
 
@@ -155,7 +155,9 @@ def _wait_for(predicate: Callable[[], bool], timeout: float = 5.0) -> bool:
 # --- Tests ------------------------------------------------------------------
 
 
-def test_client_connects_decodes_and_flushes(patched_db: Path, mock_ws_server: dict) -> None:
+def test_client_connects_decodes_and_flushes(
+    patched_db: Path, mock_ws_server: dict[str, object]
+) -> None:
     url = f"ws://127.0.0.1:{mock_ws_server['port']}"
     client, notifier = _make_client(url, radius_km=1e7, flush_interval_sec=0.2)
     t = _run_in_thread(client)
@@ -169,7 +171,9 @@ def test_client_connects_decodes_and_flushes(patched_db: Path, mock_ws_server: d
     assert "READY=1" in notifier.calls
 
 
-def test_client_filters_strikes_outside_radius(patched_db: Path, mock_ws_server: dict) -> None:
+def test_client_filters_strikes_outside_radius(
+    patched_db: Path, mock_ws_server: dict[str, object]
+) -> None:
     url = f"ws://127.0.0.1:{mock_ws_server['port']}"
     # The pinned frames are from Mexico/USA (~-100 lon); London home with
     # 100km radius filters all of them out.
@@ -184,7 +188,9 @@ def test_client_filters_strikes_outside_radius(patched_db: Path, mock_ws_server:
     assert _count_lightning_rows(patched_db) == 0
 
 
-def test_client_emits_stopping_on_shutdown(patched_db: Path, mock_ws_server: dict) -> None:
+def test_client_emits_stopping_on_shutdown(
+    patched_db: Path, mock_ws_server: dict[str, object]
+) -> None:
     url = f"ws://127.0.0.1:{mock_ws_server['port']}"
     client, notifier = _make_client(url, radius_km=1e7, flush_interval_sec=0.2)
     t = _run_in_thread(client)
@@ -216,7 +222,7 @@ def test_client_reconnect_backoff_on_unreachable_url(patched_db: Path) -> None:
     try:
         time.sleep(0.6)
         # Multiple attempts should have been made
-        assert client._attempt >= 2  # type: ignore[attr-defined]
+        assert client._attempt >= 2
     finally:
         client.stopping = True
         t.join(timeout=2.0)
@@ -303,4 +309,5 @@ def test_subscribe_message_in_client() -> None:
 
 def _count_lightning_rows(db_path: Path) -> int:
     with sqlite3.connect(str(db_path)) as c:
-        return c.execute("SELECT COUNT(*) FROM lightning_strikes").fetchone()[0]
+        count: int = c.execute("SELECT COUNT(*) FROM lightning_strikes").fetchone()[0]
+        return count

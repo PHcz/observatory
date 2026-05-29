@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -16,7 +17,7 @@ MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 SCHEMA_0001 = MIGRATIONS_DIR / "0001_initial_schema.sql"
 
 
-def _load():
+def _load() -> Any:
     spec = importlib.util.spec_from_file_location("check_gaps", SCRIPT)
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)

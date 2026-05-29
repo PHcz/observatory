@@ -24,9 +24,7 @@ from observatory.pollers._http import RetriesExhausted
 
 
 @pytest.fixture
-def patched_db(
-    monkeypatch: pytest.MonkeyPatch, tmp_db: Path
-) -> Path:
+def patched_db(monkeypatch: pytest.MonkeyPatch, tmp_db: Path) -> Path:
     """Point get_conn / get_write_conn at the tmp_db for the duration of the test."""
 
     def _factory(_path: str | None = None) -> sqlite3.Connection:
@@ -103,9 +101,7 @@ def test_main_all_three_succeed(
     assert row["flare_class"] == "C4.6"
     assert row["flare_peak_ts"] == 1779748920
 
-    pr_rows = conn.execute(
-        "SELECT * FROM poller_runs WHERE source='noaa'"
-    ).fetchall()
+    pr_rows = conn.execute("SELECT * FROM poller_runs WHERE source='noaa'").fetchall()
     assert len(pr_rows) == 1
     assert pr_rows[0]["status"] == "success"
     assert pr_rows[0]["error_summary"] is None
@@ -171,9 +167,7 @@ def test_main_xray_parse_fail_writes_partial(
     conn.close()
 
 
-def test_main_all_three_fail_no_row(
-    monkeypatch: pytest.MonkeyPatch, patched_db: Path
-) -> None:
+def test_main_all_three_fail_no_row(monkeypatch: pytest.MonkeyPatch, patched_db: Path) -> None:
     _install_fetch(
         monkeypatch,
         kp=RetriesExhausted("kp net"),

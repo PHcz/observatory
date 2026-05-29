@@ -26,10 +26,10 @@ def _make_feature(
     coords: list[float] | str | None = None,
     place: str | None = "Somewhere",
     drop_mag: bool = False,
-) -> dict:
+) -> dict[str, object]:
     if coords is None:
         coords = [-25.7657, -57.9499, 131.676]
-    props: dict = {"time": time_ms}
+    props: dict[str, object] = {"time": time_ms}
     if not drop_mag:
         props["mag"] = mag
     if place is not None:
@@ -42,7 +42,7 @@ def _make_feature(
     }
 
 
-def _wrap(features: list[dict]) -> bytes:
+def _wrap(features: list[dict[str, object]]) -> bytes:
     return json.dumps({"type": "FeatureCollection", "features": features}).encode()
 
 
@@ -171,7 +171,7 @@ def test_parse_partial_failure_logs_warning_with_truncated_raw() -> None:
 def test_parse_per_item_typeerror_caught() -> None:
     # coordinates as a string triggers TypeError on coords[2] / coords[1] indexing-of-string
     # or ValueError on float() conversion — both are caught.
-    body = _wrap([_make_feature(coords="not-a-list")])  # type: ignore[arg-type]
+    body = _wrap([_make_feature(coords="not-a-list")])
     events, failures = parse_usgs(body)
     assert events == []
     assert failures == 1

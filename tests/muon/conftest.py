@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import pty
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
@@ -67,7 +67,7 @@ def fake_sdnotify() -> FakeSystemdNotifier:
 
 
 @pytest.fixture
-def load_fixture():
+def load_fixture() -> Callable[[str], str]:
     """Return a function that loads a tests/fixtures/muon/<name> file as text."""
     fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures" / "muon"
 

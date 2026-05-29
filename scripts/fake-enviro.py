@@ -25,7 +25,7 @@ import time
 import aiomqtt
 
 
-def _build_payload(nickname: str, uid: str = "devstub-0001") -> dict:
+def _build_payload(nickname: str, uid: str = "devstub-0001") -> dict[str, object]:
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     return {
         "nickname": nickname,

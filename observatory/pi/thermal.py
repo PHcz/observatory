@@ -53,9 +53,7 @@ def read_temp_c(binary: str | None = None) -> float:
         check=False,
     )
     if proc.returncode != 0:
-        raise ThermalReadError(
-            f"vcgencmd measure_temp exit={proc.returncode}: {proc.stderr!r}"
-        )
+        raise ThermalReadError(f"vcgencmd measure_temp exit={proc.returncode}: {proc.stderr!r}")
     m = _TEMP_RE.match(proc.stdout.strip())
     if not m:
         raise ThermalReadError(f"unparseable measure_temp output: {proc.stdout!r}")
@@ -77,9 +75,7 @@ def read_throttled(binary: str | None = None) -> str:
         check=False,
     )
     if proc.returncode != 0:
-        raise ThermalReadError(
-            f"vcgencmd get_throttled exit={proc.returncode}: {proc.stderr!r}"
-        )
+        raise ThermalReadError(f"vcgencmd get_throttled exit={proc.returncode}: {proc.stderr!r}")
     m = _THROTTLED_RE.match(proc.stdout.strip())
     if not m:
         raise ThermalReadError(f"unparseable get_throttled output: {proc.stdout!r}")

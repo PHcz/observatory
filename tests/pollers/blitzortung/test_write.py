@@ -22,7 +22,7 @@ def patched_db(monkeypatch: pytest.MonkeyPatch, tmp_db: Path) -> Path:
     return tmp_db
 
 
-def _query(db_path: Path, sql: str) -> list[tuple]:
+def _query(db_path: Path, sql: str) -> list[tuple[object, ...]]:
     with sqlite3.connect(str(db_path)) as c:
         return c.execute(sql).fetchall()
 

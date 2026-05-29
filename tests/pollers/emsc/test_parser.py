@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import cast
 
 import pytest
 import structlog
@@ -29,7 +30,7 @@ def _make_feature(
     lon: float = 117.79,
     flynn: str | None = "TEST REGION",
     coords: list[float] | None = None,
-) -> dict:
+) -> dict[str, object]:
     if coords is None:
         coords = [lon, lat, -(depth or 0.0)]
     return {
@@ -50,7 +51,7 @@ def _make_feature(
     }
 
 
-def _wrap(features: list[dict]) -> bytes:
+def _wrap(features: list[dict[str, object]]) -> bytes:
     return json.dumps({"type": "FeatureCollection", "features": features}).encode("utf-8")
 
 
@@ -157,10 +158,11 @@ def test_parse_structural_error_raises_for_main_to_catch() -> None:
 def test_parse_partial_failure_increments_counter() -> None:
     """8 good + 2 missing unid -> (8, 2). Per-item KeyError caught, not raised."""
     good = [_make_feature(unid=f"g{i}") for i in range(8)]
-    bad: list[dict] = []
+    bad: list[dict[str, object]] = []
     for _ in range(2):
         f = _make_feature()
-        del f["properties"]["unid"]
+        props = cast(dict[str, object], f["properties"])
+        del props["unid"]
         bad.append(f)
     events, failures = parse_emsc(_wrap(good + bad))
     assert len(events) == 8
@@ -169,10 +171,11 @@ def test_parse_partial_failure_increments_counter() -> None:
 
 def test_parse_partial_failure_logs_warning_with_truncated_raw() -> None:
     """Each per-item failure emits a WARNING with truncated raw field (≤200 chars)."""
-    bad: list[dict] = []
+    bad: list[dict[str, object]] = []
     for _ in range(2):
         f = _make_feature()
-        del f["properties"]["unid"]
+        props = cast(dict[str, object], f["properties"])
+        del props["unid"]
         bad.append(f)
     structlog.configure(
         processors=[structlog.testing.LogCapture()],
@@ -194,7 +197,8 @@ def test_parse_per_item_typeerror_caught() -> None:
     """A feature with a non-numeric mag string triggers ValueError on float() — counted."""
     good = _make_feature(unid="g0")
     bad = _make_feature(unid="b0")
-    bad["properties"]["mag"] = "not-a-number"
+    bad_props = cast(dict[str, object], bad["properties"])
+    bad_props["mag"] = "not-a-number"
     events, failures = parse_emsc(_wrap([good, bad]))
     assert len(events) == 1
     assert failures == 1
