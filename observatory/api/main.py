@@ -13,7 +13,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from observatory.api.db_watcher import db_watcher_loop
@@ -88,6 +89,19 @@ app.include_router(ws_router.router, tags=["ws"])  # no /api prefix
 # StaticFiles LAST. Skip if bundle dir absent (dev/CI without built frontend).
 _bundle_dir = Path(settings.api_static_bundle_dir if settings is not None else "")
 if _bundle_dir.exists() and _bundle_dir.is_dir():
+    _spa_fallback = _bundle_dir / "200.html"
+
+    @app.exception_handler(404)
+    async def spa_fallback(request: Request, exc: object) -> FileResponse | JSONResponse:
+        # /api/* and /ws/* return JSON 404; everything else falls back to 200.html
+        # so /settings (and any future SvelteKit route) survives hard refresh.
+        path = request.url.path
+        if path.startswith("/api/") or path.startswith("/ws"):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        if _spa_fallback.exists():
+            return FileResponse(str(_spa_fallback), status_code=200)
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
     app.mount("/", StaticFiles(directory=str(_bundle_dir), html=True), name="frontend")
     log.info("static_bundle_mounted", path=str(_bundle_dir))
 else:
