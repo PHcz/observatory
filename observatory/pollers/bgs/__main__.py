@@ -19,6 +19,7 @@ routing through the strict parse_ts).
 
 from __future__ import annotations
 
+import dataclasses
 import sys
 import time
 
@@ -82,6 +83,8 @@ def main() -> int:
         return 1
 
     # 4. Success path: write the good events
+    # UI-18: BGS is UK-only by definition; every event is local.
+    events = [dataclasses.replace(ev, is_local=True) for ev in events]
     fetched, written = write_events(SOURCE, events, started_at, "success")
     log.info(
         "poll_complete",

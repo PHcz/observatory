@@ -6,6 +6,7 @@ Composition (same shape as USGS main):
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import sys
 import time
@@ -14,6 +15,7 @@ import structlog
 
 from observatory.config import settings
 from observatory.logging import configure_logging
+from observatory.pollers._geo import haversine_km
 from observatory.pollers._http import (
     CrossHostRedirect,
     ResponseTooLarge,
@@ -65,6 +67,17 @@ def main() -> int:
             summary=outcome_summary,
         )
         return 1
+
+    # ---- UI-18: compute is_local from haversine distance to HOME ----
+    radius = settings.observatory_local_radius_km
+    home_lat, home_lon = settings.home_lat, settings.home_lon
+    events = [
+        dataclasses.replace(
+            ev,
+            is_local=haversine_km(home_lat, home_lon, ev.latitude, ev.longitude) <= radius,
+        )
+        for ev in events
+    ]
 
     # ---- Write good events + emit success audit row ----
     fetched, written = write_events(SOURCE, events, started_at, "success")

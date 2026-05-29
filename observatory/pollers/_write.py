@@ -82,8 +82,8 @@ def write_events(
                         cur = conn.execute(
                             "INSERT OR IGNORE INTO earthquakes "
                             "(source, external_id, ts, magnitude, depth_km, "
-                            "latitude, longitude, place) "
-                            "VALUES (?,?,?,?,?,?,?,?)",
+                            "latitude, longitude, place, is_local) "
+                            "VALUES (?,?,?,?,?,?,?,?,?)",
                             (
                                 ev.source,
                                 ev.external_id,
@@ -93,6 +93,7 @@ def write_events(
                                 ev.latitude,
                                 ev.longitude,
                                 ev.place,
+                                int(ev.is_local),  # bool -> 0/1 for SQLite INTEGER (UI-18)
                             ),
                         )
                         written += cur.rowcount  # 1 on insert, 0 on ignore (dedup)

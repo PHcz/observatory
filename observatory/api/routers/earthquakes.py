@@ -71,7 +71,8 @@ def get_earthquakes(
     with get_conn() as conn:
         cursor = conn.execute(
             """
-            SELECT ts, source, external_id, magnitude, depth_km, latitude, longitude, place
+            SELECT ts, source, external_id, magnitude, depth_km, latitude, longitude, place,
+                   is_local
             FROM earthquakes
             WHERE ts BETWEEN ? AND ?
               AND magnitude >= ?

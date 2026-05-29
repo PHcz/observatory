@@ -17,6 +17,8 @@ from observatory.config import Settings
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_0001 = REPO_ROOT / "migrations" / "0001_initial_schema.sql"
 SCHEMA_0002 = REPO_ROOT / "migrations" / "0002_poller_runs.sql"
+# Phase 8.5 UI-18: writer INSERT now references earthquakes.is_local; tmp_db must carry it.
+SCHEMA_0004 = REPO_ROOT / "migrations" / "0004_earthquakes_is_local.sql"
 
 
 @pytest.fixture(autouse=True)
@@ -125,6 +127,7 @@ def tmp_db(tmp_path: Path) -> Path:
     conn = sqlite3.connect(str(db_path), isolation_level=None)
     conn.executescript(SCHEMA_0001.read_text())
     conn.executescript(SCHEMA_0002.read_text())
+    conn.executescript(SCHEMA_0004.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA synchronous=NORMAL")
