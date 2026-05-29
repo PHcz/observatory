@@ -26,10 +26,20 @@ The runbook is split into two sections:
 Confirm before you start:
 
 - [ ] Pimoroni Enviro Weather board (PIM589 — Pico W Aboard variant)
-- [ ] USB-C cable for flashing + bench-test power
+- [ ] **micro USB cable** (USB-A → micro-B, or USB-C → micro-B) for flashing
+      + bench-test power + reading the firmware log via mpremote. **NOT
+      USB-C** — the Pico W on this board has a micro USB port, not USB-C
+      (the Pico 2 W is USB-C but the Enviro Weather is on the original Pico W).
 - [ ] 2× AA battery holder with switch + JST-PH cable (already ordered)
-- [ ] Any 2× AA cells for Part A bench test (alkalines acceptable; NiMH not
-      required until Part B)
+- [ ] Any 2× AA cells for Part A bench test. **Caveat**: alkalines may
+      last <24 h at the bench cadence (5-min reading / every-reading upload)
+      because wifi peak draw causes brown-out when alkalines drop below ~1.3 V
+      under load. Use **fresh** cells from a sealed pack, not loose drawer
+      stock. NiMH (see Part B) handles the peak draw far better.
+- [ ] **No micro SD card needed.** The Pimoroni Enviro firmware caches its
+      `uploads/` directory + `log.txt` on the Pico W's internal 2 MB flash —
+      not on the SD slot. The SD slot is physically present but unused by
+      the stock firmware.
 - [ ] Mac/laptop on the same home wifi as the Pi (`observatory.local`)
 - [ ] Pi reachable at `observatory.local`, `obs-api.service` running with
       Phase 3 code deployed (see § Pi-side prerequisites)
@@ -170,21 +180,39 @@ firmware can publish to your broker and that rows land in `weather`.
 
 ## A.1 Flash latest firmware
 
+> **Skip if board ships pre-flashed.** Pimoroni has been shipping the Enviro
+> Weather pre-flashed since ~2024. Latest stock release is **v0.2.0** (April
+> 2024) — the project repo has been dormant since. If your board arrived
+> already running the firmware (captive portal AP appears on first boot),
+> jump to §A.2.
+
 1. Download the latest `enviro-vX.Y.uf2` release from
    <https://github.com/pimoroni/enviro/releases>.
-2. Hold the **BOOTSEL** button on the Pico W while plugging USB-C into your
-   laptop. The board mounts as a USB volume named `RPI-RP2`.
+2. Hold the **BOOTSEL** button on the Pico W while plugging the **micro USB**
+   cable into your laptop. The board mounts as a USB volume named `RPI-RP2`.
 3. Drag the `.uf2` file onto the volume. The board reboots automatically and
    the volume disappears.
+
+> **Stale `ENVIRO_VERSION` field.** The firmware's `enviro/constants.py`
+> hardcodes `ENVIRO_VERSION = "0.0.10"` even on v0.1.0 / v0.2.0 releases —
+> Pimoroni forgot to bump it. The `log.txt` lines you'll see show
+> `Enviro 0.0.10` regardless of the actual installed version. Use the
+> GitHub release tag of the `.uf2` you flashed as the source of truth.
 
 ## A.2 Enter provisioning AP mode
 
 1. Disconnect USB. With cells (or USB) attached, **press and hold the on-board
    provisioning button while powering on** (see the firmware release notes —
    varies by board rev; the Weather rev presents a single user button).
-2. After a few seconds the board hosts a wifi access point named `enviro`.
-3. On your laptop, join `enviro` (no password). A captive portal should pop
+2. After a few seconds the board hosts a wifi access point named **`enviro`
+   or `Enviro Weather Setup`** (varies by firmware version).
+3. On your laptop, join the AP (no password). A captive portal should pop
    up; if not, browse to <http://192.168.4.1/>.
+
+> **First-boot tip.** Some firmware versions sit at solid red LED on first
+> power-up rather than entering AP mode automatically. If after ~30 seconds
+> the AP hasn't appeared, **press the on-board button once** — that wakes
+> the firmware into the AP loop.
 
 ## A.3 Captive-portal configuration
 
@@ -198,17 +226,31 @@ and ACL expect.
 | Wifi SSID         | _your home wifi SSID_                                   |
 | Wifi password     | _your home wifi password_                               |
 | Destination       | **MQTT**                                                |
-| Broker host       | `observatory.local` (fallback to the Pi's LAN IP if mDNS flakes) |
+| Broker host       | **Pi's LAN IP, e.g. `192.168.0.75`** (NOT `observatory.local` — Pico W's lightweight mDNS stack is unreliable; use the IP directly) |
 | Broker port       | `1883`                                                  |
 | Broker username   | `enviro-observatory-weather`                            |
 | Broker password   | value of `OBS_MQTT_PUB_PASSWORD` from `/etc/observatory/secrets.env` |
 | Reading frequency | **5 minutes**                                           |
-| Upload frequency  | **25 minutes** (= 5 readings batched per upload)        |
+| Upload frequency  | **Every five readings** (= 25 min upload cadence, 5 readings batched per upload) |
+
+> **Upload-frequency field is discrete, not minute-based.** The Pimoroni
+> firmware presents a dropdown of {"Never (just log)", "Every reading",
+> "Every five readings", "Every ten readings", "Every twenty-five readings",
+> "Every fifty readings"} — not a free-form minute count. The 25-minute
+> production cadence is achieved by reading=5min + upload=every-five-readings.
 
 Save. The board reboots into normal operation.
 
-For the bench test you can shorten the wait by setting reading=1 / upload=1
-during this session and re-provisioning to 5/25 before mounting outside.
+**Bench-test shortcut.** For Part A you can set `Upload frequency = Every
+reading` (= 5-min upload window) so the dashboard fills in fast for the
+acceptance walkthrough. **Re-provision to "Every five readings" before
+moving to Part B** — at 5-min upload cadence even fresh AA cells drain
+in <2 weeks (mostly wifi association current; production 25-min cadence
+gives the documented 8-14 months on NiMH).
+
+> **Nickname is case-sensitive.** The broker ACL rejects `Observatory-Weather`
+> or `observatory_weather` — must be exactly `observatory-weather` with the
+> hyphen. Copy-paste from this doc rather than retyping.
 
 ## A.4 Verify on the Pi
 
@@ -402,6 +444,114 @@ tick the **PASS** decision, commit, and Phase 3 is fully closed.
 
 ## Troubleshooting
 
+### On-board LED states (reference)
+
+| LED behaviour | What it means |
+|---------------|---------------|
+| **Solid red, persistent** | Stuck — usually first-boot waiting for button press, or firmware crashed mid-startup (brown-out reset cascade). Press the on-board button once; if no change after 30s and you're on batteries, try fresh cells or USB power. |
+| **Red blinking, slow/regular** | Low-battery warning. Firmware can still wake + read sensors but wifi transmits risk brown-out. Swap cells. |
+| **Red briefly during wake** | Normal — board is alive, taking a sensor reading. |
+| **Green pulse briefly** | Normal — sensor reading complete (does NOT confirm upload success on its own — log only). |
+| **Green LED continuous, rapid blink** | Provisioning AP mode active. |
+| **All LEDs off** | Deep sleep between wake cycles. Expected ~95% of the time. |
+
+### Brown-out failure mode (the silent killer)
+
+When AA cells start dying, you'll see a characteristic failure pattern:
+
+- **Sensor reads continue** (low current — green pulse still seen)
+- **Wifi association fails** at ~3 s timeout (high peak current, ~200 mA, sags
+  voltage below the regulator's drop-out threshold)
+- **Some wakes don't produce a log line at all** — voltage was too low for
+  the Pico W's MCU to even complete its boot sequence. Brown-out reset fires
+  before the firmware reaches its `logging.info` step.
+
+Diagnostic signature in SQLite:
+
+```bash
+# Look for missing 5-min slots in a recent window
+ssh ph@observatory.local 'sudo -n sqlite3 /var/lib/observatory/observatory.db \
+  "SELECT datetime(ts,'\''unixepoch'\'') FROM weather \
+   WHERE ts > strftime('\''%s'\'','\''now'\'','\''-1 hour'\'') ORDER BY ts"'
+```
+
+Compare against expected 5-min boundaries. **Multiple consecutive gaps** = the
+cells are dying, not a wifi blip. Fix: swap cells (and consider moving to
+NiMH which handles peak draw far better — see Part B).
+
+### Reading the firmware log via mpremote
+
+The Pimoroni firmware writes to `log.txt` on the Pico W's internal flash
+(NOT `enviro.log` as some older docs say; NOT the SD card slot). Retrieving
+it requires putting the board on USB.
+
+**One-time setup:**
+
+```bash
+# Mac: install mpremote
+pip install mpremote  # installs to ~/Library/Python/<ver>/bin/mpremote
+
+# If pip used a different Python than your `python3`, call the script directly:
+# /Users/<you>/Library/Python/<ver>/bin/mpremote
+# OR add ~/Library/Python/<ver>/bin to PATH
+```
+
+**Procedure (with the board on USB):**
+
+```bash
+# Switch the battery holder OFF (USB powers the board)
+# Plug micro USB into the Pico W
+# Wait ~3 sec for it to enumerate
+
+# Pull the log
+mpremote cp :log.txt ./enviro-log-$(date +%Y%m%d-%H%M).txt
+
+# Optionally inspect what else is on the flash
+mpremote exec "import os; print(os.listdir('/'))"
+
+# Pull cached failed uploads (each file is one un-published reading)
+mpremote ls uploads
+mpremote cp :uploads/<file>.json ./<file>.json
+```
+
+**Reading the log:** look for `error` / `failed` lines, especially around
+wifi association attempts (`failed to connect to wireless network`). The log
+ALSO captures every wake via `wake reason: rtc_alarm` so a wake-line gap
+between two consecutive entries is a brown-out signature.
+
+**Important:** while mpremote is connected, the firmware is paused at the
+REPL — no new readings, no uploads. **Soft-reset to resume:**
+
+```bash
+mpremote soft-reset
+# Or just unplug USB to return to battery-only operation
+```
+
+### Voltage not telemetered in MQTT payload
+
+The firmware reads battery voltage via ADC pin 29 (`enviro/__init__.py` line
+~120) but the **publish line is commented out** (`__init__.py` line ~412)
+due to an unrelated Thonny IDE bug Pimoroni hasn't fixed. Consequence:
+`battery_v` column in `weather` table is **always NULL**; you can't track
+cell decline from telemetry alone.
+
+Indirect detection: watch `/api/health` `local.weather.cadence_warning`
+(Phase 8 UI-20) — that fires when `now - last_event_ts > 2 × expected_interval`
+which catches a battery-induced gap before the standard `freshness` check.
+
+### USB power vs battery power behaviour
+
+On USB power the firmware behaves slightly differently from battery:
+
+- Cannot enter true deep sleep (USB holds 3.3 V rail up). Instead it
+  **halts** between wakes — RTC alarm still fires correctly.
+- mpremote / Thonny / any serial REPL connection **interrupts main.py**.
+  After disconnecting the serial tool, the firmware does NOT auto-resume
+  — you must `soft-reset` or power-cycle to resume the wake/sleep loop.
+- Long-running USB sessions are fine for diagnostics but will consume any
+  battery cells faster than necessary if both are connected — pull the
+  cells out (or just switch the holder OFF) while debugging on USB.
+
 ### Board won't enter AP mode
 
 - Firmware version mismatch — re-flash with the latest `.uf2`.
@@ -443,8 +593,47 @@ tick the **PASS** decision, commit, and Phase 3 is fully closed.
 - Cross-reference the `check-weather-gaps.py` gap timestamp against
   `journalctl --since '<gap-ts>' --until '<gap-ts+1h>'` for wifi outage,
   broker restart, or power loss on the Pi.
-- If the gap correlates with low `battery_v` readings, the NiMH cells are
-  dying earlier than expected — swap and restart the soak.
+- **`battery_v` is always NULL** in the `weather` table (firmware bug — see
+  §"Voltage not telemetered" above). You cannot diagnose battery decline
+  from the DB. Instead: pull `log.txt` via mpremote (§"Reading the firmware
+  log") and look for `failed to connect to wireless network` clusters or
+  silent wake-line gaps — both are battery-induced.
+- If the soak FAILs with a brown-out signature, the cells are NOT lasting
+  the expected 8-14 months. Common causes: non-LSD NiMH (self-discharge),
+  old cells from the back of a drawer, or a cold-snap reducing alkaline
+  capacity. Re-charge / re-pack and restart the soak.
+
+### NiMH cell selection guidance (Part B prerequisite)
+
+Not all "rechargeable AA" cells are equivalent for this duty cycle:
+
+- **Must be NiMH** (1.2 V nominal) — alkalines work briefly but brown out
+  under wifi load. Lithium primaries (1.5–3.6 V) risk over-voltage on
+  the regulator.
+- **Must be Low Self-Discharge (LSD)** — the Enviro is in deep sleep ~99%
+  of the time outdoors, so self-discharge dominates over actual drain.
+  Non-LSD NiMH loses ~30 %/month idle; LSD holds ~70 % after 12 months.
+- Reference brands that are reliably LSD: **Panasonic Eneloop (standard or
+  Pro)**, **Energizer Recharge Universal / Power Plus / Extreme** (NOT
+  the bare "Recharge" line — check for "Pre-charged" or "Ready to use" on
+  the pack), **AmazonBasics High Capacity**, **IKEA LADDA**.
+- Capacity: 1900–2000 mAh is plenty for this duty cycle. 2500 mAh "Pro"
+  variants exist but have fewer cycles (~500 vs ~2000) and lower charge
+  retention; not worth it for this use case.
+- Cycle life: any LSD cell will outlast the project's v1 lifetime; not a
+  meaningful selection criterion.
+
+### General firmware-side debugging cheatsheet
+
+| Symptom | First check | Where to look |
+|---------|-------------|---------------|
+| Dashboard "Weather node — last seen N min ago" with N > expected cadence × 2 | Pi-side first: is obs-api running? broker healthy? | `systemctl status obs-api mosquitto` + `journalctl -u obs-api --since '10 min ago' \| grep weather` |
+| Board's red LED is blinking | Battery low | Swap cells; if recurring, move to NiMH |
+| Board's red LED is solid (>30 sec) | Firmware stuck; brown-out cascade likely | Power-cycle; if persistent on USB, soft-reset via mpremote |
+| Dashboard healthy but `mosquitto_sub` shows no recent publish | Subscriber-side bug (rare) | `journalctl -u obs-api \| grep weather_payload_invalid` |
+| `mosquitto_sub` shows publishes but DB doesn't grow | Schema mismatch | `mpremote cp :log.txt -` + inspect; check field names vs `observatory/weather/payload.py` aliases |
+| Gaps in DB but log shows successful uploads in that window | Pi-side issue (subscriber crashed, DB lock) | `journalctl -u obs-api` + check SQLite WAL state |
+| Gaps in DB AND silent gaps in log | Brown-out cascade — board never finished boot | Swap cells, monitor for repeat |
 
 ---
 
