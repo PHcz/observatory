@@ -1,7 +1,7 @@
 <script lang="ts">
   import { weatherStore, maxLuxToday } from '$lib/stores/weather';
   import { muonStore } from '$lib/stores/muon';
-  import { dewPointC } from '$lib/utils/dewpoint';
+  import { dewPointC, dewComfort } from '$lib/utils/dewpoint';
   import { healthStore } from '$lib/stores/health';
   import { deriveStaleness } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
@@ -25,6 +25,10 @@
     : '—';
 
   $: humidityMeta = `steady · dew point ${dewPtStr}`;
+
+  $: dewComfortStr = (weather?.temp_c != null && weather?.humidity_pct != null)
+    ? dewComfort(dewPointC(weather.temp_c, weather.humidity_pct))
+    : null;
 
   $: muonStr = muon.rate != null
     ? muon.rate.toFixed(0)
@@ -79,7 +83,9 @@
       {/if}
     </div>
     <div class="stat-meta">{humidityMeta}</div>
-    <div class="stat-subnote">Dew point: under 10°C dry · 15–18°C sticky · 20°C+ muggy</div>
+    {#if dewComfortStr}
+      <div class="stat-subnote">{dewComfortStr}</div>
+    {/if}
   </div>
 
   <div class="stat">
