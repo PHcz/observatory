@@ -79,6 +79,7 @@
       {/if}
     </div>
     <div class="stat-meta">{humidityMeta}</div>
+    <div class="stat-subnote">Dew point: under 10°C dry · 15–18°C sticky · 20°C+ muggy</div>
   </div>
 
   <div class="stat">
@@ -171,5 +172,15 @@
     font-weight: 400;
     color: var(--text-muted);
     margin-top: 4px;
+  }
+
+  /* Dew-point comfort-band guide — mirrors the HumidityChart caption so the
+     reading is interpretable at the stat card too (operator request). */
+  .stat-subnote {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
   }
 </style>
