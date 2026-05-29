@@ -135,9 +135,11 @@
 
   @media (max-width: 600px) {
     .stats-row {
-      grid-template-columns: 1fr;
-      /* token: metric-row-gap (UI-15) — 32px <=600px; further compressed for single-column stack. */
-      gap: 32px;
+      /* 2×2 on phone — four full-width stacked hero numbers read as an
+         oversized, ragged column; a 2-up grid is balanced and compact. */
+      grid-template-columns: 1fr 1fr;
+      gap: 32px 24px;
+      align-items: start;
     }
   }
 

@@ -33,12 +33,20 @@ function tokens() {
 }
 
 /**
- * Approximate number of x-axis time ticks for a 24h window, scaled to chart
- * width. ~2-hour spacing on wide charts (13 ticks), ~3-hour on narrow/mobile
- * (9 ticks) so labels never overlap. Plot rounds to nice clock times.
+ * Explicit x-axis tick values at 4-hour intervals across the 24h window,
+ * aligned to 4-hour clock boundaries (…, 00:00, 04:00, 08:00, …). Returned as
+ * Date[] so Plot renders exactly these and doesn't fall back to its own "nice"
+ * 3-hour spacing (d3 has no 4-hour nice interval, so a count hint won't do it).
  */
-export function xTimeTicks(width: number): number {
-  return width < 700 ? 9 : 13;
+export function xTimeTickValues(startMs: number, endMs: number): Date[] {
+  const FOUR_H = 4 * 3600 * 1000;
+  const d = new Date(startMs);
+  d.setMinutes(0, 0, 0);
+  // Advance to the next clock hour that is a multiple of 4.
+  while (d.getHours() % 4 !== 0) d.setHours(d.getHours() + 1);
+  const ticks: Date[] = [];
+  for (let t = d.getTime(); t <= endMs; t += FOUR_H) ticks.push(new Date(t));
+  return ticks;
 }
 
 /**
@@ -95,11 +103,11 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
   return Plot.plot({
     width,
     height: 240,
-    marginLeft: 60,
-    marginRight: 20,
+    marginLeft: 46,
+    marginRight: 12,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
     y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
@@ -153,11 +161,11 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
   return Plot.plot({
     width,
     height: 180,
-    marginLeft: 60,
-    marginRight: 20,
+    marginLeft: 46,
+    marginRight: 12,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
     y: { label: null, grid: true, ticks: 3, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
@@ -208,11 +216,11 @@ export function buildPressurePlot(data: WeatherPoint[], width: number): SVGEleme
   return Plot.plot({
     width,
     height: 180,
-    marginLeft: 60,
-    marginRight: 20,
+    marginLeft: 46,
+    marginRight: 12,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
     y: { label: null, grid: true, ticks: 3, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
@@ -280,11 +288,11 @@ export function buildHumidityDewpointPlot(data: WeatherPoint[], width: number): 
   return Plot.plot({
     width,
     height: 180,
-    marginLeft: 60,
-    marginRight: 20,
+    marginLeft: 46,
+    marginRight: 12,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
     y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
@@ -350,11 +358,11 @@ export function buildLightPlot(data: WeatherPoint[], width: number): SVGElement 
   return Plot.plot({
     width,
     height: 180,
-    marginLeft: 60,
-    marginRight: 20,
+    marginLeft: 46,
+    marginRight: 12,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
     y: {
       type: 'log',
       grid: true,
