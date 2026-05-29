@@ -78,6 +78,30 @@ export function flushMuonBuffer(): void {
 }
 
 export function setMuonSnapshot(data: MuonData | null): void {
+  // Pre-warm the rolling-60s window from the server-computed rate so the
+  // displayed muons/min doesn't dip on a fresh page load. Without this, the
+  // live window (recentEventTimestamps) starts empty and under-counts for the
+  // first 60s, making the number jump from the snapshot value down to a low
+  // count and recover — visible as a "drop" on a freshly loaded device.
+  // Only seed when the window is empty (first snapshot) so a later snapshot
+  // (e.g. WS reconnect on an already-warm page) doesn't clobber real counts.
+  if (
+    data &&
+    'rate_per_min' in data &&
+    typeof data.rate_per_min === 'number' &&
+    data.rate_per_min > 0 &&
+    recentEventTimestamps.length === 0
+  ) {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const n = Math.round(data.rate_per_min);
+    const seeded: number[] = [];
+    for (let i = 0; i < n; i++) {
+      // Spread synthetic timestamps across the last 60s; they expire naturally
+      // as real events arrive over the next minute, converging to live counts.
+      seeded.push(nowSec - 59 + Math.floor((i / n) * 60));
+    }
+    recentEventTimestamps = seeded;
+  }
   muonStore.update(s => ({
     ...s,
     current: data,

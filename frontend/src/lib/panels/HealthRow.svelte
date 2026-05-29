@@ -83,13 +83,13 @@
      before the footer; its own bottom-margin is 0 per spec (no panel follows).
      The 80px top margin is the inverse — gap to the previous sibling — and is
      the section-bottom-margin token, just attributed to the predecessor. */
+  /* Grid (not wrap-flex) so every row has the same column count. Wrap-flex
+     produced ragged rows (e.g. 2,2,3,2 on phone) because short labels packed
+     unevenly; a fixed-track grid keeps columns aligned at every width. */
   .health-row {
-    display: flex;
-    flex-wrap: wrap;
-    /* token: metric-row-gap (UI-15) — diverges from spec (24px) to 32px because
-       health entries are minimal text+dot blocks and need extra horizontal
-       breathing room in the wrap-flex layout. Flagged for follow-up. */
-    gap: 32px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 24px 32px;
     border-top: 1px solid var(--border);
     padding-top: 32px;
     margin-top: 80px;
@@ -100,16 +100,14 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
-    min-width: 80px;
+    min-width: 0;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 600px) {
     .health-row {
-      gap: 16px;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px 16px;
       margin-top: 48px;
-    }
-    .health-entry {
-      min-width: 0;
     }
   }
 
