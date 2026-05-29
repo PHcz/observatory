@@ -30,6 +30,24 @@
   $: nearestDisplay = summary?.nearest_km != null ? summary.nearest_km.toFixed(0) : '—';
 
   const CELL_W = 100 / 24;
+
+  // Hour-of-day labels under the sparkline. Bucket[23] is the current hour,
+  // bucket[0] is 23 hours ago. Place a few clock-time ticks (matching the
+  // dashboard's other charts) centered under their bars.
+  function fmtHour(clockHour: number): string {
+    const ampm = clockHour < 12 ? 'AM' : 'PM';
+    let h = clockHour % 12;
+    if (h === 0) h = 12;
+    return `${h}${ampm}`;
+  }
+  $: axisTicks = (() => {
+    const nowHour = new Date().getHours();
+    return [0, 6, 12, 18, 23].map((i) => {
+      const hoursAgo = 23 - i;
+      const clockHour = ((nowHour - hoursAgo) % 24 + 24) % 24;
+      return { left: (i + 0.5) * CELL_W, label: fmtHour(clockHour) };
+    });
+  })();
 </script>
 
 <section class="lightning-panel" class:is-stale-amber={blitzLevel === 'amber'} class:is-stale-red={blitzLevel === 'red'}>
@@ -76,6 +94,11 @@
           />
         {/each}
       </svg>
+      <div class="sparkline-axis" aria-hidden="true">
+        {#each axisTicks as tick}
+          <span class="axis-tick" style="left: {tick.left}%">{tick.label}</span>
+        {/each}
+      </div>
       <span class="sparkline-label">STRIKES/HR · LAST 24H</span>
     </div>
   {/if}
@@ -188,6 +211,20 @@
     width: 100%;
     height: 80px;
     display: block;
+  }
+
+  .sparkline-axis {
+    position: relative;
+    height: 16px;
+    margin-top: 2px;
+  }
+  .axis-tick {
+    position: absolute;
+    transform: translateX(-50%);
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted);
+    white-space: nowrap;
   }
 
   .sparkline-label {
