@@ -128,7 +128,9 @@ export interface MuonPoint {
 
 export interface WeatherPoint {
   ts: number;
-  temp_c: number | null;
+  temp_c?: number | null;
+  humidity_pct?: number | null;
+  pressure_hpa?: number | null;
   lux?: number | null;
 }
 
