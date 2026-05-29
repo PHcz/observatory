@@ -2,6 +2,7 @@ import * as Plot from '@observablehq/plot';
 import type { MuonPoint, WeatherPoint } from '$lib/types';
 import { loess } from '$lib/charts/loess';
 import { paddedYDomain } from '$lib/charts/domain';
+import { dewPointC } from '$lib/utils/dewpoint';
 
 const WINDOW_SEC = 86400;
 
@@ -173,6 +174,201 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
             Plot.dot([last], {
               x: (d: WeatherPoint) => new Date(d.ts * 1000),
               y: (d: WeatherPoint) => d.temp_c as number,
+              fill: t.marker,
+              r: 5,
+            }),
+          ]
+        : []),
+    ],
+  });
+}
+
+export function buildPressurePlot(data: WeatherPoint[], width: number): SVGElement | HTMLElement {
+  const now = Date.now();
+  const start = new Date(now - WINDOW_SEC * 1000);
+  const end = new Date(now);
+  const t = tokens();
+
+  const valid = data.filter((p) => p.pressure_hpa != null);
+  const rawYs = valid.map((p) => p.pressure_hpa as number);
+  const smoothedYs = loess(rawYs, 0.15);
+  const smoothed: WeatherPoint[] = valid.map((p, i) => ({ ts: p.ts, pressure_hpa: smoothedYs[i] }));
+  const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
+  const domain = paddedYDomain([...rawYs, ...smoothedYs]);
+
+  return Plot.plot({
+    width,
+    height: 180,
+    marginLeft: 60,
+    marginRight: 20,
+    marginBottom: 28,
+    marginTop: 8,
+    x: { type: 'time', domain: [start, end] },
+    y: { label: null, grid: true, ticks: 3, ...(domain ? { domain } : {}) },
+    marks: [
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
+      Plot.line(valid, {
+        x: (d: WeatherPoint) => new Date(d.ts * 1000),
+        y: (d: WeatherPoint) => d.pressure_hpa as number,
+        stroke: t.raw,
+        strokeWidth: 0.5,
+        strokeOpacity: 0.4,
+      }),
+      Plot.line(smoothed, {
+        x: (d: WeatherPoint) => new Date(d.ts * 1000),
+        y: (d: WeatherPoint) => d.pressure_hpa as number,
+        stroke: t.data,
+        strokeWidth: 2,
+        strokeLinejoin: 'round',
+        strokeLinecap: 'round',
+      }),
+      ...(last
+        ? [
+            Plot.dot([last], {
+              x: (d: WeatherPoint) => new Date(d.ts * 1000),
+              y: (d: WeatherPoint) => d.pressure_hpa as number,
+              fill: t.marker,
+              r: 5,
+            }),
+          ]
+        : []),
+    ],
+  });
+}
+
+interface HumPoint { ts: number; humidity: number; }
+interface DewPoint { ts: number; dewpoint: number; }
+
+export function buildHumidityDewpointPlot(data: WeatherPoint[], width: number): SVGElement | HTMLElement {
+  const now = Date.now();
+  const start = new Date(now - WINDOW_SEC * 1000);
+  const end = new Date(now);
+  const t = tokens();
+
+  // Filter to points carrying BOTH humidity and temp (needed for dewpoint).
+  const valid = data.filter((p) => p.humidity_pct != null && p.temp_c != null);
+
+  // Compute dewpoint per point — exactly one dewPointC call per valid point.
+  const enriched = valid.map((p) => ({
+    ts: p.ts,
+    humidity: p.humidity_pct as number,
+    dewpoint: dewPointC(p.temp_c as number, p.humidity_pct as number),
+  }));
+
+  const humidityYs = enriched.map((e) => e.humidity);
+  const dewpointYs = enriched.map((e) => e.dewpoint);
+  const smoothedHumidity = loess(humidityYs, 0.15);
+  const smoothedDewpoint = loess(dewpointYs, 0.15);
+
+  const humSmoothed: HumPoint[] = enriched.map((e, i) => ({ ts: e.ts, humidity: smoothedHumidity[i] }));
+  const dewSmoothed: DewPoint[] = enriched.map((e, i) => ({ ts: e.ts, dewpoint: smoothedDewpoint[i] }));
+  const lastHum = humSmoothed.length > 0 ? humSmoothed[humSmoothed.length - 1] : null;
+  const lastDew = dewSmoothed.length > 0 ? dewSmoothed[dewSmoothed.length - 1] : null;
+
+  // Shared Y domain so the two lines sit on one axis (UI-SPEC §HumidityChart).
+  const domain = paddedYDomain([...humidityYs, ...dewpointYs, ...smoothedHumidity, ...smoothedDewpoint]);
+
+  return Plot.plot({
+    width,
+    height: 180,
+    marginLeft: 60,
+    marginRight: 20,
+    marginBottom: 28,
+    marginTop: 8,
+    x: { type: 'time', domain: [start, end] },
+    y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
+    marks: [
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
+      // Humidity smoothed line
+      Plot.line(humSmoothed, {
+        x: (d: HumPoint) => new Date(d.ts * 1000),
+        y: 'humidity',
+        stroke: t.data,
+        strokeWidth: 2,
+      }),
+      // Dewpoint smoothed line (sage)
+      Plot.line(dewSmoothed, {
+        x: (d: DewPoint) => new Date(d.ts * 1000),
+        y: 'dewpoint',
+        stroke: t.dewpoint,
+        strokeWidth: 2,
+      }),
+      // Two current-value markers
+      ...(lastHum
+        ? [
+            Plot.dot([lastHum], {
+              x: (d: HumPoint) => new Date(d.ts * 1000),
+              y: 'humidity',
+              fill: t.marker,
+              r: 5,
+            }),
+          ]
+        : []),
+      ...(lastDew
+        ? [
+            Plot.dot([lastDew], {
+              x: (d: DewPoint) => new Date(d.ts * 1000),
+              y: 'dewpoint',
+              fill: t.dewpoint,
+              r: 5,
+            }),
+          ]
+        : []),
+    ],
+  });
+}
+
+interface LightPoint { ts: number; lux: number; }
+
+export function buildLightPlot(data: WeatherPoint[], width: number): SVGElement | HTMLElement {
+  const now = Date.now();
+  const start = new Date(now - WINDOW_SEC * 1000);
+  const end = new Date(now);
+  const t = tokens();
+
+  // Filter to points carrying lux; clamp ≤ 0 to 1 (LTR-559 dark reading;
+  // log domain cannot include 0). Pattern 5 from 08.5-RESEARCH.
+  const valid: LightPoint[] = data
+    .filter((p) => p.lux != null)
+    .map((p) => ({ ts: p.ts, lux: Math.max(1, p.lux as number) }));
+
+  // LOESS in log10 space, back-transform with Math.pow(10, ...).
+  const logYs = valid.map((p) => Math.log10(p.lux));
+  const smoothedLogYs = loess(logYs, 0.15);
+  const smoothed: LightPoint[] = valid.map((p, i) => ({ ts: p.ts, lux: Math.pow(10, smoothedLogYs[i]) }));
+  const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
+
+  return Plot.plot({
+    width,
+    height: 180,
+    marginLeft: 60,
+    marginRight: 20,
+    marginBottom: 28,
+    marginTop: 8,
+    x: { type: 'time', domain: [start, end] },
+    y: {
+      type: 'log',
+      grid: true,
+      domain: [1, 10000],
+      ticks: [1, 10, 100, 1000, 10000],
+      tickFormat: (d: number) => (d >= 1000 ? `${d / 1000}k` : `${d}`),
+      label: null,
+    },
+    marks: [
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
+      Plot.line(smoothed, {
+        x: (d: LightPoint) => new Date(d.ts * 1000),
+        y: 'lux',
+        stroke: t.data,
+        strokeWidth: 2,
+        strokeLinejoin: 'round',
+        strokeLinecap: 'round',
+      }),
+      ...(last
+        ? [
+            Plot.dot([last], {
+              x: (d: LightPoint) => new Date(d.ts * 1000),
+              y: 'lux',
               fill: t.marker,
               r: 5,
             }),
