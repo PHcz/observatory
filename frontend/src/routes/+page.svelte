@@ -56,11 +56,37 @@
   {#if $settingsStore.panels.humidityChart}<HumidityChart />{/if}
   {#if $settingsStore.panels.lightChart}<LightChart />{/if}
   {#if $settingsStore.panels.healthRow}<HealthRow />{/if}
+
+  <footer class="dashboard-footer">
+    <a href="/settings" class="settings-link" data-sveltekit-reload>Settings</a>
+  </footer>
 </Container>
 
 <style>
   :global(.is-stale-amber) { opacity: 0.6; transition: opacity 0.3s ease; }
   :global(.is-stale-red)   { opacity: 0.6; transition: opacity 0.3s ease; }
+
+  .dashboard-footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .settings-link {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.20em;
+    text-transform: uppercase;
+    color: var(--accent-soft);
+    text-decoration: none;
+  }
+  .settings-link:hover, .settings-link:focus-visible {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+  .settings-link:focus-visible {
+    outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 2px;
+  }
 
   .two-col {
     display: grid;

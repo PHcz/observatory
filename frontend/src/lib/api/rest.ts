@@ -21,7 +21,16 @@ export async function fetchMuonHistory(from: number, to: number): Promise<MuonPo
 
 export async function fetchWeatherHistory(from: number, to: number): Promise<WeatherPoint[]> {
   const data = await getJson<TimeSeriesResponse>(`/api/weather?from=${from}&to=${to}&agg=auto`);
-  return data.rows.map(r => ({ ts: r.ts, temp_c: (r.temp_c as number | null) }));
+  // Carry ALL sensor fields — the temperature, pressure, humidity, and light
+  // charts each read a different one. Mapping only temp_c (the original Phase 7
+  // code) leaves the UI-19 pressure/humidity/light charts permanently empty.
+  return data.rows.map(r => ({
+    ts: r.ts,
+    temp_c: (r.temp_c as number | null) ?? null,
+    humidity_pct: (r.humidity_pct as number | null) ?? null,
+    pressure_hpa: (r.pressure_hpa as number | null) ?? null,
+    lux: (r.lux as number | null) ?? null,
+  }));
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {

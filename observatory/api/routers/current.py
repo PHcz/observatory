@@ -141,6 +141,27 @@ def _lightning_aggregate(conn: sqlite3.Connection, now: int) -> dict[str, Any]:
         (today_start,),
     ).fetchone()[0]
 
+    # Hourly buckets over trailing 24h (mirrors /api/lightning/summary, Plan 08-07).
+    # Same `ts > now - 86400` boundary as past_24h so bucket sum equals past_24h.
+    # Included here so the WS snapshot (and dashboard sparkline) get buckets too —
+    # not only the REST /summary endpoint.
+    bucket_rows = conn.execute(
+        """
+        SELECT CAST((? - ts) / 3600 AS INTEGER) AS hours_ago, COUNT(*) AS strikes
+        FROM lightning_strikes
+        WHERE ts > ? AND ts <= ?
+        GROUP BY hours_ago
+        """,
+        (now, now - 86400, now),
+    ).fetchall()
+
+    hourly_buckets: list[int] = [0] * 24
+    for row in bucket_rows:
+        hours_ago = int(row[0])
+        strikes = int(row[1])
+        if 0 <= hours_ago < 24:
+            hourly_buckets[23 - hours_ago] = strikes  # index 23 = most recent hour
+
     nearest_km: float | None = round(float(raw_nearest), 1) if raw_nearest is not None else None
 
     return {
@@ -148,6 +169,7 @@ def _lightning_aggregate(conn: sqlite3.Connection, now: int) -> dict[str, Any]:
         "past_24h": past_24h,
         "nearest_km": nearest_km,
         "total_today": total_today,
+        "hourly_buckets": hourly_buckets,
         "ts": now,
     }
 
