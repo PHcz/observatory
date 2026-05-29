@@ -206,5 +206,6 @@ def test_row_shape(client: TestClient, db_path: Path) -> None:
         "latitude",
         "longitude",
         "place",
+        "is_local",  # Phase 8.5 UI-18 additive contract
     }
     assert set(row.keys()) == expected_keys
