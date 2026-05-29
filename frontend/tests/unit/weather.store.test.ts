@@ -21,7 +21,15 @@ describe('weatherStore.setWeather appends to history for live chart updates', ()
     const state = get(weatherStore);
     expect(state.current?.ts).toBe(1_000_000);
     expect(state.history).toHaveLength(1);
-    expect(state.history[0]).toEqual({ ts: 1_000_000, temp_c: 20.5, lux: 100 });
+    // History carries ALL sensor fields so the pressure/humidity/light charts
+    // get live data, not just temperature.
+    expect(state.history[0]).toEqual({
+      ts: 1_000_000,
+      temp_c: 20.5,
+      humidity_pct: 50,
+      pressure_hpa: 1013,
+      lux: 100,
+    });
   });
 
   it('dedups by ts when REST snapshot already has the live reading', () => {

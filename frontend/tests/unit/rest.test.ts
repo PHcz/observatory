@@ -48,12 +48,33 @@ describe('REST history clients', () => {
           window: { from: 0, to: 1000 },
           bucket_size_sec: 300,
           agg: 'minute',
+          rows: [{ ts: 500, temp_c: 18.5, humidity_pct: 55, pressure_hpa: 1012, lux: 800 }],
+        }),
+      }));
+
+      const result = await fetchWeatherHistory(0, 1000);
+      // All four sensor fields must be carried so the pressure/humidity/light
+      // charts get data — not just temp_c.
+      expect(result).toEqual([
+        { ts: 500, temp_c: 18.5, humidity_pct: 55, pressure_hpa: 1012, lux: 800 },
+      ]);
+    });
+
+    it('maps missing sensor fields to null (not undefined)', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          window: { from: 0, to: 1000 },
+          bucket_size_sec: 300,
+          agg: 'minute',
           rows: [{ ts: 500, temp_c: 18.5 }],
         }),
       }));
 
       const result = await fetchWeatherHistory(0, 1000);
-      expect(result).toEqual([{ ts: 500, temp_c: 18.5 }]);
+      expect(result).toEqual([
+        { ts: 500, temp_c: 18.5, humidity_pct: null, pressure_hpa: null, lux: null },
+      ]);
     });
   });
 

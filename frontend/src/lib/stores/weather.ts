@@ -26,7 +26,16 @@ export function setWeather(data: WeatherData): void {
     const alreadyInHistory = existing.some(p => p.ts === data.ts);
     const nextHistory = alreadyInHistory
       ? existing
-      : [...existing, { ts: data.ts, temp_c: data.temp_c, lux: data.lux ?? null }].sort((a, b) => a.ts - b.ts);
+      : [
+          ...existing,
+          {
+            ts: data.ts,
+            temp_c: data.temp_c,
+            humidity_pct: data.humidity_pct ?? null,
+            pressure_hpa: data.pressure_hpa ?? null,
+            lux: data.lux ?? null,
+          },
+        ].sort((a, b) => a.ts - b.ts);
     return {
       ...s,
       current: data,

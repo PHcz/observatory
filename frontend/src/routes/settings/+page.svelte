@@ -45,6 +45,8 @@
     <p class="storage-warn">Settings can't be saved in this browser session.</p>
   {/if}
 
+  <a href="/" class="back-link" data-sveltekit-reload>← Dashboard</a>
+
   <h1>Settings</h1>
 
   <section class="settings-section" aria-labelledby="theme-eyebrow">
@@ -83,6 +85,19 @@
     color: var(--text);
     background: var(--bg);
     min-height: 100vh;
+  }
+  .back-link {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 24px;
+  }
+  .back-link:hover, .back-link:focus-visible { text-decoration: underline; }
+  .back-link:focus-visible {
+    outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 2px;
   }
   h1 {
     font-size: 28px;
