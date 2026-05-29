@@ -11,6 +11,12 @@ class EarthquakeEvent:
 
     Source-specific parsers absorb upstream naming differences; the write
     layer and downstream API consumers only see this shape.
+
+    ``is_local`` (Phase 8.5 UI-18) is True iff the event is from BGS
+    (UK-only source) OR within ``settings.observatory_local_radius_km``
+    of ``HOME_LAT``/``HOME_LON``. Computed in each poller's __main__
+    after parsing and before writing; default False keeps parser sites
+    backward-compatible (parsers don't set it).
     """
 
     source: str  # 'usgs' | 'emsc' | 'bgs'
@@ -21,6 +27,7 @@ class EarthquakeEvent:
     latitude: float
     longitude: float
     place: str | None
+    is_local: bool = False  # UI-18 — BGS OR <= OBSERVATORY_LOCAL_RADIUS_KM from HOME_LAT/HOME_LON
 
 
 @dataclass(frozen=True, slots=True)
