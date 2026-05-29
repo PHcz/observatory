@@ -1,13 +1,49 @@
-:root {
+:root, :root[data-theme="light"] {
   color-scheme: light;
-  --bg:             #ffffff;
-  --text:           #111111;
-  --text-secondary: #333333;
-  --text-muted:     #5a5a5a;
-  --accent:         #6b8e6b;
-  --accent-soft:    #5a6b5a;
-  --border:         #ebebe8;
-  --border-soft:    #f0f0ec;
-  --warn:           #c97f3a;
-  --alert:          #b8504a;
+  --bg:               #ffffff;
+  --bg-elevated:      #fafaf8;
+  --text:             #111111;
+  --text-secondary:   #333333;
+  --text-muted:       #5a5a5a;
+  --accent:           #6b8e6b;
+  --accent-soft:      #5a6b5a;
+  --accent-bg-tint:   #eef3ee;
+  --border:           #ebebe8;
+  --border-soft:      #f0f0ec;
+  --warn:             #c97f3a;
+  --alert:            #b8504a;
+
+  /* Chart palette — Phase 8 UI-13 dual-layer */
+  --chart-raw:        #cccccc;
+  --chart-data:       #111111;
+  --chart-grid:       #f0f0ec;
+  --chart-marker:     #6b8e6b;
+  --chart-dewpoint:   #6b8e6b;
+
+  /* Focus ring (UI-16) */
+  --focus-ring:       #6b8e6b;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:               #161412;
+  --bg-elevated:      #1f1c19;
+  --text:             #ece9e3;
+  --text-secondary:   #c8c4bd;
+  --text-muted:       #9a958c;
+  --accent:           #8eb38e;
+  --accent-soft:      #a8c2a8;
+  --accent-bg-tint:   #1f2a1f;
+  --border:           #2a2724;
+  --border-soft:      #232120;
+  --warn:             #d99e60;
+  --alert:            #d57a72;
+
+  --chart-raw:        #3a3733;
+  --chart-data:       #ece9e3;
+  --chart-grid:       #2a2d33;
+  --chart-marker:     #8eb38e;
+  --chart-dewpoint:   #8eb38e;
+
+  --focus-ring:       #8eb38e;
 }
