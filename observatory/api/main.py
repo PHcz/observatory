@@ -73,6 +73,29 @@ app = FastAPI(
 # Middleware (added first → runs first on inbound).
 app.add_middleware(OriginAllowlistMiddleware)
 
+
+@app.middleware("http")
+async def cache_control(request: Request, call_next):  # type: ignore[no-untyped-def]
+    """Cache policy for the SPA bundle.
+
+    Content-hashed assets (``/_app/immutable/*``) are immutable — cache them
+    for a year. HTML shells and extensionless SPA routes (``/``, ``/settings``)
+    and API responses MUST always revalidate (``no-cache``); otherwise a mobile
+    browser can keep a stale ``200.html`` shell that references JS chunk hashes
+    purged by the next ``rsync --delete`` deploy, leaving SvelteKit unable to
+    import the route module → hard-nav fallback → white-screen reload loop.
+    """
+    response = await call_next(request)
+    path = request.url.path
+    last_segment = path.rsplit("/", 1)[-1]
+    if path.startswith("/_app/immutable/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.endswith(".html") or "." not in last_segment:
+        # HTML shell / extensionless route / API — never serve stale from cache.
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 # Routers — health (existing) + 9 new. WS uses no /api prefix.
 app.include_router(health_router.router, prefix="/api", tags=["health"])
 app.include_router(current_router.router, prefix="/api", tags=["current"])
@@ -99,7 +122,11 @@ if _bundle_dir.exists() and _bundle_dir.is_dir():
         if path.startswith("/api/") or path.startswith("/ws"):
             return JSONResponse({"detail": "Not Found"}, status_code=404)
         if _spa_fallback.exists():
-            return FileResponse(str(_spa_fallback), status_code=200)
+            return FileResponse(
+                str(_spa_fallback),
+                status_code=200,
+                headers={"Cache-Control": "no-cache"},
+            )
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     app.mount("/", StaticFiles(directory=str(_bundle_dir), html=True), name="frontend")
