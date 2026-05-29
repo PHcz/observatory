@@ -4,9 +4,32 @@ import { loess } from '$lib/charts/loess';
 import { paddedYDomain } from '$lib/charts/domain';
 
 const WINDOW_SEC = 86400;
-const STROKE_DATA = '#111111';
-const STROKE_GRID = '#f0f0ec';
-const FILL_DOT = '#6b8e6b';
+
+/**
+ * Read theme tokens from CSS custom properties at render time.
+ * MUST be called inside every build*Plot function (not module-scope) so
+ * theme swaps via themeStore subscription pick up new values on next render.
+ */
+function tokens() {
+  if (typeof document === 'undefined') {
+    // SSR/test fallback — defaults match light theme
+    return {
+      raw: '#cccccc',
+      data: '#111111',
+      grid: '#f0f0ec',
+      marker: '#6b8e6b',
+      dewpoint: '#6b8e6b',
+    };
+  }
+  const cs = getComputedStyle(document.documentElement);
+  return {
+    raw: cs.getPropertyValue('--chart-raw').trim() || '#cccccc',
+    data: cs.getPropertyValue('--chart-data').trim() || '#111111',
+    grid: cs.getPropertyValue('--chart-grid').trim() || '#f0f0ec',
+    marker: cs.getPropertyValue('--chart-marker').trim() || '#6b8e6b',
+    dewpoint: cs.getPropertyValue('--chart-dewpoint').trim() || '#6b8e6b',
+  };
+}
 
 /**
  * Filter out muon points whose ts is within the last 90 seconds of wall-clock time.
@@ -48,6 +71,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
   // Belt-and-braces against client/server clock skew and the still-filling
   // current minute bucket (UAT gap 4 round 2).
   const safe = withinSafetyMargin(data, now);
+  const t = tokens();
 
   // UI-13: dual-layer rendering. Raw 1-minute points in light grey behind,
   // LOESS-smoothed line (span=0.15) on top. Pitfall 2: marks array order
@@ -68,12 +92,12 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
     x: { type: 'time', domain: [start, end] },
     y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
     marks: [
-      Plot.gridY({ stroke: STROKE_GRID, strokeWidth: 1 }),
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       // Raw line — BEHIND smoothed (array order = z-order; Pitfall 2)
       Plot.line(safe, {
         x: (d: MuonPoint) => new Date(d.ts * 1000),
         y: 'rate_per_min',
-        stroke: '#cccccc',
+        stroke: t.raw,
         strokeWidth: 0.5,
         strokeOpacity: 0.4,
       }),
@@ -81,7 +105,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
       Plot.line(smoothed, {
         x: (d: MuonPoint) => new Date(d.ts * 1000),
         y: 'rate_per_min',
-        stroke: STROKE_DATA,
+        stroke: t.data,
         strokeWidth: 2,
         strokeLinejoin: 'round',
         strokeLinecap: 'round',
@@ -91,7 +115,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
             Plot.dot([last], {
               x: (d: MuonPoint) => new Date(d.ts * 1000),
               y: 'rate_per_min',
-              fill: FILL_DOT,
+              fill: t.marker,
               r: 5,
             }),
           ]
@@ -109,6 +133,7 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
   // Filter null temps first (sensor failure), then LOESS-smooth (span 0.15).
   // paddedYDomain handles negative winter temps correctly (5% padding both sides).
   const valid = data.filter(p => p.temp_c != null);
+  const t = tokens();
   const rawYs = valid.map(p => p.temp_c as number);
   const smoothedYs = loess(rawYs, 0.15);
   const smoothed: WeatherPoint[] = valid.map((p, i) => ({ ts: p.ts, temp_c: smoothedYs[i] }));
@@ -125,12 +150,12 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
     x: { type: 'time', domain: [start, end] },
     y: { label: null, grid: true, ticks: 3, ...(domain ? { domain } : {}) },
     marks: [
-      Plot.gridY({ stroke: STROKE_GRID, strokeWidth: 1 }),
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       // Raw line — BEHIND smoothed (array order = z-order; Pitfall 2 from 08-RESEARCH)
       Plot.line(valid, {
         x: (d: WeatherPoint) => new Date(d.ts * 1000),
         y: (d: WeatherPoint) => d.temp_c as number,
-        stroke: '#cccccc',
+        stroke: t.raw,
         strokeWidth: 0.5,
         strokeOpacity: 0.4,
       }),
@@ -138,7 +163,7 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
       Plot.line(smoothed, {
         x: (d: WeatherPoint) => new Date(d.ts * 1000),
         y: (d: WeatherPoint) => d.temp_c as number,
-        stroke: STROKE_DATA,
+        stroke: t.data,
         strokeWidth: 2,
         strokeLinejoin: 'round',
         strokeLinecap: 'round',
@@ -148,7 +173,7 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
             Plot.dot([last], {
               x: (d: WeatherPoint) => new Date(d.ts * 1000),
               y: (d: WeatherPoint) => d.temp_c as number,
-              fill: FILL_DOT,
+              fill: t.marker,
               r: 5,
             }),
           ]
