@@ -70,6 +70,8 @@
     border-radius: 12px;
     position: relative;
     transition: background 0.15s;
+    /* Decorative overlay (aria-hidden); never intercept clicks meant for the input. */
+    pointer-events: none;
   }
   .switch::after {
     content: '';
