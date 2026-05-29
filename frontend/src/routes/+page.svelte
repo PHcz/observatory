@@ -1,5 +1,4 @@
 <script lang="ts">
-  import '../app.css';
   import { onMount, onDestroy } from 'svelte';
   import { initWs } from '$lib/stores/ws';
   import { initHealthPolling } from '$lib/stores/health';
