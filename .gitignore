@@ -33,3 +33,23 @@ dev/mosquitto/data/
 deploy/mosquitto/passwords
 /etc/mosquitto/passwords
 passwords
+
+# Phase 8 / OPS-06 additions — completeness pass before public release
+# SQLite WAL + SHM sidecars (live when journal_mode=WAL is on)
+*.db-wal
+*.db-shm
+*.sqlite3
+*.sqlite3-journal
+# All .env variants except the tracked .example template
+.env.*
+!.env.example
+# Common secret-file names
+secrets.env
+secret.env
+*.pem
+*.key
+# Operator-local soak evidence (telemetry snapshots — may carry IP / hostname)
+/var/lib/observatory/
+# Editor noise
+*.swp
+*.swo
