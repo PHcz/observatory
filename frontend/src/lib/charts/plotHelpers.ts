@@ -33,6 +33,15 @@ function tokens() {
 }
 
 /**
+ * Approximate number of x-axis time ticks for a 24h window, scaled to chart
+ * width. ~2-hour spacing on wide charts (13 ticks), ~3-hour on narrow/mobile
+ * (9 ticks) so labels never overlap. Plot rounds to nice clock times.
+ */
+export function xTimeTicks(width: number): number {
+  return width < 700 ? 9 : 13;
+}
+
+/**
  * Filter out muon points whose ts is within the last 90 seconds of wall-clock time.
  * Guards the right edge of the chart against client/server clock skew and
  * backend aggregation lag (the most recent minute can still be filling).
@@ -90,7 +99,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
     marginRight: 20,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end] },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
     y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
@@ -100,7 +109,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
         y: 'rate_per_min',
         stroke: t.raw,
         strokeWidth: 0.5,
-        strokeOpacity: 0.4,
+        strokeOpacity: 0.55,
       }),
       // Smoothed line — on top
       Plot.line(smoothed, {
@@ -148,7 +157,7 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
     marginRight: 20,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end] },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
     y: { label: null, grid: true, ticks: 3, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
@@ -158,7 +167,7 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
         y: (d: WeatherPoint) => d.temp_c as number,
         stroke: t.raw,
         strokeWidth: 0.5,
-        strokeOpacity: 0.4,
+        strokeOpacity: 0.55,
       }),
       // Smoothed line — on top
       Plot.line(smoothed, {
@@ -203,7 +212,7 @@ export function buildPressurePlot(data: WeatherPoint[], width: number): SVGEleme
     marginRight: 20,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end] },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
     y: { label: null, grid: true, ticks: 3, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
@@ -212,7 +221,7 @@ export function buildPressurePlot(data: WeatherPoint[], width: number): SVGEleme
         y: (d: WeatherPoint) => d.pressure_hpa as number,
         stroke: t.raw,
         strokeWidth: 0.5,
-        strokeOpacity: 0.4,
+        strokeOpacity: 0.55,
       }),
       Plot.line(smoothed, {
         x: (d: WeatherPoint) => new Date(d.ts * 1000),
@@ -275,7 +284,7 @@ export function buildHumidityDewpointPlot(data: WeatherPoint[], width: number): 
     marginRight: 20,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end] },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
     y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
@@ -345,7 +354,7 @@ export function buildLightPlot(data: WeatherPoint[], width: number): SVGElement 
     marginRight: 20,
     marginBottom: 28,
     marginTop: 8,
-    x: { type: 'time', domain: [start, end] },
+    x: { type: 'time', domain: [start, end], ticks: xTimeTicks(width) },
     y: {
       type: 'log',
       grid: true,

@@ -14,7 +14,7 @@
   --alert:            #b8504a;
 
   /* Chart palette — Phase 8 UI-13 dual-layer */
-  --chart-raw:        #cccccc;
+  --chart-raw:        #9e9e9e;
   --chart-data:       #111111;
   --chart-grid:       #f0f0ec;
   --chart-marker:     #6b8e6b;
@@ -39,7 +39,7 @@
   --warn:             #d99e60;
   --alert:            #d57a72;
 
-  --chart-raw:        #3a3733;
+  --chart-raw:        #6b655b;
   --chart-data:       #ece9e3;
   --chart-grid:       #2a2d33;
   --chart-marker:     #8eb38e;

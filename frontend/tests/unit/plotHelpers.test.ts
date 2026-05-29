@@ -181,7 +181,7 @@ describe('buildMuonPlot dual-layer (UI-13)', () => {
     const html = (el as HTMLElement).outerHTML;
     // Two line marks at the configured opacities/strokes
     expect(html).toContain('stroke="#cccccc"');
-    expect(html).toContain('stroke-opacity="0.4"');
+    expect(html).toContain('stroke-opacity="0.55"');
     expect(html).toContain('stroke="#111111"');
   });
 });
