@@ -24,6 +24,19 @@ class Settings(BaseSettings):
     home_lat: float = Field(ge=-90.0, le=90.0)
     home_lon: float = Field(ge=-180.0, le=180.0)
 
+    # --- Phase 8.5 UI-18: local-quake highlight radius ---
+    # Locked default 250 km per 08.5-CONTEXT (catches near-continental events
+    # USGS/EMSC report alongside the UK BGS feed). Operator-tunable via env.
+    observatory_local_radius_km: float = Field(
+        default=250.0,
+        ge=0.0,
+        le=20000.0,
+        description=(
+            "UI-18 local-quake threshold: non-BGS events within this km radius "
+            "of HOME_LAT/HOME_LON are flagged is_local"
+        ),
+    )
+
     # --- Database ---
     observatory_db_path: str = "/var/lib/observatory/observatory.db"
 
