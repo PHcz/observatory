@@ -15,6 +15,7 @@ Wire protocol (RESEARCH.md, HIGH confidence, quoted verbatim from upstream UKRAA
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -117,7 +118,7 @@ def test_parse_empty_string_raises() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_parse_fixture_malformed_each_line(load_fixture) -> None:
+def test_parse_fixture_malformed_each_line(load_fixture: Callable[[str], str]) -> None:
     text = load_fixture("sample_malformed.txt")
     lines = [ln for ln in text.splitlines() if ln.strip()]
     # First line is the only valid event in this fixture
@@ -130,7 +131,7 @@ def test_parse_fixture_malformed_each_line(load_fixture) -> None:
             parse_line(bad)
 
 
-def test_parse_fixture_partial_first_line(load_fixture) -> None:
+def test_parse_fixture_partial_first_line(load_fixture: Callable[[str], str]) -> None:
     text = load_fixture("sample_partial_first_line.txt")
     lines = [ln for ln in text.splitlines() if ln.strip()]
     # First line is a truncated head-of-stream fragment — must raise

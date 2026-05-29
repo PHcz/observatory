@@ -84,7 +84,15 @@ exclude = ["frontend", "migrations", ".venv", "tests/fixtures"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["yoyo.*", "serial.*", "sdnotify.*", "defusedxml.*", "websockets.*", "astral.*"]
+module = [
+    "yoyo.*",
+    "serial.*",
+    "sdnotify.*",
+    "defusedxml.*",
+    "websockets.*",
+    "astral.*",
+    "testcontainers.*",
+]
 ignore_missing_imports = true
 
 [tool.bandit]

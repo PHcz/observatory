@@ -6,6 +6,7 @@ import sqlite3
 import sys
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -13,7 +14,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import backup as backup_mod  # type: ignore[import-not-found]  # noqa: E402
+import backup as backup_mod  # noqa: E402
 
 
 @pytest.fixture
@@ -145,8 +146,8 @@ def test_backup_accepts_live_writer_drift(
     # initial src.backup(dst) and the row-count cross-check.
     orig_connect = sqlite3.connect
 
-    def connect_and_append(path: str, *args: object, **kwargs: object) -> sqlite3.Connection:
-        conn = orig_connect(path, *args, **kwargs)
+    def connect_and_append(path: str, *args: Any, **kwargs: Any) -> sqlite3.Connection:
+        conn: sqlite3.Connection = orig_connect(path, *args, **kwargs)
         # If this is the source DB being opened in step 5 (after the backup),
         # append a row to simulate a live writer arriving mid-backup.
         if str(populated_source_db) in str(path):
@@ -160,11 +161,12 @@ def test_backup_accepts_live_writer_drift(
     # Patch sqlite3.connect only for the 2nd open (after src.backup(dst)).
     call_count = {"n": 0}
 
-    def selective_connect(path: str, *args: object, **kwargs: object) -> sqlite3.Connection:
+    def selective_connect(path: str, *args: Any, **kwargs: Any) -> sqlite3.Connection:
         call_count["n"] += 1
         if call_count["n"] == 2 and str(populated_source_db) in str(path):
             return connect_and_append(path, *args, **kwargs)
-        return orig_connect(path, *args, **kwargs)
+        conn: sqlite3.Connection = orig_connect(path, *args, **kwargs)
+        return conn
 
     monkeypatch.setattr("scripts.backup.sqlite3.connect", selective_connect)
 

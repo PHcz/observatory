@@ -35,8 +35,8 @@ def _install_db(monkeypatch: pytest.MonkeyPatch, tmp_db: Path) -> None:
     monkeypatch.setattr(_write_mod, "get_write_conn", _conn)
 
 
-def _make_feature(fid: str, *, drop_mag: bool = False) -> dict:
-    props: dict = {"time": 1779725577904, "place": "X"}
+def _make_feature(fid: str, *, drop_mag: bool = False) -> dict[str, object]:
+    props: dict[str, object] = {"time": 1779725577904, "place": "X"}
     if not drop_mag:
         props["mag"] = 4.9
     return {
@@ -47,7 +47,7 @@ def _make_feature(fid: str, *, drop_mag: bool = False) -> dict:
     }
 
 
-def _wrap(features: list[dict]) -> bytes:
+def _wrap(features: list[dict[str, object]]) -> bytes:
     return json.dumps({"type": "FeatureCollection", "features": features}).encode()
 
 

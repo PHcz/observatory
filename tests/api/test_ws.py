@@ -248,7 +248,7 @@ def test_ws_multiple_clients_each_receive_snapshot(ws_app: FastAPI) -> None:
                 # Drain pings until we get the aurora message
                 def drain_for_type(ws_conn: Any, target_type: str) -> dict[str, Any]:
                     for _ in range(10):
-                        msg = ws_conn.receive_json()
+                        msg: dict[str, Any] = ws_conn.receive_json()
                         if msg["type"] == target_type:
                             return msg
                     raise AssertionError(f"Did not receive {target_type}")

@@ -111,7 +111,11 @@ def fake_mqtt_message() -> Callable[[str, bytes], Any]:
 
     def _make(topic: str, payload: bytes) -> Any:
         topic_obj = SimpleNamespace(value=topic)
-        topic_obj.__str__ = lambda self=topic_obj: self.value  # type: ignore[assignment]
+
+        def _topic_str(self: Any = topic_obj) -> str:
+            return str(self.value)
+
+        topic_obj.__str__ = _topic_str  # type: ignore[method-assign]
         return SimpleNamespace(topic=topic_obj, payload=payload)
 
     return _make

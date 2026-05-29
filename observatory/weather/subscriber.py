@@ -31,6 +31,19 @@ log = structlog.get_logger(__name__)
 
 _CLIENT_IDENTIFIER = "obs-api-weather-sub"
 
+# Explicit re-exports so tests can monkeypatch these attributes on this module
+# under mypy --strict (no-implicit-reexport). The names refer to the imports
+# above; this is the single observatory/ file that test-monkeypatch sites
+# touch as part of the Phase 3 weather subscriber test harness.
+__all__ = [
+    "_CLIENT_IDENTIFIER",
+    "aiomqtt",
+    "log",
+    "run_subscriber",
+    "settings",
+    "write_reading",
+]
+
 
 def _topic_str(message: aiomqtt.Message) -> str:
     """Best-effort string form of message.topic across aiomqtt 2.x variants."""

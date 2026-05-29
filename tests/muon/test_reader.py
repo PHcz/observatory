@@ -580,7 +580,7 @@ def test_stopping_sent_before_final_flush_logged(
     os.write(master_fd, VALID_LINE_C)
     time.sleep(0.5)
     # Trigger SIGTERM-equivalent via the handler so STOPPING=1 is emitted.
-    reader._on_sigterm(15, None)  # type: ignore[arg-type]
+    reader._on_sigterm(15, None)
     t.join(timeout=5)
 
     assert "STOPPING=1" in fake_sdnotify.calls, (
@@ -630,7 +630,7 @@ def test_reader_reopens_on_serial_exception(
             raise pyserial.SerialException("simulated USB glitch")
         return real_serial(*args, **kwargs)
 
-    monkeypatch.setattr(reader_module.serial, "Serial", flaky_serial)
+    monkeypatch.setattr("observatory.muon.reader.serial.Serial", flaky_serial)
 
     reader = Reader(
         port_path=slave_path,
@@ -674,7 +674,7 @@ def test_reader_reopens_on_oserror(
             raise OSError("Input/output error")
         return real_serial(*args, **kwargs)
 
-    monkeypatch.setattr(reader_module.serial, "Serial", flaky_serial)
+    monkeypatch.setattr("observatory.muon.reader.serial.Serial", flaky_serial)
 
     reader = Reader(
         port_path=slave_path,
@@ -745,7 +745,7 @@ def test_backoff_sequence_respected(
         call_count[0] += 1
         raise pyserial.SerialException(f"simulated failure {call_count[0]}")
 
-    monkeypatch.setattr(reader_module.serial, "Serial", always_fail)
+    monkeypatch.setattr("observatory.muon.reader.serial.Serial", always_fail)
     sleeps: list[float] = []
 
     def recorded_sleep(s: float) -> None:
@@ -755,7 +755,7 @@ def test_backoff_sequence_respected(
         if len(backoff_sleeps_so_far) >= 6 and reader_box:
             reader_box[0].stopping = True
 
-    monkeypatch.setattr(reader_module.time, "sleep", recorded_sleep)
+    monkeypatch.setattr("observatory.muon.reader.time.sleep", recorded_sleep)
 
     reader = Reader(port_path="/nonexistent", db_path=str(tmp_db))
     reader_box.append(reader)
@@ -804,7 +804,7 @@ def test_reconnect_counter_resets_after_successful_read(
         if len([x for x in sleeps if x != 0.2]) >= 4 and reader_box:
             reader_box[0].stopping = True
 
-    monkeypatch.setattr(reader_module.time, "sleep", recorded_sleep)
+    monkeypatch.setattr("observatory.muon.reader.time.sleep", recorded_sleep)
 
     reader = Reader(port_path="/nonexistent", db_path=str(tmp_db))
     reader_box.append(reader)

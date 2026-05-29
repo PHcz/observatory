@@ -23,6 +23,7 @@ import ssl
 import struct
 import time
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -85,7 +86,7 @@ def _probe(
 @pytest.mark.network
 def test_probe_blitzortung_endpoints() -> None:
     """Probe every host x port combo and record the working set."""
-    results: list[dict] = []
+    results: list[dict[str, object]] = []
     captured: list[bytes] = []
     captured_from: str | None = None
 
@@ -124,7 +125,8 @@ def test_probe_blitzortung_endpoints() -> None:
         "|---|---|---|---|---|",
     ]
     for r in results:
-        err_short = (r["error"][:80] + "...") if len(r["error"]) > 80 else r["error"]
+        err_val = cast(str, r["error"])
+        err_short = (err_val[:80] + "...") if len(err_val) > 80 else err_val
         lines.append(
             f"| `{r['url']}` | {'✅' if r['ok'] else '❌'} | {r['frames']} | "
             f"`{r['first_bytes_hex']}` | {err_short or '—'} |"

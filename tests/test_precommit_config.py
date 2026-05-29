@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import yaml
 
@@ -10,14 +11,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CONFIG = REPO_ROOT / ".pre-commit-config.yaml"
 
 
-def _config() -> dict[str, object]:
-    return yaml.safe_load(CONFIG.read_text())
+def _config() -> dict[str, Any]:
+    return cast(dict[str, Any], yaml.safe_load(CONFIG.read_text()))
 
 
-def _all_hooks_by_id() -> dict[str, dict[str, object]]:
+def _all_hooks_by_id() -> dict[str, dict[str, Any]]:
     cfg = _config()
-    out: dict[str, dict[str, object]] = {}
-    for repo in cfg["repos"]:  # type: ignore[index]
+    out: dict[str, dict[str, Any]] = {}
+    for repo in cfg["repos"]:
         for h in repo["hooks"]:
             out[h["id"]] = h
     return out

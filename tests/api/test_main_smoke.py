@@ -43,7 +43,7 @@ def test_health_endpoint_returns_200(api_client: TestClient) -> None:
     import observatory.api.routers.health as _health_mod
 
     orig_pi = _health_mod._pi_block
-    _health_mod._pi_block = lambda: {  # type: ignore[assignment]
+    _health_mod._pi_block = lambda: {
         "temp_c": 42.1,
         "throttled": "0x0",
         "status": "healthy",
@@ -52,7 +52,7 @@ def test_health_endpoint_returns_200(api_client: TestClient) -> None:
     try:
         r = api_client.get("/api/health")
     finally:
-        _health_mod._pi_block = orig_pi  # type: ignore[assignment]
+        _health_mod._pi_block = orig_pi
     assert r.status_code == 200
     body = r.json()
     assert set(body.keys()) >= {"status", "timestamp", "local", "external", "pi"}
@@ -100,7 +100,7 @@ def test_health_returns_200_via_lifespan_client() -> None:
     import observatory.api.routers.health as _health_mod
 
     orig_pi = _health_mod._pi_block
-    _health_mod._pi_block = lambda: {  # type: ignore[assignment]
+    _health_mod._pi_block = lambda: {
         "temp_c": 42.1,
         "throttled": "0x0",
         "status": "healthy",
@@ -110,7 +110,7 @@ def test_health_returns_200_via_lifespan_client() -> None:
         with TestClient(app) as client:
             r = client.get("/api/health")
     finally:
-        _health_mod._pi_block = orig_pi  # type: ignore[assignment]
+        _health_mod._pi_block = orig_pi
     assert r.status_code == 200
 
 
@@ -149,9 +149,9 @@ def test_static_bundle_missing_no_slash_mount(monkeypatch: pytest.MonkeyPatch) -
 
 def test_origin_allowlist_middleware_installed() -> None:
     """OriginAllowlistMiddleware must be in app.user_middleware."""
-    assert any(m.cls.__name__ == "OriginAllowlistMiddleware" for m in app.user_middleware), (
-        "OriginAllowlistMiddleware not found in app.user_middleware"
-    )
+    assert any(
+        getattr(m.cls, "__name__", "") == "OriginAllowlistMiddleware" for m in app.user_middleware
+    ), "OriginAllowlistMiddleware not found in app.user_middleware"
 
 
 def test_lifespan_attached() -> None:

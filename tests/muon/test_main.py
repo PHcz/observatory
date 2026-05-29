@@ -72,17 +72,16 @@ def test_offset_regex_parses_no_match() -> None:
 
 
 def test_ntp_gate_returns_when_offset_within_threshold() -> None:
-    with patch.object(
-        muon_main.subprocess, "run", return_value=_ok_completed(GOOD_STDOUT)
+    with patch(
+        "observatory.muon.__main__.subprocess.run", return_value=_ok_completed(GOOD_STDOUT)
     ) as m_run:
-        # Should return None quickly
-        result = wait_for_ntp(max_seconds=30)
-        assert result is None
+        # Should return (None) quickly without raising
+        wait_for_ntp(max_seconds=30)
         assert m_run.called
 
 
 def test_ntp_gate_times_out_and_raises() -> None:
-    with patch.object(muon_main.subprocess, "run", return_value=_ok_completed(BAD_STDOUT)):
+    with patch("observatory.muon.__main__.subprocess.run", return_value=_ok_completed(BAD_STDOUT)):
         with pytest.raises(SystemExit) as excinfo:
             wait_for_ntp(max_seconds=2)
         assert "NTP gate failed" in str(excinfo.value)
@@ -90,7 +89,7 @@ def test_ntp_gate_times_out_and_raises() -> None:
 
 def test_ntp_gate_handles_chronyc_failure() -> None:
     """chronyc returning non-zero must not crash; loop continues until timeout."""
-    with patch.object(muon_main.subprocess, "run", return_value=_fail_completed()):
+    with patch("observatory.muon.__main__.subprocess.run", return_value=_fail_completed()):
         with pytest.raises(SystemExit) as excinfo:
             wait_for_ntp(max_seconds=2)
         assert "NTP gate failed" in str(excinfo.value)
@@ -98,14 +97,16 @@ def test_ntp_gate_handles_chronyc_failure() -> None:
 
 def test_ntp_gate_handles_chronyc_missing() -> None:
     """FileNotFoundError (chronyc not installed) must be tolerated, not crash."""
-    with patch.object(muon_main.subprocess, "run", side_effect=FileNotFoundError("chronyc")):
+    with patch(
+        "observatory.muon.__main__.subprocess.run", side_effect=FileNotFoundError("chronyc")
+    ):
         with pytest.raises(SystemExit):
             wait_for_ntp(max_seconds=2)
 
 
 def test_ntp_gate_uses_5s_subprocess_timeout() -> None:
-    with patch.object(
-        muon_main.subprocess, "run", return_value=_ok_completed(GOOD_STDOUT)
+    with patch(
+        "observatory.muon.__main__.subprocess.run", return_value=_ok_completed(GOOD_STDOUT)
     ) as m_run:
         wait_for_ntp(max_seconds=30)
     # Verify the first call used timeout=5

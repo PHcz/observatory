@@ -29,7 +29,7 @@ def _make_feature(
     lat: float = -8.14,
     lon: float = 117.79,
     flynn: str = "TEST REGION",
-) -> dict:
+) -> dict[str, object]:
     return {
         "type": "Feature",
         "id": unid,
@@ -46,7 +46,7 @@ def _make_feature(
     }
 
 
-def _wrap(features: list[dict]) -> bytes:
+def _wrap(features: list[dict[str, object]]) -> bytes:
     return json.dumps({"type": "FeatureCollection", "features": features}).encode("utf-8")
 
 

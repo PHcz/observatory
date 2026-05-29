@@ -200,5 +200,6 @@ def test_timeouts_applied() -> None:
 def test_no_verify_false_in_source() -> None:
     """TLS verification must never be disabled."""
     src = __import__("observatory.pollers._http", fromlist=["__file__"]).__file__
+    assert src is not None
     text = open(src).read()
     assert "verify=False" not in text
