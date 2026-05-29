@@ -51,6 +51,10 @@ export interface EarthquakeItem {
   magnitude: number | null;
   place: string | null;
   depth_km: number | null;
+  // UI-18 (Phase 8.5 Plan 02): backend computes from HOME_LAT/HOME_LON +
+  // OBSERVATORY_LOCAL_RADIUS_KM (default 250 km), or true for BGS source.
+  // Optional for backward compat with pre-migration-0004 fixtures.
+  is_local?: boolean;
 }
 
 export interface AstronomyData {

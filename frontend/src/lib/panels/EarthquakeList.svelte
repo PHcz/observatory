@@ -53,7 +53,11 @@
   {:else}
     <div class="quake-rows">
       {#each displayed as e}
-        <div class="quake-row">
+        <div
+          class="quake-row"
+          class:is-local={e.is_local}
+          aria-label={e.is_local ? `Local event: ${e.place ?? ''}` : (e.place ?? '')}
+        >
           <MagnitudePill magnitude={e.magnitude} />
           <div class="quake-meta">
             <div class="quake-place">{e.place ?? 'Unknown location'}</div>
@@ -155,5 +159,19 @@
     margin-top: 16px;
     font-size: 13px;
     color: var(--text-muted);
+  }
+
+  /* UI-18: local-earthquake row visual treatment (Phase 8.5 Plan 05).
+     4px sage left border + accent-bg-tint background + bold place text.
+     padding-left bumped from default 0 to 16px to compensate for the 4px border
+     so the visible text aligns with non-local rows' leading edge.
+     Dual-cue (border + weight + tint) satisfies WCAG SC 1.4.1. */
+  .quake-row.is-local {
+    border-left: 4px solid var(--accent);
+    background: var(--accent-bg-tint);
+    padding-left: 16px;
+  }
+  .quake-row.is-local .quake-place {
+    font-weight: 600;
   }
 </style>
