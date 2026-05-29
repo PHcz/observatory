@@ -94,4 +94,38 @@ describe('composeSubtitle', () => {
     expect(result).toContain('twelve muons per minute');
     expect(result).toContain('three small earthquakes in Britain this week');
   });
+
+  // UAT gap 1 (07-09): time-of-day adjective inserted to avoid "A evening" fragment
+  // and to give a coherent fallback sentence when all data phrases are null.
+  it('UAT gap 1 live failure case: hour 20, null pressure, 98 muons, 0 quakes', () => {
+    const result = composeSubtitle({ hourLocal: 20, pressureTrendHpaPerHr: null, muonRate: 98, ukSmallQuakeCount: 0, ukMaxMag: 0 });
+    expect(result).toBe('A calm evening. 98 muons per minute.');
+  });
+
+  it('all-null at hour 23 (night) renders "A still night."', () => {
+    const result = composeSubtitle({ hourLocal: 23, pressureTrendHpaPerHr: null, muonRate: null, ukSmallQuakeCount: 0, ukMaxMag: 0 });
+    expect(result).toBe('A still night.');
+  });
+
+  it('full data at hour 8 (morning) renders "A quiet morning. ..."', () => {
+    const result = composeSubtitle({ hourLocal: 8, pressureTrendHpaPerHr: 0.5, muonRate: 12, ukSmallQuakeCount: 2, ukMaxMag: 2.7 });
+    expect(result).toBe('A quiet morning. Pressure rising, twelve muons per minute, two small earthquakes in Britain this week.');
+  });
+
+  it('muonRate 0 is suppressed (numberToWord(0)===""); lock existing behaviour', () => {
+    const result = composeSubtitle({ hourLocal: 8, pressureTrendHpaPerHr: null, muonRate: 0, ukSmallQuakeCount: 0, ukMaxMag: 0 });
+    expect(result).toBe('A quiet morning.');
+  });
+
+  it('all-null at hour 14 (afternoon) renders "A calm afternoon."', () => {
+    const result = composeSubtitle({ hourLocal: 14, pressureTrendHpaPerHr: null, muonRate: null, ukSmallQuakeCount: 0, ukMaxMag: 0 });
+    expect(result).toBe('A calm afternoon.');
+  });
+
+  it('never produces "A evening" / "A afternoon" / "A morning" / "A night" article+vowel fragments', () => {
+    for (const hour of [6, 8, 11, 12, 14, 17, 18, 19, 20, 21, 22, 23, 0, 3]) {
+      const result = composeSubtitle({ hourLocal: hour, pressureTrendHpaPerHr: null, muonRate: null, ukSmallQuakeCount: 0, ukMaxMag: 0 });
+      expect(result).not.toMatch(/A (morning|afternoon|evening|night)\b/);
+    }
+  });
 });
