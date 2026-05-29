@@ -3,6 +3,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { initWs } from '$lib/stores/ws';
   import { initHealthPolling } from '$lib/stores/health';
+  import { settingsStore } from '$lib/stores/settings';
   import Container from '$lib/Container.svelte';
   import CadenceWarningBanner from '$lib/components/CadenceWarningBanner.svelte';
   import HeaderPanel from '$lib/panels/HeaderPanel.svelte';
@@ -13,6 +14,9 @@
   import LightningPanel from '$lib/panels/LightningPanel.svelte';
   import AuroraPanel from '$lib/panels/AuroraPanel.svelte';
   import TemperatureChart from '$lib/panels/TemperatureChart.svelte';
+  import PressureChart from '$lib/panels/PressureChart.svelte';
+  import HumidityChart from '$lib/panels/HumidityChart.svelte';
+  import LightChart from '$lib/panels/LightChart.svelte';
   import HealthRow from '$lib/panels/HealthRow.svelte';
 
   let cleanupWs: (() => void) | undefined;
@@ -35,17 +39,24 @@
 
 <Container>
   <CadenceWarningBanner />
-  <HeaderPanel />
-  <StatsRow />
-  <MuonChart />
-  <SpaceWeatherPanel />
-  <div class="two-col">
-    <EarthquakeList />
-    <LightningPanel />
-  </div>
-  <AuroraPanel />
-  <TemperatureChart />
-  <HealthRow />
+  {#if $settingsStore.panels.headerPanel}<HeaderPanel />{/if}
+  {#if $settingsStore.panels.statsRow}<StatsRow />{/if}
+  {#if $settingsStore.panels.muonChart}<MuonChart />{/if}
+  {#if $settingsStore.panels.spaceWeather}<SpaceWeatherPanel />{/if}
+
+  {#if $settingsStore.panels.earthquakes || $settingsStore.panels.lightning}
+    <div class="two-col">
+      {#if $settingsStore.panels.earthquakes}<EarthquakeList />{/if}
+      {#if $settingsStore.panels.lightning}<LightningPanel />{/if}
+    </div>
+  {/if}
+
+  {#if $settingsStore.panels.aurora}<AuroraPanel />{/if}
+  {#if $settingsStore.panels.temperatureChart}<TemperatureChart />{/if}
+  {#if $settingsStore.panels.pressureChart}<PressureChart />{/if}
+  {#if $settingsStore.panels.humidityChart}<HumidityChart />{/if}
+  {#if $settingsStore.panels.lightChart}<LightChart />{/if}
+  {#if $settingsStore.panels.healthRow}<HealthRow />{/if}
 </Container>
 
 <style>
