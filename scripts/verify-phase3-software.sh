@@ -18,7 +18,7 @@
 #   8. Publish with unknown nickname — expect WARN log "weather_nickname_unknown"
 #
 # Operator usage:
-#   cd /Users/operator/Projects/observatory   # (or repo root on Pi)
+#   cd /path/to/observatory   # repo root (dev machine or Pi)
 #   bash scripts/verify-phase3-software.sh
 #
 # Exit codes:
