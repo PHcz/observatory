@@ -1,3 +1,9 @@
+# GSD internal planning scaffolding — kept local, not published.
+# Contains the OS username in @-reference paths and is build-process noise,
+# not public documentation. Untracked before the public flip (Phase 9, 09-05
+# Finding 4a). Re-enable locally by removing this line if needed.
+.planning/
+
 .DS_Store
 __pycache__/
 *.py[cod]
