@@ -36,7 +36,8 @@ def _build_payload(nickname: str, uid: str = "devstub-0001") -> dict[str, object
             "temperature": round(random.uniform(8.0, 22.0), 2),
             "humidity": round(random.uniform(40.0, 85.0), 2),
             "pressure": round(random.uniform(990.0, 1025.0), 2),
-            "light": round(random.uniform(0.0, 800.0), 2),
+            # Field name matches real Pimoroni firmware (and payload.py alias).
+            "luminance": round(random.uniform(0.0, 800.0), 2),
             "voltage": round(random.uniform(2.4, 2.8), 3),
         },
     }

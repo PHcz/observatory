@@ -43,7 +43,7 @@ def test_build_payload_shape() -> None:
         "temperature",
         "humidity",
         "pressure",
-        "light",
+        "luminance",
         "voltage",
     }
     assert "Z" in p["timestamp"]
@@ -77,5 +77,5 @@ def test_reading_value_ranges() -> None:
         assert 8.0 <= r["temperature"] <= 22.0
         assert 40.0 <= r["humidity"] <= 85.0
         assert 990.0 <= r["pressure"] <= 1025.0
-        assert 0.0 <= r["light"] <= 800.0
+        assert 0.0 <= r["luminance"] <= 800.0
         assert 2.4 <= r["voltage"] <= 2.8
