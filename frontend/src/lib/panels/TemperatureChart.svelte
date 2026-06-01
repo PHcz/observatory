@@ -6,11 +6,13 @@
   import { healthStore } from '$lib/stores/health';
   import { deriveStaleness } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
+  import { startReseed } from '$lib/utils/reseed';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;
   let unsubscribe: (() => void) | undefined;
+  let stopReseed: (() => void) | undefined;
 
   function render() {
     if (!container) return;
@@ -41,6 +43,7 @@
 
   onMount(() => {
     bootstrap();
+    stopReseed = startReseed(bootstrap); // reconcile w/ server periodically + on tab-refocus
     unsubscribe = weatherStore.subscribe(render);
     if (typeof ResizeObserver !== 'undefined') {
       observer = new ResizeObserver(render);
@@ -56,6 +59,7 @@
 
   onDestroy(() => {
     if (observer) observer.disconnect();
+    if (stopReseed) stopReseed();
     if (unsubscribe) unsubscribe();
     if (container) container.innerHTML = '';
   });
