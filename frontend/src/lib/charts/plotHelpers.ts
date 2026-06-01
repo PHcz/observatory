@@ -1,7 +1,7 @@
 import * as Plot from '@observablehq/plot';
 import type { MuonPoint, WeatherPoint } from '$lib/types';
 import { loess } from '$lib/charts/loess';
-import { paddedYDomain } from '$lib/charts/domain';
+import { niceFloorDomain } from '$lib/charts/domain';
 import { dewPointC } from '$lib/utils/dewpoint';
 
 const WINDOW_SEC = 86400;
@@ -98,7 +98,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
   const smoothedYs = loess(rawYs, 0.15);
   const smoothed: MuonPoint[] = safe.map((p, i) => ({ ts: p.ts, rate_per_min: smoothedYs[i] }));
   const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
-  const domain = paddedYDomain([...rawYs, ...smoothedYs]);
+  const yScale = niceFloorDomain([...rawYs, ...smoothedYs], 4);
 
   return Plot.plot({
     width,
@@ -108,7 +108,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
     marginBottom: 28,
     marginTop: 8,
     x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
-    y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
+    y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       // Raw line — BEHIND smoothed (array order = z-order; Pitfall 2)
@@ -149,14 +149,15 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
 
   // UI-13: dual-layer rendering mirrors buildMuonPlot (see 08-01 SUMMARY).
   // Filter null temps first (sensor failure), then LOESS-smooth (span 0.15).
-  // paddedYDomain handles negative winter temps correctly (5% padding both sides).
+  // niceFloorDomain handles negative winter temps + guarantees the lowest tick
+  // sits below the data min, so the line never dips under the lowest gridline.
   const valid = data.filter(p => p.temp_c != null);
   const t = tokens();
   const rawYs = valid.map(p => p.temp_c as number);
   const smoothedYs = loess(rawYs, 0.15);
   const smoothed: WeatherPoint[] = valid.map((p, i) => ({ ts: p.ts, temp_c: smoothedYs[i] }));
   const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
-  const domain = paddedYDomain([...rawYs, ...smoothedYs]);
+  const yScale = niceFloorDomain([...rawYs, ...smoothedYs], 3);
 
   return Plot.plot({
     width,
@@ -166,7 +167,7 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
     marginBottom: 28,
     marginTop: 8,
     x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
-    y: { label: null, grid: true, ticks: 3, ...(domain ? { domain } : {}) },
+    y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       // Raw line — BEHIND smoothed (array order = z-order; Pitfall 2 from 08-RESEARCH)
@@ -211,7 +212,7 @@ export function buildPressurePlot(data: WeatherPoint[], width: number): SVGEleme
   const smoothedYs = loess(rawYs, 0.15);
   const smoothed: WeatherPoint[] = valid.map((p, i) => ({ ts: p.ts, pressure_hpa: smoothedYs[i] }));
   const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
-  const domain = paddedYDomain([...rawYs, ...smoothedYs]);
+  const yScale = niceFloorDomain([...rawYs, ...smoothedYs], 3);
 
   return Plot.plot({
     width,
@@ -221,7 +222,7 @@ export function buildPressurePlot(data: WeatherPoint[], width: number): SVGEleme
     marginBottom: 28,
     marginTop: 8,
     x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
-    y: { label: null, grid: true, ticks: 3, ...(domain ? { domain } : {}) },
+    y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       Plot.line(valid, {
@@ -283,7 +284,7 @@ export function buildHumidityDewpointPlot(data: WeatherPoint[], width: number): 
   const lastDew = dewSmoothed.length > 0 ? dewSmoothed[dewSmoothed.length - 1] : null;
 
   // Shared Y domain so the two lines sit on one axis (UI-SPEC §HumidityChart).
-  const domain = paddedYDomain([...humidityYs, ...dewpointYs, ...smoothedHumidity, ...smoothedDewpoint]);
+  const yScale = niceFloorDomain([...humidityYs, ...dewpointYs, ...smoothedHumidity, ...smoothedDewpoint], 4);
 
   return Plot.plot({
     width,
@@ -293,7 +294,7 @@ export function buildHumidityDewpointPlot(data: WeatherPoint[], width: number): 
     marginBottom: 28,
     marginTop: 8,
     x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
-    y: { label: null, grid: true, ticks: 4, ...(domain ? { domain } : {}) },
+    y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       // Humidity smoothed line
