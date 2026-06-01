@@ -6,12 +6,14 @@
   import { healthStore } from '$lib/stores/health';
   import { deriveStaleness } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
+  import { startReseed } from '$lib/utils/reseed';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;
   let intervalId: ReturnType<typeof setInterval> | undefined;
   let unsubscribe: (() => void) | undefined;
+  let stopReseed: (() => void) | undefined;
 
   function render() {
     if (!container) return;
@@ -42,6 +44,10 @@
 
   onMount(() => {
     bootstrap();
+    // Reconcile with the server (authoritative SQLite per-minute counts)
+    // periodically + on tab-refocus, so lossy live-WS accumulation can't drift
+    // the chart into spurious near-zero spikes over a long unrefreshed session.
+    stopReseed = startReseed(bootstrap);
     unsubscribe = muonStore.subscribe(render);
     intervalId = setInterval(flushMuonBuffer, 1000);
     if (typeof ResizeObserver !== 'undefined') {
@@ -60,6 +66,7 @@
 
   onDestroy(() => {
     if (intervalId) clearInterval(intervalId);
+    if (stopReseed) stopReseed();
     if (observer) observer.disconnect();
     if (unsubscribe) unsubscribe();
     if (container) container.innerHTML = '';

@@ -5,12 +5,14 @@
   import { buildLightPlot } from '$lib/charts/plotHelpers';
   import { healthStore } from '$lib/stores/health';
   import { themeStore } from '$lib/stores/theme';
+  import { startReseed } from '$lib/utils/reseed';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;
   let unsubWeather: (() => void) | undefined;
   let unsubTheme: (() => void) | undefined;
+  let stopReseed: (() => void) | undefined;
 
   function render() {
     if (!container) return;
@@ -30,6 +32,7 @@
 
   onMount(() => {
     bootstrap();
+    stopReseed = startReseed(bootstrap); // reconcile w/ server periodically + on tab-refocus
     unsubWeather = weatherStore.subscribe(render);
     unsubTheme = themeStore.subscribe(render);
     if (typeof ResizeObserver !== 'undefined') {
@@ -45,6 +48,7 @@
     observer?.disconnect();
     unsubWeather?.();
     unsubTheme?.();
+    stopReseed?.();
     if (container) container.innerHTML = '';
   });
 </script>
