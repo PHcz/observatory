@@ -26,6 +26,7 @@ from observatory.api._serializers import (
     resolve_agg,
 )
 from observatory.db.connection import get_conn
+from observatory.muon.pressure import stp_corrected_rate
 
 router = APIRouter()
 
@@ -97,7 +98,14 @@ def get_muon(
             rows = []
             for r in raw_rows:
                 event_count: int = r["event_count"]
-                rate_per_min = round(event_count * 60 / bucket_sec, 2)
+                raw_rate = event_count * 60 / bucket_sec
+                # UKRAA STP pressure correction (see observatory.muon.pressure):
+                # normalize the rate to 20 degC / 1013.25 hPa using the bucket's
+                # mean detector temp + pressure. Unchanged when either is missing.
+                corrected = stp_corrected_rate(
+                    raw_rate, r["detector_temp_c"], r["detector_pressure_hpa"]
+                )
+                rate_per_min = round(corrected if corrected is not None else raw_rate, 2)
                 rows.append(
                     {
                         "ts": r["ts"],

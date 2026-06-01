@@ -75,8 +75,24 @@ def main() -> int:
         return 2
 
     since_ts = int(time.time()) - int(args.since_hours * 3600)
+
+    # Resolve the DB path so the script runs ad-hoc (no app env loaded). Prefer
+    # an explicit --db-path, then settings (when the env is present), else the
+    # conventional Pi location. Avoids 'NoneType has no attribute' when the
+    # operator runs this directly during the soak without sourcing the env file.
+    db_path = args.db_path
+    if db_path is None:
+        try:
+            from observatory.config import settings
+
+            db_path = settings.observatory_db_path if settings is not None else None
+        except Exception:
+            db_path = None
+        if not db_path:
+            db_path = "/var/lib/observatory/observatory.db"
+
     try:
-        result = analyze_gaps(args.db_path, since_ts, args.threshold_sec)
+        result = analyze_gaps(db_path, since_ts, args.threshold_sec)
     except sqlite3.Error as exc:
         print(f"error: db read failed: {exc}", file=sys.stderr)
         return 2

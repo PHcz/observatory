@@ -1,5 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import type { MuonData, MuonPoint, MuonEvent } from '$lib/types';
+import { stpCorrectedRate } from '$lib/utils/stp';
 
 export interface MuonState {
   current: MuonData | null;
@@ -62,16 +63,21 @@ export function flushMuonBuffer(): void {
       .sort((a, b) => a.ts - b.ts);
 
     const last = drained[drained.length - 1];
+    // Pressure-correct the displayed live rate (StatsRow shows it as "pressure
+    // corrected") using the latest event's detector temp + pressure. Falls back
+    // to the raw count when T/P is missing. (UKRAA STP method — see utils/stp.)
+    const correctedRate =
+      stpCorrectedRate(liveRate, last.detector_temp_c, last.detector_pressure_hpa) ?? liveRate;
     return {
       current: {
         ts: last.ts,
-        rate_per_min: liveRate,
+        rate_per_min: correctedRate,
         detector_pressure_hpa: last.detector_pressure_hpa,
         detector_temp_c: last.detector_temp_c,
         latest_event_ts: last.ts,
       } as unknown as MuonData,
       history: merged,
-      rate: liveRate,
+      rate: correctedRate,
       lastUpdateTs: nowSec,
     };
   });
