@@ -7,6 +7,7 @@
   import { themeStore } from '$lib/stores/theme';
   import { startReseed } from '$lib/utils/reseed';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;
@@ -54,11 +55,7 @@
 </script>
 
 <section class="section" data-testid="pressure-chart">
-  <header class="section-header">
-    <div class="eyebrow">PRESSURE</div>
-    <div class="section-title">Pressure today</div>
-    <div class="section-meta">Outside sensor</div>
-  </header>
+  <ChartHeader title="PRESSURE" sensor="OUTSIDE SENSOR" />
   <p class="section-subtitle">Atmospheric pressure in hectopascals, smoothed over 24 hours.</p>
   <StalenessCaption {lastTs} level="fresh" />
   <div bind:this={container} class="chart-container"></div>
@@ -66,20 +63,6 @@
 
 <style>
   .section { margin-bottom: 80px; }
-  .section-header {
-    display: flex; align-items: baseline; gap: 16px;
-    padding-bottom: 16px; border-bottom: 1px solid var(--border);
-    margin-bottom: 24px;
-  }
-  .eyebrow {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.20em;
-    color: var(--accent-soft); text-transform: uppercase;
-  }
-  .section-title { font-size: 16px; font-weight: 600; color: var(--text); }
-  .section-meta {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.20em;
-    color: var(--accent-soft); margin-left: auto;
-  }
   .section-subtitle { font-size: 13px; color: var(--text-muted); margin: 0 0 24px; }
   .chart-container { width: 100%; min-height: 180px; }
   @media (max-width: 600px) { .section { margin-bottom: 48px; } }
