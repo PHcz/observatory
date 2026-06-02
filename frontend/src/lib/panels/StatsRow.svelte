@@ -1,6 +1,6 @@
 <script lang="ts">
   import { weatherStore, maxLuxToday } from '$lib/stores/weather';
-  import { muonStore } from '$lib/stores/muon';
+  import { muonDisplayRate } from '$lib/stores/muon';
   import { dewPointC, dewComfort } from '$lib/utils/dewpoint';
   import { healthStore } from '$lib/stores/health';
   import { deriveStaleness } from '$lib/utils/staleness';
@@ -8,7 +8,6 @@
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   $: weather = $weatherStore.current;
-  $: muon = $muonStore;
 
   $: pressureStr = weather?.pressure_hpa != null
     ? weather.pressure_hpa.toFixed(0)
@@ -30,8 +29,10 @@
     ? dewComfort(dewPointC(weather.temp_c, weather.humidity_pct))
     : null;
 
-  $: muonStr = muon.rate != null
-    ? muon.rate.toFixed(0)
+  // Server-reconciled, pressure-corrected mean over recent complete minutes —
+  // not the lossy client rolling-60s count (which under-counts + flickers).
+  $: muonStr = $muonDisplayRate != null
+    ? $muonDisplayRate.toFixed(0)
     : null;
 
   $: luxStr = weather?.lux != null

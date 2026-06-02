@@ -45,11 +45,19 @@ describe('StatsRow', () => {
     expect(screen.getByText('65')).toBeTruthy();
   });
 
-  it('renders muon rate when available', async () => {
+  it('renders muon rate from server-reconciled history (not the lossy rolling count)', async () => {
     weatherStore.set({ current: null, history: [], lastUpdateTs: null });
     muonStore.set({ current: null, history: [], rate: null, lastUpdateTs: null });
     render(StatsRow);
-    muonStore.set({ current: null, history: [], rate: 42, lastUpdateTs: 1000000 });
+    // muonDisplayRate = mean of last complete-minute buckets. Use a bucket two
+    // minutes in the past so it's a COMPLETE minute regardless of wall-clock.
+    const completeMinute = Math.floor(Date.now() / 1000 / 60) * 60 - 120;
+    muonStore.set({
+      current: null,
+      history: [{ ts: completeMinute, rate_per_min: 42 }],
+      rate: null,
+      lastUpdateTs: 1000000,
+    });
     await tick();
     expect(screen.getByText('42')).toBeTruthy();
   });
