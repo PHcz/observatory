@@ -8,6 +8,7 @@
   import { ageSeconds } from '$lib/utils/time';
   import { startReseed } from '$lib/utils/reseed';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;
@@ -66,10 +67,7 @@
 </script>
 
 <section class="section" class:is-stale-amber={tempLevel === 'amber'} class:is-stale-red={tempLevel === 'red'}>
-  <header class="section-header">
-    <div class="section-title">Temperature today</div>
-    <div class="section-meta">Outside sensor</div>
-  </header>
+  <ChartHeader title="TEMPERATURE" sensor="OUTSIDE SENSOR" />
   <!-- WS-pushed source: caption permanently hidden, UI-14 (same as MuonChart) -->
   <StalenessCaption lastTs={tempLastTs} level="fresh" />
   <div bind:this={container} data-chart="temperature" class="chart-container"></div>
@@ -80,30 +78,8 @@
     /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
   }
-  /* token: caption-placement (UI-15) — StalenessCaption below header (WS-pushed,
-     level='fresh' hardcoded). */
-  .section-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 24px
-       to match MuonChart's bordered-header pattern (visual consistency between
-       the two adjacent charts). Flagged for follow-up. */
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .section-title {
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .section-meta {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.20em;
-    color: var(--accent-soft);
-    text-transform: uppercase;
-  }
+  /* Header is the shared ChartHeader atom (caption-placement UI-15 preserved:
+     StalenessCaption below header; WS-pushed source hardcoded level='fresh'). */
   .chart-container {
     width: 100%;
     min-height: 180px;

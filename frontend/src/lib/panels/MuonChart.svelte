@@ -8,6 +8,7 @@
   import { ageSeconds } from '$lib/utils/time';
   import { startReseed } from '$lib/utils/reseed';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;
@@ -74,10 +75,7 @@
 </script>
 
 <section class="section" class:is-stale-amber={muonLevel === 'amber'} class:is-stale-red={muonLevel === 'red'}>
-  <header class="section-header">
-    <div class="section-title">Muons</div>
-    <div class="section-meta">Past 24 hours</div>
-  </header>
+  <ChartHeader title="MUONS" sensor="PICO µ" />
   <p class="section-sub">Events per minute, corrected for atmospheric pressure</p>
   <!-- WS-pushed source: caption permanently hidden, UI-14 -->
   <StalenessCaption lastTs={muonLastTs} level="fresh" />
@@ -89,31 +87,9 @@
     /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
   }
-  /* token: caption-placement (UI-15) — StalenessCaption rendered below the
-     section-sub (subscribed source is WS-pushed and hardcoded level='fresh',
-     so caption is permanently suppressed; placement contract intact). */
-  .section-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 24px
-       because MuonChart's section-header carries a bottom border separator and
-       needs extra breathing room above the section-sub. Flagged for follow-up. */
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .section-title {
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .section-meta {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.20em;
-    color: var(--accent-soft);
-    text-transform: uppercase;
-  }
+  /* Header is the shared ChartHeader atom; caption-placement (UI-15) preserved:
+     StalenessCaption renders below the section-sub (WS-pushed source hardcoded
+     level='fresh', so the caption is permanently suppressed). */
   .section-sub {
     font-size: 13px;
     color: var(--text-muted);
