@@ -1,4 +1,4 @@
-import { writable, type Writable } from 'svelte/store';
+import { writable, derived, type Writable, type Readable } from 'svelte/store';
 import type { MuonData, MuonPoint, MuonEvent } from '$lib/types';
 import { stpCorrectedRate } from '$lib/utils/stp';
 
@@ -119,6 +119,41 @@ export function setMuonSnapshot(data: MuonData | null): void {
 export function seedMuonHistory(points: MuonPoint[]): void {
   muonStore.update(s => ({ ...s, history: points }));
 }
+
+/**
+ * Mean rate over the last `minutes` COMPLETE minute buckets in history.
+ *
+ * The StatsRow muon number previously used the client-side rolling-60s WS event
+ * count (`muonStore.rate`), which systematically UNDER-counts: it only sees
+ * events the browser actually received in the trailing 60s, so WS latency/loss
+ * and any browser/event clock-window skew drop events the detector really
+ * recorded. The per-minute `history` is reconciled with the server every 5 min
+ * (+ on tab-refocus) and is STP pressure-corrected, so it's authoritative.
+ *
+ * Excludes the in-progress current minute (still filling → partial count) and
+ * averages a few complete minutes to match the chart's smoothed endpoint and
+ * damp Poisson jitter (no more per-second flicker). Returns null if there is no
+ * complete bucket yet.
+ */
+export function recentMeanRate(
+  history: MuonPoint[],
+  nowSec: number,
+  minutes = 5,
+): number | null {
+  const currentMinuteStart = Math.floor(nowSec / 60) * 60;
+  const complete = history.filter((p) => p.ts < currentMinuteStart);
+  if (complete.length === 0) return null;
+  const lastN = complete.slice(-minutes);
+  return lastN.reduce((sum, p) => sum + p.rate_per_min, 0) / lastN.length;
+}
+
+/**
+ * Displayed "muons per minute" — server-reconciled, pressure-corrected, stable.
+ * Use this in the UI instead of the lossy rolling `muonStore.rate`.
+ */
+export const muonDisplayRate: Readable<number | null> = derived(muonStore, ($s) =>
+  recentMeanRate($s.history, Math.floor(Date.now() / 1000)),
+);
 
 // Test-only: reset the rolling-60s event window. Production code never calls this.
 export function _resetMuonRateWindow(): void {
