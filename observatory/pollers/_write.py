@@ -16,6 +16,8 @@ from observatory.db.connection import get_write_conn
 from observatory.pollers._types import (
     AuroraSnapshot,
     EarthquakeEvent,
+    ForecastDaily,
+    ForecastHourly,
     LightningStrike,
     SpaceWeatherSnapshot,
 )
@@ -317,6 +319,127 @@ def write_lightning_batch(
         log.error("poller_runs_emit_failed", source=source, error=str(exc))
 
     return fetched, written
+
+
+def write_forecast(
+    hourly: list[ForecastHourly],
+    daily: list[ForecastDaily],
+    meta: dict[str, int | str] | None,
+    started_at: int,
+    status: str,
+    error_summary: str | None = None,
+) -> None:
+    """Replace-on-fetch write of the cached forecast + always emit one poller_runs row.
+
+    The forecast cache holds exactly ONE current forecast (10-RESEARCH Pattern 3):
+    each poll DELETEs the prior ``forecast_hourly`` / ``forecast_daily`` rows then
+    bulk-inserts the new ones, so old ``ts`` keys never linger as the horizon shifts
+    each hour (DELETE+INSERT, NOT ``INSERT OR REPLACE`` keyed on ts). The single-row
+    ``forecast_meta`` (id CHECK=1) is upserted as the freshness anchor.
+
+    Two transactions (data write, then audit insert) follow the Phase 4 discipline
+    so the ``poller_runs`` audit row survives any data-write rollback (Pitfall 10).
+    On a failure ``status`` (empty hourly/daily, ``meta is None``) no forecast rows
+    are written but the audit row is still emitted.
+
+    Args:
+        hourly: parsed hourly rows (empty on fetch/parse failure).
+        daily: parsed daily rows (empty on fetch/parse failure).
+        meta: parser meta dict (``utc_offset_seconds`` / ``timezone`` /
+            ``fetched_at``), or ``None`` on failure.
+        started_at: poll start time (unix epoch seconds).
+        status: ``poller_runs.status`` — ``success`` | ``transient_fail`` |
+            ``parse_fail`` | ``db_fail``.
+        error_summary: short human-readable summary, truncated to 200 chars.
+    """
+    source = "forecast"
+    fetched = len(hourly) + len(daily)
+    written = 0
+    events_status = status
+    events_error = error_summary
+
+    # --- Transaction 1: replace-on-fetch data write (only with data + meta) ---
+    if (hourly or daily) and meta is not None:
+        fetched_at = int(meta["fetched_at"])
+        try:
+            with get_write_conn() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    conn.execute("DELETE FROM forecast_hourly")
+                    for h in hourly:
+                        conn.execute(
+                            "INSERT INTO forecast_hourly "
+                            "(ts, temp_c, apparent_temp_c, relative_humidity_pct, "
+                            "surface_pressure_hpa, precip_prob_pct, weather_code, "
+                            "wind_speed_kmh, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                            (
+                                h.ts,
+                                h.temp_c,
+                                h.apparent_temp_c,
+                                h.relative_humidity_pct,
+                                h.surface_pressure_hpa,
+                                h.precip_prob_pct,
+                                h.weather_code,
+                                h.wind_speed_kmh,
+                                fetched_at,
+                            ),
+                        )
+                        written += 1
+                    conn.execute("DELETE FROM forecast_daily")
+                    for d in daily:
+                        conn.execute(
+                            "INSERT INTO forecast_daily "
+                            "(ts, temp_max_c, temp_min_c, precip_prob_max_pct, "
+                            "weather_code, wind_speed_max_kmh, fetched_at) "
+                            "VALUES (?,?,?,?,?,?,?)",
+                            (
+                                d.ts,
+                                d.temp_max_c,
+                                d.temp_min_c,
+                                d.precip_prob_max_pct,
+                                d.weather_code,
+                                d.wind_speed_max_kmh,
+                                fetched_at,
+                            ),
+                        )
+                        written += 1
+                    conn.execute(
+                        "INSERT OR REPLACE INTO forecast_meta "
+                        "(id, fetched_at, utc_offset_seconds, timezone) VALUES (1, ?, ?, ?)",
+                        (fetched_at, int(meta["utc_offset_seconds"]), str(meta["timezone"])),
+                    )
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
+        except (sqlite3.Error, sqlite3.ProgrammingError, sqlite3.InterfaceError) as exc:
+            events_status = "db_fail"
+            events_error = f"{type(exc).__name__}: {exc}"
+            written = 0
+            log.error("forecast_write_db_failure", source=source, error=str(exc))
+
+    # --- Transaction 2: audit row (always attempted) ---
+    ended_at = int(time.time())
+    try:
+        with get_write_conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO poller_runs "
+                "(source, started_at, ended_at, status, events_fetched, "
+                "events_written, error_summary) VALUES (?,?,?,?,?,?,?)",
+                (
+                    source,
+                    started_at,
+                    ended_at,
+                    events_status,
+                    fetched,
+                    written,
+                    events_error[:200] if events_error else None,
+                ),
+            )
+            conn.execute("COMMIT")
+    except sqlite3.Error as exc:
+        log.error("poller_runs_emit_failed", source=source, error=str(exc))
 
 
 def write_aurora_status(

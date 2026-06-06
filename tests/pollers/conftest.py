@@ -67,6 +67,7 @@ def _configure_structlog(monkeypatch: pytest.MonkeyPatch) -> None:
         "observatory.pollers.noaa.__main__",
         "observatory.pollers.aurorawatch.__main__",
         "observatory.pollers.blitzortung.__main__",
+        "observatory.pollers.forecast.__main__",
     ):
         try:
             _m = importlib.import_module(mod_path)
@@ -108,6 +109,7 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
         "observatory.pollers.aurorawatch.__main__",
         "observatory.pollers.blitzortung.__main__",
         "observatory.pollers.blitzortung.client",
+        "observatory.pollers.forecast.__main__",
     ):
         try:
             _m = importlib.import_module(mod_path)
