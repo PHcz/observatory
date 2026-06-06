@@ -94,6 +94,24 @@ class Settings(BaseSettings):
     # --- AuroraWatch UK (Phase 5) ---
     poller_aurora_url: str = "https://aurorawatch-api.lancs.ac.uk/0.2/status/current-status.xml"
 
+    # --- Open-Meteo local forecast (Phase 10, FCAST-01) ---
+    # Keyless forecast feed. {lat}/{lon} are placeholders formatted at runtime in
+    # observatory/pollers/forecast/__main__.py with settings.home_lat/home_lon —
+    # coordinates are NEVER hard-coded in committed source (CLAUDE.md security gate).
+    # timezone=auto resolves the IANA zone + returns utc_offset_seconds for local-day
+    # math; defaults are metric (°C / km/h / % / mm) so no unit overrides are passed.
+    # relative_humidity_2m + surface_pressure are requested to honour the locked
+    # forecast-vs-actual temp+humidity+pressure decision (10-RESEARCH Open Q1).
+    poller_forecast_url: str = (
+        "https://api.open-meteo.com/v1/forecast"
+        "?latitude={lat}&longitude={lon}"
+        "&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,"
+        "precipitation_probability,weather_code,wind_speed_10m"
+        "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,"
+        "weather_code,wind_speed_10m_max"
+        "&forecast_days=7&timezone=auto"
+    )
+
     # --- Blitzortung lightning (Phase 5) ---
     # Port (8056 vs 443) probed at 05-04 first-task; URL list defaults to wss:// (443).
     # Plan 05-04 may flip these defaults after probe via a follow-up edit.

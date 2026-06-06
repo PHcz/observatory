@@ -77,3 +77,47 @@ class LightningStrike:
     latitude: float
     longitude: float
     distance_km: float
+
+
+@dataclass(frozen=True, slots=True)
+class ForecastHourly:
+    """One forecast hour from Open-Meteo (Phase 10, FCAST-01/02).
+
+    ``ts`` is a UTC epoch computed as the naive-local wall-clock time MINUS
+    ``utc_offset_seconds`` from the response. This is a documented carve-out
+    from the strict shared ``parse_ts`` helper: Open-Meteo ``time`` strings
+    carry no offset (e.g. ``2026-06-06T00:00``), exactly like the NOAA naive-UTC
+    and BGS pubDate carve-outs (STATE 05-03 / 04-04).
+
+    ``relative_humidity_pct`` + ``surface_pressure_hpa`` are carried (beyond the
+    CONTEXT panel-strip variable list) to honour the locked forecast-vs-actual
+    temp+humidity+pressure decision (10-RESEARCH Open Question 1). Every field is
+    nullable: Open-Meteo can emit ``null`` array elements (Pitfall 6).
+    """
+
+    ts: int  # UTC epoch (naive-local wall-clock - utc_offset_seconds)
+    temp_c: float | None
+    apparent_temp_c: float | None
+    relative_humidity_pct: int | None
+    surface_pressure_hpa: float | None
+    precip_prob_pct: int | None
+    weather_code: int | None
+    wind_speed_kmh: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class ForecastDaily:
+    """One forecast day from Open-Meteo (Phase 10, FCAST-01/02).
+
+    ``ts`` is the UTC epoch of the LOCAL-day start: Open-Meteo ``daily.time[i]``
+    is a bare ``YYYY-MM-DD`` local date parsed to local midnight, then shifted by
+    ``-utc_offset_seconds`` (same naive-local→UTC carve-out as ForecastHourly).
+    All fields nullable (Pitfall 6).
+    """
+
+    ts: int  # UTC epoch of local-day start
+    temp_max_c: float | None
+    temp_min_c: float | None
+    precip_prob_max_pct: int | None
+    weather_code: int | None
+    wind_speed_max_kmh: float | None
