@@ -23,6 +23,7 @@ from observatory.api.routers import aurora as aurora_router
 from observatory.api.routers import current as current_router
 from observatory.api.routers import earthquakes as earthquakes_router
 from observatory.api.routers import events as events_router
+from observatory.api.routers import forecast as forecast_router
 from observatory.api.routers import health as health_router
 from observatory.api.routers import lightning as lightning_router
 from observatory.api.routers import muon as muon_router
@@ -107,6 +108,7 @@ app.include_router(lightning_router.router, prefix="/api", tags=["lightning"])
 app.include_router(aurora_router.router, prefix="/api", tags=["aurora"])
 app.include_router(events_router.router, prefix="/api", tags=["events"])
 app.include_router(stats_router.router, prefix="/api", tags=["stats"])
+app.include_router(forecast_router.router, prefix="/api", tags=["forecast"])
 app.include_router(ws_router.router, tags=["ws"])  # no /api prefix
 
 # StaticFiles LAST. Skip if bundle dir absent (dev/CI without built frontend).
