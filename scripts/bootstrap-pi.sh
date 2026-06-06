@@ -270,6 +270,20 @@ systemctl daemon-reload
 # convergence + env review, then `systemctl start obs-forecast-poll.timer`.
 systemctl enable obs-forecast-poll.timer
 
+# --- SECTION 14f: install Phase 11 air-quality poller timer (do NOT start) ---
+log "Section 14f: Phase 11 Open-Meteo air-quality poller timer"
+for unit in \
+  obs-airquality-poll.service obs-airquality-poll.timer; do
+  install -m 644 "$REPO_ROOT/deploy/systemd/$unit" /etc/systemd/system/
+done
+systemctl daemon-reload
+# Enable but do NOT start — OPERATOR STEP: operator gates start on chrony
+# convergence + env review, then `systemctl start obs-airquality-poll.timer`.
+# REMINDER: obs-api does NOT auto-apply migrations — apply_migrations() (Section 12
+# above) must have run so the 0006 air_quality + air_quality_meta tables exist
+# BEFORE the API or poller touch them (Phase 10 deploy lesson).
+systemctl enable obs-airquality-poll.timer
+
 # --- SECTION 15: install journald drop-in for log rotation (OPS-03) ---
 log "Section 15: journald drop-in for log rotation"
 install -d -m 755 /etc/systemd/journald.conf.d
@@ -302,4 +316,7 @@ log "  7. Phase 4: start the earthquake poller timers: sudo systemctl start obs-
 log "  8. Phase 5: start NOAA + Aurora timers: sudo systemctl start obs-noaa-poll.timer obs-aurora-poll.timer"
 log "  9. Phase 5: start long-running services: sudo systemctl start obs-blitzortung.service obs-api.service"
 log " 10. Phase 10: start the forecast timer: sudo systemctl start obs-forecast-poll.timer"
-log " 11. Health check: curl http://observatory.local:8000/api/health | jq"
+log " 11. Phase 11: start the air-quality timer: sudo systemctl start obs-airquality-poll.timer"
+log "     (apply_migrations runs 0006 air_quality/air_quality_meta during bootstrap; obs-api"
+log "      does NOT auto-migrate — re-run apply_migrations() before restart on upgrade.)"
+log " 12. Health check: curl http://observatory.local:8000/api/health | jq"

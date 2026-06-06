@@ -1,0 +1,13 @@
+[Unit]
+Description=Observatory air-quality poller schedule (hourly)
+Requires=obs-airquality-poll.service
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=1h
+RandomizedDelaySec=30
+Persistent=true
+Unit=obs-airquality-poll.service
+
+[Install]
+WantedBy=timers.target
