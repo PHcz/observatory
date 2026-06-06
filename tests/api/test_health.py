@@ -21,7 +21,9 @@ from fastapi.testclient import TestClient
 import observatory.api.routers.health as health_mod
 
 LOCAL_SOURCES = ("weather", "muon")
-EXTERNAL_SOURCES = ("usgs", "emsc", "bgs", "noaa", "blitzortung", "aurora")
+# Phase 10 FCAST-01 (additive): `forecast` joins the external source set once
+# Wave 2 registers it in _freshness + /api/health. RED until then.
+EXTERNAL_SOURCES = ("usgs", "emsc", "bgs", "noaa", "blitzortung", "aurora", "forecast")
 
 
 # ---- helpers ----
@@ -241,6 +243,33 @@ def test_partial_status_treated_as_healthy(
     body = api_client.get("/api/health").json()
     assert body["external"]["noaa"]["freshness"] == "healthy"
     assert body["external"]["noaa"]["last_poll_status"] == "partial"
+
+
+# ---- forecast source (Phase 10 FCAST-01, additive — RED until Wave 2) ----
+
+
+def test_forecast_source_present_in_health(
+    api_client: TestClient,
+    health_db: Path,
+    stub_thermal: Callable[..., None],
+) -> None:
+    """`forecast` appears in /api/health with freshness derived from
+    forecast_meta.fetched_at (NOT MAX(ts) of the 7-day-ahead horizon)."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(health_db), isolation_level=None)
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO forecast_meta "
+            "(id, fetched_at, utc_offset_seconds, timezone) VALUES (1, ?, ?, ?)",
+            (now - 30, 0, "Europe/London"),
+        )
+        _insert_poller_run(conn, "forecast", now - 30, "success")
+    finally:
+        conn.close()
+
+    body = api_client.get("/api/health").json()
+    assert "forecast" in body["external"]
+    assert body["external"]["forecast"]["freshness"] == "healthy"
 
 
 # ---- Pi thermal integration ----
