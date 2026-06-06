@@ -71,8 +71,14 @@ def write_reading(envelope: WeatherEnvelope, db_path: str | None = None) -> bool
                         envelope.readings.humidity_pct,
                         envelope.readings.pressure_hpa,
                         envelope.readings.lux,
-                        envelope.readings.battery_v,
-                        None,  # wifi_rssi — firmware doesn't publish
+                        # battery_v / wifi_rssi are NULL on every row by design:
+                        # the Enviro Weather board (AA-powered, stock firmware)
+                        # never publishes voltage or RSSI over MQTT, so these
+                        # columns stay empty. Confirmed with the operator — this
+                        # is expected, not a missing-mapping bug. (The voltage
+                        # alias below would persist it if firmware ever sent it.)
+                        envelope.readings.battery_v,  # None unless firmware sends `voltage`
+                        None,  # wifi_rssi — firmware never publishes it
                     ),
                 )
                 inserted = cursor.rowcount == 1
