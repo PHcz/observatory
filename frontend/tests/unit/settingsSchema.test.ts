@@ -10,9 +10,9 @@ describe('settingsSchema DEFAULTS', () => {
     expect(Object.values(DEFAULTS.panels).every((v) => v === true)).toBe(true);
   });
 
-  it('exposes exactly 13 panel keys', () => {
-    expect(Object.keys(DEFAULTS.panels).length).toBe(13);
-    expect(ALL_PANELS.length).toBe(13);
+  it('exposes exactly 14 panel keys', () => {
+    expect(Object.keys(DEFAULTS.panels).length).toBe(14);
+    expect(ALL_PANELS.length).toBe(14);
   });
 
   it('PanelKey enum has the locked members', () => {
@@ -20,6 +20,7 @@ describe('settingsSchema DEFAULTS', () => {
       'headerPanel',
       'statsRow',
       'forecast',
+      'airQuality',
       'muonChart',
       'spaceWeather',
       'earthquakes',
