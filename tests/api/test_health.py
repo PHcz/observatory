@@ -23,7 +23,17 @@ import observatory.api.routers.health as health_mod
 LOCAL_SOURCES = ("weather", "muon")
 # Phase 10 FCAST-01 (additive): `forecast` joins the external source set once
 # Wave 2 registers it in _freshness + /api/health. RED until then.
-EXTERNAL_SOURCES = ("usgs", "emsc", "bgs", "noaa", "blitzortung", "aurora", "forecast")
+# Phase 11 OAQ-02 (additive): `air_quality` joins once Wave 2 registers it.
+EXTERNAL_SOURCES = (
+    "usgs",
+    "emsc",
+    "bgs",
+    "noaa",
+    "blitzortung",
+    "aurora",
+    "forecast",
+    "air_quality",
+)
 
 
 # ---- helpers ----
@@ -270,6 +280,33 @@ def test_forecast_source_present_in_health(
     body = api_client.get("/api/health").json()
     assert "forecast" in body["external"]
     assert body["external"]["forecast"]["freshness"] == "healthy"
+
+
+# ---- air_quality source (Phase 11 OAQ-02, additive — RED until Wave 2) ----
+
+
+def test_air_quality_source_present_in_health(
+    api_client: TestClient,
+    health_db: Path,
+    stub_thermal: Callable[..., None],
+) -> None:
+    """`air_quality` appears in /api/health with freshness derived from
+    air_quality_meta.fetched_at (mirrors the forecast freshness anchor)."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(health_db), isolation_level=None)
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO air_quality_meta "
+            "(id, fetched_at, utc_offset_seconds, timezone) VALUES (1, ?, ?, ?)",
+            (now - 30, 3600, "Europe/London"),
+        )
+        _insert_poller_run(conn, "air_quality", now - 30, "success")
+    finally:
+        conn.close()
+
+    body = api_client.get("/api/health").json()
+    assert "air_quality" in body["external"]
+    assert body["external"]["air_quality"]["freshness"] == "healthy"
 
 
 # ---- Pi thermal integration ----
