@@ -14,6 +14,7 @@ import structlog
 from observatory.config import settings
 from observatory.db.connection import get_write_conn
 from observatory.pollers._types import (
+    AirQualitySnapshot,
     AuroraSnapshot,
     EarthquakeEvent,
     ForecastDaily,
@@ -417,6 +418,111 @@ def write_forecast(
             events_error = f"{type(exc).__name__}: {exc}"
             written = 0
             log.error("forecast_write_db_failure", source=source, error=str(exc))
+
+    # --- Transaction 2: audit row (always attempted) ---
+    ended_at = int(time.time())
+    try:
+        with get_write_conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO poller_runs "
+                "(source, started_at, ended_at, status, events_fetched, "
+                "events_written, error_summary) VALUES (?,?,?,?,?,?,?)",
+                (
+                    source,
+                    started_at,
+                    ended_at,
+                    events_status,
+                    fetched,
+                    written,
+                    events_error[:200] if events_error else None,
+                ),
+            )
+            conn.execute("COMMIT")
+    except sqlite3.Error as exc:
+        log.error("poller_runs_emit_failed", source=source, error=str(exc))
+
+
+def write_air_quality(
+    snapshot: AirQualitySnapshot | None,
+    meta: dict[str, int | str] | None,
+    started_at: int,
+    status: str,
+    error_summary: str | None = None,
+) -> None:
+    """Replace-on-fetch write of the cached AQ snapshot + always emit one poller_runs row.
+
+    The air-quality cache holds exactly ONE current snapshot (migration 0006
+    ``air_quality`` id=1): each successful poll ``INSERT OR REPLACE``s id=1 so
+    growth is bounded at one row as the reading refreshes hourly. The single-row
+    ``air_quality_meta`` (id CHECK=1) is upserted as the freshness anchor.
+
+    Two transactions (data write, then audit insert) follow the Phase 4 discipline
+    so the ``poller_runs`` audit row survives any data-write rollback (Pitfall 10).
+    On a failure ``status`` (``snapshot``/``meta`` None) no air_quality row is
+    written but the audit row is still emitted.
+
+    Args:
+        snapshot: parsed snapshot, or ``None`` on fetch/parse failure.
+        meta: parser meta dict (``utc_offset_seconds`` / ``timezone`` /
+            ``fetched_at``), or ``None`` on failure.
+        started_at: poll start time (unix epoch seconds).
+        status: ``poller_runs.status`` — ``success`` | ``transient_fail`` |
+            ``parse_fail`` | ``db_fail``.
+        error_summary: short human-readable summary, truncated to 200 chars.
+    """
+    source = "air_quality"
+    fetched = 1 if snapshot is not None else 0
+    written = 0
+    events_status = status
+    events_error = error_summary
+
+    # --- Transaction 1: replace-on-fetch data write (only with snapshot + meta) ---
+    if snapshot is not None and meta is not None:
+        fetched_at = int(meta["fetched_at"])
+        try:
+            with get_write_conn() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO air_quality "
+                        "(id, ts, european_aqi, pm2_5, pm10, nitrogen_dioxide, ozone, "
+                        "sulphur_dioxide, uv_index, alder_pollen, birch_pollen, grass_pollen, "
+                        "mugwort_pollen, olive_pollen, ragweed_pollen, fetched_at) "
+                        "VALUES (1, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (
+                            snapshot.ts,
+                            snapshot.european_aqi,
+                            snapshot.pm2_5,
+                            snapshot.pm10,
+                            snapshot.nitrogen_dioxide,
+                            snapshot.ozone,
+                            snapshot.sulphur_dioxide,
+                            snapshot.uv_index,
+                            snapshot.alder_pollen,
+                            snapshot.birch_pollen,
+                            snapshot.grass_pollen,
+                            snapshot.mugwort_pollen,
+                            snapshot.olive_pollen,
+                            snapshot.ragweed_pollen,
+                            fetched_at,
+                        ),
+                    )
+                    conn.execute(
+                        "INSERT OR REPLACE INTO air_quality_meta "
+                        "(id, fetched_at, utc_offset_seconds, timezone) VALUES (1, ?, ?, ?)",
+                        (fetched_at, int(meta["utc_offset_seconds"]), str(meta["timezone"])),
+                    )
+                    written = 1
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
+        except (sqlite3.Error, sqlite3.ProgrammingError, sqlite3.InterfaceError) as exc:
+            events_status = "db_fail"
+            events_error = f"{type(exc).__name__}: {exc}"
+            written = 0
+            log.error("air_quality_write_db_failure", source=source, error=str(exc))
 
     # --- Transaction 2: audit row (always attempted) ---
     ended_at = int(time.time())
