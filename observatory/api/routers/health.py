@@ -85,6 +85,19 @@ def _forecast_last_fetched(conn: sqlite3.Connection) -> int | None:
     return int(val) if val is not None else None
 
 
+def _air_quality_last_fetched(conn: sqlite3.Connection) -> int | None:
+    """Return air_quality_meta.fetched_at (when the snapshot was last polled).
+
+    This is the freshness anchor for the `air_quality` source — NOT MAX(ts) of
+    the single-row air_quality snapshot (mirrors the forecast carve-out).
+    """
+    row = conn.execute("SELECT fetched_at FROM air_quality_meta WHERE id = 1").fetchone()
+    if not row:
+        return None
+    val = row["fetched_at"]
+    return int(val) if val is not None else None
+
+
 def _last_poll(conn: sqlite3.Connection, source: str) -> tuple[int | None, str | None]:
     row = conn.execute(
         "SELECT ended_at, status FROM poller_runs WHERE source=? ORDER BY ended_at DESC LIMIT 1",
@@ -191,6 +204,29 @@ def health() -> dict[str, Any]:
             "cadence_warning": cadence_warning(now, fc_last, "forecast"),
         }
         worst_f = worst(worst_f, fc_f)
+
+        # air_quality: bespoke external entry. Freshness anchors on
+        # air_quality_meta.fetched_at (NOT MAX(ts) of the single-row snapshot).
+        # Kept off the EXTERNAL_SOURCES loop because that path routes through
+        # _max_ts(ts), which is the wrong column here — mirrors forecast above.
+        aq_interval = INTERVALS_SEC["air_quality"]
+        aq_last = _air_quality_last_fetched(conn)
+        aq_poll_ts, aq_poll_status = _last_poll(conn, "air_quality")
+        aq_anchor = aq_last
+        if aq_anchor is None and aq_poll_status in ("success", "partial"):
+            aq_anchor = aq_poll_ts
+        aq_age = (now - aq_anchor) if aq_anchor is not None else _NO_EVENT_AGE_SEC
+        aq_event_f = freshness(aq_age, aq_interval)
+        aq_f = cross_check_poller(aq_event_f, aq_poll_status, aq_poll_ts, now, aq_interval)
+        out["external"]["air_quality"] = {
+            "last_event_ts": aq_last,
+            "last_poll_ts": aq_poll_ts,
+            "last_poll_status": aq_poll_status,
+            "freshness": aq_f,
+            "staleness_threshold_sec": HEALTHY_MULT * aq_interval,
+            "cadence_warning": cadence_warning(now, aq_last, "air_quality"),
+        }
+        worst_f = worst(worst_f, aq_f)
 
     pi = _pi_block()
     out["pi"] = pi

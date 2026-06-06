@@ -53,4 +53,5 @@ def test_expected_interval_sec_keys() -> None:
         "blitzortung",
         "aurora",
         "forecast",  # Phase 10 FCAST-01: hourly cadence (UI-20 warn at 2h)
+        "air_quality",  # Phase 11 OAQ-02: hourly cadence (UI-20 warn at 2h)
     }

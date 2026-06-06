@@ -37,12 +37,15 @@ INTERVALS_SEC: Final[dict[str, int]] = {
     "aurora": 900,
     # forecast polls hourly; HEALTHY_MULT(2)*3600 == 7200s healthy window.
     "forecast": 3600,
+    # air_quality polls hourly; HEALTHY_MULT(2)*3600 == 7200s healthy window.
+    "air_quality": 3600,
 }
 
 # Map source name -> (data table, optional source-column filter for earthquakes).
-# NOTE: `forecast` is deliberately ABSENT here — its freshness must track
-# forecast_meta.fetched_at (when we last polled), NOT MAX(ts) of the 7-day-ahead
-# horizon (which would always look fresh). health.py reads fetched_at directly.
+# NOTE: `forecast` and `air_quality` are deliberately ABSENT here — their
+# freshness must track {forecast,air_quality}_meta.fetched_at (when we last
+# polled), NOT MAX(ts) (forecast's horizon is 7 days ahead; air_quality is a
+# single-row snapshot). health.py reads fetched_at directly for both.
 DATA_TABLE: Final[dict[str, tuple[str, str | None]]] = {
     "weather": ("weather", None),
     "muon": ("muon_events", None),
@@ -118,6 +121,7 @@ EXPECTED_INTERVAL_SEC: Final[dict[str, int]] = {
     "blitzortung": 30,  # 30s
     "aurora": 900,  # 15min
     "forecast": 3600,  # 1h — UI-20 cadence_warning fires at 2x (2h overdue)
+    "air_quality": 3600,  # 1h — UI-20 cadence_warning fires at 2x (2h overdue)
 }
 
 
