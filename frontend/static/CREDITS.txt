@@ -1,0 +1,14 @@
+Third-party assets bundled with the Observatory dashboard
+=========================================================
+
+moon.jpg
+  Source : "Moon nearside (LRO)" — near-side mosaic from NASA's Lunar
+           Reconnaissance Orbiter.
+  Credit : NASA / GSFC / Arizona State University
+  License: Public Domain (NASA imagery)
+  Via    : Wikimedia Commons
+           https://commons.wikimedia.org/wiki/File:Moon_nearside_LRO.jpg
+  Edits  : centre-cropped ~10% to remove the baked-in credit/scale text,
+           downscaled to 256x256, metadata stripped of GPS.
+
+Public-domain imagery requires no attribution; this credit is courtesy.

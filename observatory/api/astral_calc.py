@@ -50,6 +50,10 @@ def get_astronomy(
             moon_phase (float): Normalised phase in [0.0, 1.0).
                 0.0 = new moon, 0.5 = full moon.
             moon_illumination_pct (float): Illumination percentage in [0.0, 100.0].
+            moonrise_ts (int | None): UTC epoch seconds of moonrise on this date,
+                or None when the moon does not rise (high latitudes / skipped day).
+            moonset_ts (int | None): UTC epoch seconds of moonset on this date,
+                or None when the moon does not set.
     """
     if today is None:
         from datetime import datetime
@@ -90,9 +94,41 @@ def get_astronomy(
 
     illumination = compute_moon_illumination(phase_days)
 
+    # --- Moonrise / Moonset ---
+    # astral 3.x raises ValueError ("Moon never rises/sets on this date") at high
+    # latitudes or on days the moon skips a rise/set. Treat as "no event" -> None.
+    moonrise_ts: int | None = None
+    moonset_ts: int | None = None
+    try:
+        moonrise_ts = int(astral_moon.moonrise(loc.observer, today).timestamp())
+    except ValueError:
+        pass
+    except Exception:
+        logger.warning(
+            "Unexpected error computing moonrise for lat=%s lon=%s date=%s",
+            lat,
+            lon,
+            today,
+            exc_info=True,
+        )
+    try:
+        moonset_ts = int(astral_moon.moonset(loc.observer, today).timestamp())
+    except ValueError:
+        pass
+    except Exception:
+        logger.warning(
+            "Unexpected error computing moonset for lat=%s lon=%s date=%s",
+            lat,
+            lon,
+            today,
+            exc_info=True,
+        )
+
     return {
         "sunrise_ts": sunrise_ts,
         "sunset_ts": sunset_ts,
         "moon_phase": moon_phase,
         "moon_illumination_pct": illumination,
+        "moonrise_ts": moonrise_ts,
+        "moonset_ts": moonset_ts,
     }

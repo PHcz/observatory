@@ -172,6 +172,8 @@ def test_empty_db_astronomy_keys(client: TestClient) -> None:
         "sunset_ts",
         "moon_phase",
         "moon_illumination_pct",
+        "moonrise_ts",
+        "moonset_ts",
     }
 
 
