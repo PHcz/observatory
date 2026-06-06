@@ -259,6 +259,17 @@ systemctl enable obs-blitzortung.service
 systemctl enable obs-api.service
 # Sanity-check tip for the operator: `curl http://observatory.local:8000/api/health | jq`
 
+# --- SECTION 14e: install Phase 10 forecast poller timer (do NOT start) ---
+log "Section 14e: Phase 10 Open-Meteo forecast poller timer"
+for unit in \
+  obs-forecast-poll.service obs-forecast-poll.timer; do
+  install -m 644 "$REPO_ROOT/deploy/systemd/$unit" /etc/systemd/system/
+done
+systemctl daemon-reload
+# Enable but do NOT start — OPERATOR STEP: operator gates start on chrony
+# convergence + env review, then `systemctl start obs-forecast-poll.timer`.
+systemctl enable obs-forecast-poll.timer
+
 # --- SECTION 15: install journald drop-in for log rotation (OPS-03) ---
 log "Section 15: journald drop-in for log rotation"
 install -d -m 755 /etc/systemd/journald.conf.d
@@ -290,4 +301,5 @@ log "     (Pitfall 6: stop the service before opening /dev/picomuon with screen/
 log "  7. Phase 4: start the earthquake poller timers: sudo systemctl start obs-usgs-poll.timer obs-emsc-poll.timer obs-bgs-poll.timer"
 log "  8. Phase 5: start NOAA + Aurora timers: sudo systemctl start obs-noaa-poll.timer obs-aurora-poll.timer"
 log "  9. Phase 5: start long-running services: sudo systemctl start obs-blitzortung.service obs-api.service"
-log " 10. Health check: curl http://observatory.local:8000/api/health | jq"
+log " 10. Phase 10: start the forecast timer: sudo systemctl start obs-forecast-poll.timer"
+log " 11. Health check: curl http://observatory.local:8000/api/health | jq"

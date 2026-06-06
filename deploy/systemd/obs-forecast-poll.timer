@@ -1,0 +1,13 @@
+[Unit]
+Description=Observatory forecast poller schedule (hourly)
+Requires=obs-forecast-poll.service
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=1h
+RandomizedDelaySec=30
+Persistent=true
+Unit=obs-forecast-poll.service
+
+[Install]
+WantedBy=timers.target
