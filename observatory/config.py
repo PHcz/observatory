@@ -112,6 +112,23 @@ class Settings(BaseSettings):
         "&forecast_days=7&timezone=auto"
     )
 
+    # --- Open-Meteo air quality (Phase 11, OAQ-01) ---
+    # Keyless air-quality feed on a SEPARATE host (air-quality-api.open-meteo.com).
+    # {lat}/{lon} are placeholders formatted at runtime in
+    # observatory/pollers/airquality/__main__.py with settings.home_lat/home_lon —
+    # coordinates are NEVER hard-coded in committed source (CLAUDE.md security gate).
+    # timezone=auto resolves the IANA zone + returns utc_offset_seconds for the
+    # naive-local→UTC carve-out. All 13 current= variables resolve under `current`
+    # (Wave-0 fixture confirmed: european_aqi + 5 pollutants + uv_index + 6 pollen),
+    # so no hourly fallback is needed. Pollen is CAMS-Europe only (sensible in EU).
+    poller_air_quality_url: str = (
+        "https://air-quality-api.open-meteo.com/v1/air-quality"
+        "?latitude={lat}&longitude={lon}"
+        "&current=european_aqi,pm2_5,pm10,nitrogen_dioxide,ozone,sulphur_dioxide,uv_index,"
+        "alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen"
+        "&timezone=auto"
+    )
+
     # --- Blitzortung lightning (Phase 5) ---
     # Port (8056 vs 443) probed at 05-04 first-task; URL list defaults to wss:// (443).
     # Plan 05-04 may flip these defaults after probe via a follow-up edit.

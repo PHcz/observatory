@@ -121,3 +121,33 @@ class ForecastDaily:
     precip_prob_max_pct: int | None
     weather_code: int | None
     wind_speed_max_kmh: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class AirQualitySnapshot:
+    """One current air-quality reading from Open-Meteo (Phase 11, OAQ-01).
+
+    ``ts`` is a UTC epoch computed as the naive-local wall-clock ``current.time``
+    MINUS ``utc_offset_seconds`` from the response — the same documented carve-out
+    from the strict shared ``parse_ts`` helper used by ForecastHourly/Daily, the
+    NOAA naive-UTC and BGS pubDate carve-outs (STATE 05-03 / 04-04).
+
+    Every measurement field is nullable: Open-Meteo can emit ``null`` for any
+    variable (e.g. pollen out of season, sensor gaps). The cache holds exactly one
+    such snapshot (migration 0006 ``air_quality`` id=1, replace-on-fetch).
+    """
+
+    ts: int  # UTC epoch (naive-local current.time - utc_offset_seconds)
+    european_aqi: float | None
+    pm2_5: float | None
+    pm10: float | None
+    nitrogen_dioxide: float | None
+    ozone: float | None
+    sulphur_dioxide: float | None
+    uv_index: float | None
+    alder_pollen: float | None
+    birch_pollen: float | None
+    grass_pollen: float | None
+    mugwort_pollen: float | None
+    olive_pollen: float | None
+    ragweed_pollen: float | None
