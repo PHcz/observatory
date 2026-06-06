@@ -49,7 +49,7 @@ Deferred to Part B (no rush — Part A doesn't need these):
 
 - [ ] TFA 98.1114 protective sensor shelter (Stevenson screen) — Weather
       Spares, £20 — see [observatory_brief.md §Stevenson screen](../../observatory_brief.md)
-- [ ] 4× AA NiMH rechargeables + charger (Eneloop or similar) — Amazon, £15 —
+- [ ] 2× AA NiMH rechargeables + charger (Eneloop or similar) — Amazon, £15 —
       see [observatory_brief.md §Power](../../observatory_brief.md). Expected
       cell life on 2× AA NiMH at 5-min read / 25-min upload cadence is
       8-14 months.

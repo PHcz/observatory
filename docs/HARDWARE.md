@@ -13,7 +13,7 @@ them as ranges, not quotes.
 | Small USB stick (~5GB) | any | ~£5 (often already owned) | Rolling weekly SQLite backup target. |
 | Pimoroni Enviro Weather (Pico W Aboard) | [The Pi Hut](https://thepihut.com/products/enviro-weather-pico-w-aboard-board-only) | ~£30 | Off-the-shelf outdoor node: Pico W (wifi), BME280 (temp/humidity/pressure), LTR-559 (light), JST battery connector, onboard RTC for deep sleep, Qw/ST expansion port. No soldering. |
 | 2× AA battery holder with switch + JST-PH connector | [The Pi Hut](https://thepihut.com/collections/battery-holders) | ~£1.80 | JST-PH connector (not JST-XH/ZH). Powers the Enviro Weather. |
-| 4× AA NiMH rechargeable batteries + charger | Amazon | ~£15 | Eneloop or similar. ~8–14 months between charges at the default 5-min read / 25-min publish cycle. |
+| 2× AA NiMH rechargeable batteries + charger | Amazon | ~£15 | Eneloop or similar. ~8–14 months between charges at the default 5-min read / 25-min publish cycle. |
 | TFA 98.1114 protective sensor shelter (Stevenson screen) | [Weather Spares](https://weatherspares.co.uk/products/tfa-protective-sensor-shelter-stevenson-screen-98-1114) | ~£20 | White louvred plastic, generous internal space (Enviro Weather + AA pack fit), cable opening at bottom, mounting brackets included. |
 | UKRAA PicoMuon detector | [UKRAA store](https://ukraa.com/store/categories/cosmic-rays) | ~£360 | Plug-and-play cosmic-ray muon detector. Two scintillators (17mm separation), onboard BMP280 (temp + pressure for flux correction), software pre-installed, USB output. Inc. UK P&P, no VAT; ships with a micro-USB cable. Optional but it's the headline science feed. |
 

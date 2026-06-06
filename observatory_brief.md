@@ -136,7 +136,7 @@ All-in-one off-the-shelf board with a Raspberry Pi Pico W (wifi), BME280 (temp/h
 |---|---|---|---|
 | Pimoroni Enviro Weather (Pico W Aboard) | [The Pi Hut](https://thepihut.com/products/enviro-weather-pico-w-aboard-board-only) | £30 | Already ordered. |
 | 2× AA battery holder with switch + JST-PH connector | [The Pi Hut](https://thepihut.com/collections/battery-holders) | £1.80 | JST-PH connector (not JST-XH/ZH). Already ordered. |
-| 4× AA NiMH rechargeable batteries + charger | Amazon | £15 | Eneloop or similar. Realistically 8-14 months between charges with 5-min reading / 25-min publish cycle. |
+| 2× AA NiMH rechargeable batteries + charger | Amazon | £15 | Eneloop or similar. Realistically 8-14 months between charges with 5-min reading / 25-min publish cycle. |
 
 **Subtotal: ~£47 with batteries and charger.**
 
