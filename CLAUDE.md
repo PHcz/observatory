@@ -217,6 +217,31 @@ See `observatory_dashboard.html` for the worked sketch.
 
 ---
 
+## Security & privacy — required check before every commit
+
+This repo is **public**. Nothing sensitive may enter the history. A
+**sensitive-data gate runs on every commit** (pre-commit) and must pass —
+do not bypass it with `--no-verify`.
+
+What is enforced (`scripts/check-sensitive.sh`, wired in `.pre-commit-config.yaml`):
+1. **No personal email in authorship** — `git user.email` must be a
+   `@users.noreply.github.com` identity.
+2. **No secret/credential files** — `.env*`, `*.pem`, `*.key`, the real
+   `deploy/mosquitto/passwords` are refused (only `*.example` templates ship).
+3. **No GPS EXIF in images** — home-location leak guard (via `exiftool`).
+4. **No project-specific PII/secrets** — matched against
+   `.git-sensitive-patterns`, a **local, gitignored** file whose real values
+   (personal email, home lat/lon, etc.) never enter the repo. Copy
+   `.git-sensitive-patterns.example` → `.git-sensitive-patterns` and fill it in
+   on each clone.
+
+Generic API keys/tokens are additionally caught by the **gitleaks** pre-commit
+hook. Secrets, home coordinates, and the real `.env` live only on the Pi
+(`/etc/observatory/observatory.env`) and in local gitignored files. When in
+doubt, assume a value is sensitive and keep it out of git.
+
+---
+
 ## Scope guardrails — Notes for future Peter
 
 - **Phase 1 is intentionally narrow**: weather node + muon detector + external data feeds + web dashboard, served locally. Resist scope creep.

@@ -1,0 +1,14 @@
+# Local-only sensitive-pattern list for scripts/check-sensitive.sh.
+#
+# Copy this file to `.git-sensitive-patterns` (which is gitignored) and add the
+# REAL strings you never want committed — the patterns live ONLY in that local
+# file, so the sensitive values themselves never enter the repository.
+#
+# One POSIX extended-regex per line. Blank lines and lines starting with '#'
+# are ignored. The gate greps each staged file against every pattern.
+#
+# Examples (edit with your real values, then uncomment in the copied file):
+#   your\.name@gmail\.com
+#   # home latitude / longitude prefixes (coarse), e.g.:
+#   \b51\.4[0-9]{2,}\b
+#   \b-0\.1[0-9]{2,}\b

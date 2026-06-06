@@ -54,6 +54,8 @@ secrets.env
 secret.env
 *.pem
 *.key
+# Local-only sensitive-pattern list for the pre-commit sensitive-data gate
+.git-sensitive-patterns
 # Operator-local soak evidence (telemetry snapshots — may carry IP / hostname)
 /var/lib/observatory/
 # Editor noise
