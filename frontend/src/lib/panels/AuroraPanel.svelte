@@ -5,6 +5,7 @@
   import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
 
   const AURORA_COPY: Record<'green' | 'yellow' | 'amber' | 'red', string> = {
     green:  'Green · No significant activity',
@@ -24,10 +25,7 @@
 
 <section class="aurora-panel" class:is-stale-amber={auroraLevel === 'amber'} class:is-stale-red={auroraLevel === 'red'}>
   <StalenessCaption lastTs={auroraLastTs} level={auroraLevel} />
-  <div class="section-header">
-    <span class="section-title">Aurora visibility</span>
-    <span class="section-meta">AuroraWatch UK · Lancaster</span>
-  </div>
+  <ChartHeader title="AURORA VISIBILITY" sensor="AURORAWATCH UK · LANCASTER" period={null} />
 
   {#if data == null}
     <p class="empty">No aurora data yet.</p>
@@ -54,33 +52,6 @@
       /* token: section-bottom-margin (UI-15) — 48px tier at ≤900px (matches spec) */
       margin-bottom: 48px;
     }
-  }
-
-  /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 16px
-     because AuroraPanel's StalenessCaption renders between section-header and
-     aurora-row; 16px keeps the caption visually grouped with the header.
-     caption-placement: below (after header, before status row). Flagged for
-     follow-up. */
-  .section-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .section-title {
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.2;
-    color: var(--text);
-  }
-
-  .section-meta {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.20em;
-    text-transform: uppercase;
-    color: var(--accent-soft);
   }
 
   .empty {

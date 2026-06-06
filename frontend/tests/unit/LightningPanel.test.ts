@@ -23,9 +23,9 @@ describe('LightningPanel', () => {
     expect(screen.getByText('No strikes in the last 24h.')).toBeTruthy();
   });
 
-  it('shows section title "Lightning"', () => {
+  it('shows section title "LIGHTNING"', () => {
     render(LightningPanel);
-    expect(screen.getByText('Lightning')).toBeTruthy();
+    expect(screen.getByText('LIGHTNING')).toBeTruthy();
   });
 
   it('shows metric labels when data is present', () => {

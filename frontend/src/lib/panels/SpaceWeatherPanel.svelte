@@ -5,6 +5,7 @@
   import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
 
   $: current = $spaceWeatherStore.current;
   $: kp_index = current?.kp_index ?? null;
@@ -31,14 +32,9 @@
 </script>
 
 <section class="space-weather-panel" class:is-stale-amber={swLevel === 'amber'} class:is-stale-red={swLevel === 'red'}>
-  <header class="section-header">
-    <div class="section-title-row">
-      <h2 class="section-title">Space weather</h2>
-      <span class="section-meta">NOAA SWPC</span>
-    </div>
-    <p class="section-sub">Solar activity affects cosmic ray flux. A geomagnetic storm 24–72 hours from now would typically show as a dip in the muon chart above.</p>
-    <StalenessCaption lastTs={swLastTs} level={swLevel} />
-  </header>
+  <ChartHeader title="SPACE WEATHER" sensor="NOAA SWPC" period={null} />
+  <p class="section-sub">Solar activity affects cosmic ray flux. A geomagnetic storm 24–72 hours from now would typically show as a dip in the muon chart above.</p>
+  <StalenessCaption lastTs={swLastTs} level={swLevel} />
 
   <div class="solar-cards">
     <div class="solar-card">
@@ -70,36 +66,6 @@
   .space-weather-panel {
     /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
-  }
-
-  /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 32px
-     because section-header contains both title-row AND section-sub stacked, and
-     the larger gap separates the header block from the solar-card grid below.
-     caption-placement: below — StalenessCaption is rendered in template above
-     .section-header for this panel; visually flows above the card grid. */
-  .section-header {
-    margin-bottom: 32px;
-  }
-
-  .section-title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
-    margin-bottom: 8px;
-  }
-
-  .section-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .section-meta {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.20em;
-    text-transform: uppercase;
-    color: var(--accent-soft);
   }
 
   .section-sub {

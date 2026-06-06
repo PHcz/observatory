@@ -4,6 +4,7 @@
   import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
   import WeatherGlyph from '$lib/atoms/WeatherGlyph.svelte';
   import { condition } from '$lib/utils/weatherCodes';
   import type { ForecastTempMetric } from '$lib/types';
@@ -50,19 +51,61 @@
     return n == null ? '—' : `${Math.round(n)}°`;
   }
 
-  // "Forecast 18° / actual 16° — running 2° cool" (UI-SPEC copy strings).
-  function tempSentence(m: ForecastTempMetric): string {
+  // Each vs-actual line: a label ("High"/"Low"/"Humidity"/"Pressure"), a
+  // "forecast X / actual Y (verdict)" body, and a warn flag. No em dashes.
+  type VsLine = { label: string; body: string; warn: boolean };
+
+  function tempBody(m: ForecastTempMetric): { body: string; warn: boolean } {
     const f = m.forecast == null ? '—' : `${Math.round(m.forecast)}°`;
-    if (m.actual == null) {
-      return `Forecast ${f} (no measured value yet)`;
-    }
+    if (m.actual == null) return { body: `forecast ${f} (no reading yet)`, warn: false };
     const a = `${Math.round(m.actual)}°`;
-    if (m.label === 'on_track' || m.delta == null) {
-      return `Forecast ${f} / actual ${a} — on track`;
-    }
-    const mag = Math.abs(Math.round(m.delta));
-    return `Forecast ${f} / actual ${a} — running ${mag}° ${m.label}`;
+    const verdict =
+      m.label === 'on_track' || m.delta == null
+        ? 'on track'
+        : `${Math.abs(Math.round(m.delta))}° ${m.label === 'warm' ? 'warmer' : 'cooler'}`;
+    return { body: `forecast ${f} / actual ${a} (${verdict})`, warn: !!m.warn };
   }
+
+  // Humidity (%) / pressure (hPa) line with a verdict, mirroring the temp lines.
+  function cmpBody(
+    f: number | null | undefined,
+    a: number | null | undefined,
+    unit: string,
+    decimals: number,
+    band: number,
+  ): string {
+    if (f == null) return '—';
+    const fmt = (n: number): string => (decimals ? n.toFixed(decimals) : `${Math.round(n)}`);
+    const ff = `${fmt(f)}${unit}`;
+    if (a == null) return `forecast ${ff} (no reading yet)`;
+    const aa = `${fmt(a)}${unit}`;
+    const d = a - f;
+    const verdict =
+      Math.abs(d) < band ? 'on track' : `${fmt(Math.abs(d))}${unit} ${d > 0 ? 'higher' : 'lower'}`;
+    return `forecast ${ff} / actual ${aa} (${verdict})`;
+  }
+
+  $: vsLines = ((): VsLine[] => {
+    if (!vsa) return [];
+    const out: VsLine[] = [];
+    if (tempMetrics[0]) out.push({ label: 'High', ...tempBody(tempMetrics[0]) });
+    if (tempMetrics[1]) out.push({ label: 'Low', ...tempBody(tempMetrics[1]) });
+    if (vsa.humidity) {
+      out.push({
+        label: 'Humidity',
+        body: cmpBody(vsa.humidity.forecast, vsa.humidity.actual, '%', 0, 5),
+        warn: false,
+      });
+    }
+    if (vsa.pressure) {
+      out.push({
+        label: 'Pressure',
+        body: cmpBody(vsa.pressure.forecast, vsa.pressure.actual, ' hPa', 1, 1),
+        warn: false,
+      });
+    }
+    return out;
+  })();
 </script>
 
 <section
@@ -70,14 +113,9 @@
   class:is-stale-amber={fcLevel === 'amber'}
   class:is-stale-red={fcLevel === 'red'}
 >
-  <header class="section-header">
-    <div class="section-title-row">
-      <h2 class="section-title">Local forecast</h2>
-      <span class="section-meta">OPEN-METEO</span>
-    </div>
-    <p class="section-sub">Hourly outlook for the next 24 hours and a 7-day view for home. Forecast-vs-actual below compares today's outlook against what the outside sensor measured.</p>
-    <StalenessCaption lastTs={fcLastTs} level={fcLevel} />
-  </header>
+  <ChartHeader title="LOCAL FORECAST" sensor="OPEN-METEO" period={null} />
+  <p class="section-sub">Hourly outlook for the next 24 hours and a 7-day view for home. Forecast-vs-actual below compares today's outlook against what the outside sensor measured.</p>
+  <StalenessCaption lastTs={fcLastTs} level={fcLevel} />
 
   {#if isEmpty}
     <div class="empty-state">
@@ -129,30 +167,11 @@
     {#if vsa}
       <div class="vs-actual">
         <div class="cell-label block-caption">FORECAST VS ACTUAL</div>
-        {#each tempMetrics as m}
-          <p class="vs-line" class:warn={m.warn}>{tempSentence(m)}</p>
+        {#each vsLines as l}
+          <p class="vs-line" class:warn={l.warn}>
+            <span class="vs-label">{l.label}</span><span class="vs-body">{l.body}</span>
+          </p>
         {/each}
-        {#if vsa.humidity}
-          <p class="vs-line">
-            {#if vsa.humidity.actual != null}
-              Forecast {vsa.humidity.forecast}% / actual {vsa.humidity.actual}% humidity
-            {:else}
-              Forecast {vsa.humidity.forecast}% humidity (no measured value yet)
-            {/if}
-          </p>
-        {/if}
-        {#if vsa.pressure}
-          <p class="vs-line">
-            {#if vsa.pressure.actual != null}
-              Forecast {vsa.pressure.forecast} hPa / actual {vsa.pressure.actual} hPa
-            {:else}
-              Forecast {vsa.pressure.forecast} hPa (no measured value yet)
-            {/if}
-          </p>
-        {/if}
-        {#if vsa.precip}
-          <p class="vs-line precip-info">{vsa.precip.prob_max}% chance of precipitation today</p>
-        {/if}
       </div>
     {/if}
   {/if}
@@ -163,27 +182,6 @@
     margin-bottom: 80px;
   }
 
-  .section-header {
-    margin-bottom: 32px;
-  }
-  .section-title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
-    margin-bottom: 8px;
-  }
-  .section-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .section-meta {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.20em;
-    text-transform: uppercase;
-    color: var(--accent-soft);
-  }
   .section-sub {
     font-size: 13px;
     color: var(--text-muted);
@@ -282,8 +280,12 @@
   .vs-line.warn {
     color: var(--warn);
   }
-  .precip-info {
-    color: var(--text-muted);
+  /* Line label (High/Low/Humidity/Pressure) — sage, stays accent even on warn
+     lines; the body span inherits .vs-line colour (incl. the warn tint). */
+  .vs-label {
+    color: var(--accent-soft);
+    font-weight: 600;
+    margin-right: 8px;
   }
 
   .empty-state {

@@ -3,13 +3,15 @@
   //   [green TITLE]  [time period]            [SENSOR]
   //   ^-- left-aligned pair --^      right-aligned --^
   export let title: string; // e.g. "PRESSURE" (already in display case)
-  export let sensor: string; // e.g. "OUTSIDE SENSOR" / "PICO µ"
-  export let period = 'last 24 hours';
+  export let sensor: string; // e.g. "OUTSIDE SENSOR" / "PICO µ" / "NOAA SWPC"
+  // Time period sits between title and source. Graph panels use the default;
+  // non-graph panels pass `period={null}` to omit it (title left, source right).
+  export let period: string | null = 'last 24 hours';
 </script>
 
 <header class="chart-header">
   <span class="title">{title}</span>
-  <span class="period">{period}</span>
+  {#if period}<span class="period">{period}</span>{/if}
   <span class="sensor">{sensor}</span>
 </header>
 

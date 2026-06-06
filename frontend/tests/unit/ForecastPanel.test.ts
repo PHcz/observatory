@@ -36,15 +36,35 @@ describe('ForecastPanel', () => {
     expect(screen.getByText(/Forecast not available yet/i)).toBeTruthy();
   });
 
-  it('renders vs-actual temp sentence from store', async () => {
+  it('renders labeled vs-actual lines (labels, verdicts, no em dash, no precip)', async () => {
     render(ForecastPanel);
     setForecast({
       hourly: HOURLY,
       daily: DAILY,
-      vs_actual: { temp: { forecast: 18, actual: 16, delta: -2, label: 'cool' } },
+      vs_actual: {
+        temp: {
+          high: { forecast: 18, actual: 22, delta: 4, label: 'warm', warn: true },
+          low: { forecast: 11, actual: 12, delta: 1, label: 'on_track' },
+          actual: 22,
+        },
+        humidity: { forecast: 83, actual: 70 },
+        pressure: { forecast: 1004.2, actual: 1007.4 },
+        precip: { prob_max: 100 },
+      },
       fetched_at: 1_700_000_000,
     });
     await tick();
-    expect(screen.getByText(/Forecast 18° \/ actual 16° — running 2° cool/i)).toBeTruthy();
+    // Per-line labels
+    expect(screen.getByText('High')).toBeTruthy();
+    expect(screen.getByText('Pressure')).toBeTruthy();
+    // Verdicts on every line, no em dash; temp + humidity + pressure all compared
+    expect(screen.getByText(/forecast 18° \/ actual 22° \(4° warmer\)/i)).toBeTruthy();
+    expect(screen.getByText(/forecast 11° \/ actual 12° \(on track\)/i)).toBeTruthy();
+    expect(screen.getByText(/forecast 83% \/ actual 70% \(13% lower\)/i)).toBeTruthy();
+    expect(
+      screen.getByText(/forecast 1004\.2 hPa \/ actual 1007\.4 hPa \(3\.2 hPa higher\)/i),
+    ).toBeTruthy();
+    // Precipitation line removed from vs-actual (not a comparison)
+    expect(screen.queryByText(/chance of precipitation/i)).toBeNull();
   });
 });

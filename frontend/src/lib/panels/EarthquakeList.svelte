@@ -6,6 +6,7 @@
   import { healthStore } from '$lib/stores/health';
   import { deriveStaleness } from '$lib/utils/staleness';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
   import type { StalenessLevel } from '$lib/utils/staleness';
 
   const MAX_ROWS = 10;
@@ -39,14 +40,9 @@
 </script>
 
 <section class="earthquake-list" class:is-stale-amber={quakeLevel === 'amber'} class:is-stale-red={quakeLevel === 'red'}>
-  <header class="section-header">
-    <div class="section-title-row">
-      <h2 class="section-title">Earthquakes</h2>
-      <span class="section-meta">USGS · EMSC</span>
-    </div>
-    <p class="section-sub">Magnitude 3.0+ globally, all detectable UK events</p>
-    <StalenessCaption lastTs={quakeLastTs} level={quakeLevel} />
-  </header>
+  <ChartHeader title="EARTHQUAKES" sensor="USGS · EMSC" period={null} />
+  <p class="section-sub">Magnitude 3.0+ globally, all detectable UK events</p>
+  <StalenessCaption lastTs={quakeLastTs} level={quakeLevel} />
 
   {#if displayed.length === 0}
     <p class="empty">No earthquakes on record yet.</p>
@@ -78,35 +74,6 @@
   .earthquake-list {
     /* token: section-bottom-margin (UI-15) */
     margin-bottom: 80px;
-  }
-
-  /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 24px to
-     give the quake-rows list block clear separation from the section-sub.
-     caption-placement: below — StalenessCaption rendered after section-sub in
-     template (above the rows). Flagged for follow-up. */
-  .section-header {
-    margin-bottom: 24px;
-  }
-
-  .section-title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
-    margin-bottom: 8px;
-  }
-
-  .section-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .section-meta {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.20em;
-    text-transform: uppercase;
-    color: var(--accent-soft);
   }
 
   .section-sub {

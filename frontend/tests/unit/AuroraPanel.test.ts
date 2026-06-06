@@ -13,9 +13,9 @@ describe('AuroraPanel', () => {
     expect(screen.getByText('No aurora data yet.')).toBeTruthy();
   });
 
-  it('shows section title "Aurora visibility"', () => {
+  it('shows section title "AURORA VISIBILITY"', () => {
     render(AuroraPanel);
-    expect(screen.getByText('Aurora visibility')).toBeTruthy();
+    expect(screen.getByText('AURORA VISIBILITY')).toBeTruthy();
   });
 
   it('shows red copy and status-red dot for status=red', () => {

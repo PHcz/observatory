@@ -4,6 +4,7 @@
   import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
 
   $: summary = $lightningStore.summary;
   // /api/lightning/summary now emits hourly_buckets (Phase 8 Plan 08-07). Read
@@ -51,10 +52,7 @@
 </script>
 
 <section class="lightning-panel" class:is-stale-amber={blitzLevel === 'amber'} class:is-stale-red={blitzLevel === 'red'}>
-  <div class="section-header">
-    <span class="section-title">Lightning</span>
-    <span class="section-meta">Blitzortung · Europe</span>
-  </div>
+  <ChartHeader title="LIGHTNING" sensor="BLITZORTUNG · EUROPE" period={null} />
   <p class="section-sub">Real-time strike detection across Europe</p>
   <StalenessCaption lastTs={blitzLastTs} level={blitzLevel} />
 
@@ -110,28 +108,6 @@
     /* token: section-bottom-margin (UI-15) — Phase 7 plan 07-14 placed this on
      +page.svelte's section wrapper rather than on the panel itself; preserve
      external placement (panel root keeps 0 margin to avoid double-stacking). */
-  }
-
-  .section-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .section-title {
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.2;
-    color: var(--text);
-  }
-
-  .section-meta {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.20em;
-    text-transform: uppercase;
-    color: var(--accent-soft);
   }
 
   /* token: subtitle-bottom-margin (UI-15) — diverges from spec (12px) to 16px
