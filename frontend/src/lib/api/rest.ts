@@ -1,4 +1,4 @@
-import type { MuonPoint, WeatherPoint, HealthResponse } from '$lib/types';
+import type { MuonPoint, WeatherPoint, HealthResponse, ForecastResponse } from '$lib/types';
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
@@ -35,4 +35,8 @@ export async function fetchWeatherHistory(from: number, to: number): Promise<Wea
 
 export async function fetchHealth(): Promise<HealthResponse> {
   return getJson<HealthResponse>('/api/health');
+}
+
+export async function fetchForecast(): Promise<ForecastResponse> {
+  return getJson<ForecastResponse>('/api/forecast');
 }

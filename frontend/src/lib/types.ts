@@ -124,6 +124,57 @@ export interface HealthResponse {
   };
 }
 
+// Forecast (Phase 10 — /api/forecast). Shapes mirror the 10-03 router response.
+export interface ForecastHourlyPoint {
+  ts: number;
+  temp_c: number | null;
+  apparent_temp_c?: number | null;
+  relative_humidity_pct?: number | null;
+  surface_pressure_hpa?: number | null;
+  precip_prob_pct: number | null;
+  weather_code: number | null;
+  wind_speed_kmh?: number | null;
+}
+
+export interface ForecastDailyPoint {
+  ts: number;
+  temp_max_c: number | null;
+  temp_min_c: number | null;
+  precip_prob_max_pct: number | null;
+  weather_code: number | null;
+  wind_speed_max_kmh?: number | null;
+}
+
+/** A single forecast-vs-actual temperature metric (10-03 _temp_metric). */
+export interface ForecastTempMetric {
+  forecast: number | null;
+  actual: number | null;
+  delta: number | null;
+  label: 'cool' | 'warm' | 'on_track' | null;
+  warn?: boolean;
+}
+
+/**
+ * vs-actual block. The 10-03 router nests temp as `{high, low, actual}`; the
+ * Wave-0 RED test feeds a flat `temp` ({forecast,actual,delta,label}). The
+ * panel renders from whichever is present, so `temp` accepts both shapes.
+ */
+export interface ForecastVsActual {
+  temp:
+    | (ForecastTempMetric & { high?: never; low?: never })
+    | { high: ForecastTempMetric; low: ForecastTempMetric; actual?: number | null };
+  humidity?: { forecast: number | null; actual: number | null } | null;
+  pressure?: { forecast: number | null; actual: number | null } | null;
+  precip?: { prob_max: number | null } | null;
+}
+
+export interface ForecastResponse {
+  hourly: ForecastHourlyPoint[];
+  daily: ForecastDailyPoint[];
+  vs_actual: ForecastVsActual | null;
+  fetched_at: number | null;
+}
+
 // Chart series point types
 export interface MuonPoint {
   ts: number;
