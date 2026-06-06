@@ -34,7 +34,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   mockWsInstance = new MockWs();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const WsMock: any = vi.fn(() => mockWsInstance);
+  const WsMock: any = vi.fn(function () { return mockWsInstance; });
   WsMock.OPEN = MockWs.OPEN;
   WsMock.CLOSED = MockWs.CLOSED;
   vi.stubGlobal('WebSocket', WsMock);
@@ -164,7 +164,7 @@ describe('WS store — message routing', () => {
 
 describe('WS store — reconnect backoff', () => {
   it('reconnects after close with delay', () => {
-    const WsConstructor = vi.fn(() => mockWsInstance);
+    const WsConstructor = vi.fn(function () { return mockWsInstance; });
     vi.stubGlobal('WebSocket', WsConstructor);
 
     const cleanup = initWs();

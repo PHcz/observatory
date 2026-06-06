@@ -33,7 +33,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   mockInstances = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  WsConstructor = vi.fn(() => {
+  WsConstructor = vi.fn(function () {
     const m = new MockWs();
     mockInstances.push(m);
     return m;
