@@ -59,9 +59,19 @@ class TestGetAstronomy:
         assert isinstance(result["moonset_ts"], int)
 
     def test_moonrise_none_at_high_latitude(self) -> None:
-        # Svalbard (78°N): the moon does not rise on this date -> None, no raise.
+        # Svalbard (78°N): the moon does not rise across the lookahead window in
+        # polar summer -> None, no raise.
         result = get_astronomy(78.0, 15.0, today=datetime.date(2026, 6, 3))
         assert result["moonrise_ts"] is None
+
+    def test_moonrise_skip_day_uses_lookahead(self) -> None:
+        # London 2026-06-06 has NO moonrise on the calendar day (the moon skips a
+        # rise ~monthly). The lookahead must return the next rise (2026-06-07
+        # 00:09 UTC) rather than None / a blank "—".
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2026, 6, 6))
+        assert isinstance(result["moonrise_ts"], int)
+        rise = datetime.datetime.fromtimestamp(result["moonrise_ts"], tz=datetime.UTC)
+        assert rise.date() == datetime.date(2026, 6, 7)
 
     def test_new_moon_illumination_near_zero(self) -> None:
         # 2024-01-11 was a new moon

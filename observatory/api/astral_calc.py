@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import UTC, date
+from collections.abc import Callable
+from datetime import UTC, date, timedelta
 from typing import Any
 
 from astral import LocationInfo
@@ -29,6 +30,40 @@ def compute_moon_illumination(phase_days: float) -> float:
     """
     raw = (1 - math.cos(2 * math.pi * phase_days / _SYNODIC_MONTH_DAYS)) / 2 * 100
     return round(raw, 1)
+
+
+def _next_moon_event(
+    event_fn: Callable[..., Any],
+    observer: Any,
+    start: date,
+    lookahead_days: int = 2,
+) -> int | None:
+    """Epoch-seconds of the next moonrise/moonset on `start`, or — if that day has
+    none — the soonest within the next `lookahead_days`.
+
+    The moon skips a rise (or set) roughly once a month: it occurs ~50 min later
+    each day, so a near-midnight event lands on the adjacent calendar date and the
+    in-between day has no event (astral raises ValueError). Without lookahead the
+    UI shows a bare "—"; with it we show the next actual rise/set instead. Returns
+    None only at extreme latitudes where no event occurs across the window.
+    """
+    for offset in range(lookahead_days + 1):
+        d = start + timedelta(days=offset)
+        try:
+            dt = event_fn(observer, d)
+        except ValueError:
+            continue
+        except Exception:
+            logger.warning(
+                "Unexpected error computing %s for date=%s",
+                getattr(event_fn, "__name__", "moon-event"),
+                d,
+                exc_info=True,
+            )
+            return None
+        if dt is not None:
+            return int(dt.timestamp())
+    return None
 
 
 def get_astronomy(
@@ -95,34 +130,11 @@ def get_astronomy(
     illumination = compute_moon_illumination(phase_days)
 
     # --- Moonrise / Moonset ---
-    # astral 3.x raises ValueError ("Moon never rises/sets on this date") at high
-    # latitudes or on days the moon skips a rise/set. Treat as "no event" -> None.
-    moonrise_ts: int | None = None
-    moonset_ts: int | None = None
-    try:
-        moonrise_ts = int(astral_moon.moonrise(loc.observer, today).timestamp())
-    except ValueError:
-        pass
-    except Exception:
-        logger.warning(
-            "Unexpected error computing moonrise for lat=%s lon=%s date=%s",
-            lat,
-            lon,
-            today,
-            exc_info=True,
-        )
-    try:
-        moonset_ts = int(astral_moon.moonset(loc.observer, today).timestamp())
-    except ValueError:
-        pass
-    except Exception:
-        logger.warning(
-            "Unexpected error computing moonset for lat=%s lon=%s date=%s",
-            lat,
-            lon,
-            today,
-            exc_info=True,
-        )
+    # Look ahead up to 2 days so a day the moon skips a rise/set (~monthly, or a
+    # near-midnight event attributed to the adjacent date) shows the NEXT event
+    # rather than a blank "—". None only at extreme latitudes.
+    moonrise_ts = _next_moon_event(astral_moon.moonrise, loc.observer, today)
+    moonset_ts = _next_moon_event(astral_moon.moonset, loc.observer, today)
 
     return {
         "sunrise_ts": sunrise_ts,
