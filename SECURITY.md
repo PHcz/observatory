@@ -8,7 +8,7 @@ is no authentication layer because access is gated at the network level.
 
 ## Supported Versions
 
-This is a showcase project shared as-is. Only the `main` branch is maintained.
+This is an actively-maintained personal project. Only the `main` branch is supported.
 
 ## Reporting a Vulnerability
 
@@ -18,5 +18,5 @@ Please report security issues privately rather than opening a public issue:
   **Security** tab (Private Vulnerability Reporting). This keeps the report
   private until any fix is published.
 
-This is a personal project shared as-is; responses may not be timely, but
-genuine security reports are appreciated.
+This project is actively maintained; genuine security reports are appreciated
+and I'll respond as promptly as I can.

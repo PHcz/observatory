@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something isn't working (note — this project is shared as-is and may not get a timely response)
+about: Something isn't working
 title: ''
 labels: bug
 ---

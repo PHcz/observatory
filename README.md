@@ -6,7 +6,7 @@
 
 ![Observatory dashboard (light theme): hero outside-temperature, stats row, pressure-corrected muon flux chart, space weather, earthquakes and lightning, and aurora status](docs/images/dashboard-light.png)
 
-This repository is a **build-your-own guide**: everything you need to assemble and run your own copy. It is shared as a showcase, not a polished product — fork it, adapt it, build your own observatory.
+This repository is a **build-your-own guide**: everything you need to assemble and run your own copy. It's an actively-maintained personal build running at home — fork it, adapt it, build your own observatory.
 
 ## What it is
 
@@ -22,7 +22,7 @@ A short summary of the core kit. The full bill of materials with supplier links 
 |------|------|-----------|
 | Raspberry Pi 4 (+ PSU, microSD, heatsink) | The brain — backend, database, dashboard | assumed owned (+£35–60 if buying) |
 | Pimoroni Enviro Weather board | Outdoor temp/humidity/pressure/light sensor node | ~£30 |
-| 4× AA NiMH rechargeables + charger, battery holder | Powers the weather node for months | ~£17 |
+| 2× AA NiMH rechargeables + charger, battery holder | Powers the weather node for months | ~£17 |
 | Stevenson screen (TFA 98.1114 or 3D-printed) | Weatherproof housing for the sensor node | ~£5–20 |
 | PicoMuon detector | Cosmic-ray muon detection (optional but the highlight) | ~£360 |
 
@@ -65,7 +65,7 @@ A short summary of the core kit. The full bill of materials with supplier links 
 
 **Data flow:**
 
-- The **Enviro Weather** node wakes from deep sleep on a schedule (e.g. every 5 minutes), reads its sensors, publishes a single MQTT message to the Pi, and sleeps again — running for months on 4× AA rechargeables.
+- The **Enviro Weather** node wakes from deep sleep on a schedule (e.g. every 5 minutes), reads its sensors, publishes a single MQTT message to the Pi, and sleeps again — running for months on 2× AA rechargeables.
 - The **muon detector** streams events over USB serial; a Python service writes them to SQLite. The PicoMuon's onboard BMP280 gives pressure-corrected flux from a single device.
 - **External API pollers** — one small isolated Python service per source — fetch from public APIs on a schedule and write events to SQLite.
 - **FastAPI** reads SQLite, serves REST + WebSocket, and serves the built SvelteKit bundle from `/`. The browser loads the page and opens a WebSocket back to the same host — no CORS to wrangle.
@@ -92,7 +92,7 @@ The dashboard ships with both a light and a dark theme (switchable from `/settin
 
 ## Project status
 
-Showcase project, shared **as-is** — not actively maintained. Issues and pull requests may not get a timely response. Fork it and build your own. If you do want to contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Actively maintained personal project. Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Fork it and build your own.
 
 ## Documentation
 

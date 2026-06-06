@@ -1,5 +1,4 @@
-Thanks for the PR. This project is shared as-is and may not be actively
-reviewed — that's fine, your fork is yours to run.
+Thanks for the PR. This project is actively maintained — I'll review when I can.
 
 **What this changes**
 

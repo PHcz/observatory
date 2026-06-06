@@ -1,6 +1,6 @@
 ---
 name: Question / discussion
-about: Ask a question (note — this project is shared as-is and may not get a timely response)
+about: Ask a question
 title: ''
 labels: question
 ---

@@ -49,7 +49,7 @@ iOS app, additional themes, wind/rain node, air quality node, second muon detect
 
 ### Data flow
 
-1. **Pimoroni Enviro Weather** wakes from deep sleep on a schedule (e.g. every 5 minutes), reads BME280 + LTR-559, connects to home wifi, publishes a single MQTT message to the Pi, sleeps again. Runs for months on 4× AA rechargeables.
+1. **Pimoroni Enviro Weather** wakes from deep sleep on a schedule (e.g. every 5 minutes), reads BME280 + LTR-559, connects to home wifi, publishes a single MQTT message to the Pi, sleeps again. Runs for months on 2× AA rechargeables.
 2. **Muon detector** streams events over USB serial; Python service writes to SQLite. PicoMuon includes onboard BMP280 for pressure correction.
 3. **External API pollers** — small Python services that fetch from public APIs on a schedule (5–15 min intervals depending on source) and write events to SQLite.
 4. **FastAPI** reads SQLite, serves JSON over REST and pushes live updates over WebSocket. Also serves the built SvelteKit static bundle from `/`.

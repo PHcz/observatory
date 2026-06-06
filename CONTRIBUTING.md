@@ -1,9 +1,8 @@
 # Contributing
 
-Thanks for your interest! **Heads up:** Observatory is a personal project shared
-as-is for others to learn from and fork. It is **not actively maintained** —
-issues and pull requests are welcome but may not get a timely response (or any).
-If you want to build your own, fork it and go.
+Thanks for your interest! Observatory is an **actively-maintained** personal
+project, shared for others to learn from and fork. Issues and pull requests are
+welcome. If you want to build your own, fork it and go.
 
 ## Development setup
 
