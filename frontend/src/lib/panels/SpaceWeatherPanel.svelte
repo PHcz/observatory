@@ -71,7 +71,6 @@
   .section-sub {
     font-size: 13px;
     color: var(--text-muted);
-    max-width: 600px;
   }
 
   .solar-cards {
