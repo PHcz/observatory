@@ -2,11 +2,13 @@
   import { onMount, onDestroy } from 'svelte';
   import { initWs } from '$lib/stores/ws';
   import { initHealthPolling } from '$lib/stores/health';
+  import { initForecastPolling } from '$lib/stores/forecast';
   import { settingsStore } from '$lib/stores/settings';
   import Container from '$lib/Container.svelte';
   import CadenceWarningBanner from '$lib/components/CadenceWarningBanner.svelte';
   import HeaderPanel from '$lib/panels/HeaderPanel.svelte';
   import StatsRow from '$lib/panels/StatsRow.svelte';
+  import ForecastPanel from '$lib/panels/ForecastPanel.svelte';
   import MuonChart from '$lib/panels/MuonChart.svelte';
   import SpaceWeatherPanel from '$lib/panels/SpaceWeatherPanel.svelte';
   import EarthquakeList from '$lib/panels/EarthquakeList.svelte';
@@ -20,15 +22,18 @@
 
   let cleanupWs: (() => void) | undefined;
   let cleanupHealth: (() => void) | undefined;
+  let cleanupForecast: (() => void) | undefined;
 
   onMount(() => {
     cleanupWs = initWs();
     cleanupHealth = initHealthPolling();
+    cleanupForecast = initForecastPolling();
   });
 
   onDestroy(() => {
     cleanupWs?.();
     cleanupHealth?.();
+    cleanupForecast?.();
   });
 </script>
 
@@ -40,6 +45,7 @@
   <CadenceWarningBanner />
   {#if $settingsStore.panels.headerPanel}<HeaderPanel />{/if}
   {#if $settingsStore.panels.statsRow}<StatsRow />{/if}
+  {#if $settingsStore.panels.forecast}<ForecastPanel />{/if}
   {#if $settingsStore.panels.muonChart}<MuonChart />{/if}
   {#if $settingsStore.panels.spaceWeather}<SpaceWeatherPanel />{/if}
 

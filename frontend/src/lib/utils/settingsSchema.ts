@@ -7,6 +7,7 @@ export type Theme = 'light' | 'dark' | 'auto';
 export type PanelKey =
   | 'headerPanel'
   | 'statsRow'
+  | 'forecast'
   | 'muonChart'
   | 'spaceWeather'
   | 'earthquakes'
@@ -26,6 +27,7 @@ export interface Settings {
 export const ALL_PANELS: PanelKey[] = [
   'headerPanel',
   'statsRow',
+  'forecast',
   'muonChart',
   'spaceWeather',
   'earthquakes',

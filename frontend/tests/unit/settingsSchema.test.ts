@@ -6,19 +6,20 @@ describe('settingsSchema DEFAULTS', () => {
     expect(DEFAULTS.theme).toBe('auto');
   });
 
-  it('all 12 panels default to visible (true)', () => {
+  it('all panels default to visible (true)', () => {
     expect(Object.values(DEFAULTS.panels).every((v) => v === true)).toBe(true);
   });
 
-  it('exposes exactly 12 panel keys', () => {
-    expect(Object.keys(DEFAULTS.panels).length).toBe(12);
-    expect(ALL_PANELS.length).toBe(12);
+  it('exposes exactly 13 panel keys', () => {
+    expect(Object.keys(DEFAULTS.panels).length).toBe(13);
+    expect(ALL_PANELS.length).toBe(13);
   });
 
   it('PanelKey enum has the locked members', () => {
     const expected = [
       'headerPanel',
       'statsRow',
+      'forecast',
       'muonChart',
       'spaceWeather',
       'earthquakes',

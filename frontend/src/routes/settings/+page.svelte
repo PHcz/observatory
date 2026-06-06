@@ -9,6 +9,7 @@
   const PANEL_LABELS: ReadonlyArray<{ key: PanelKey; label: string }> = [
     { key: 'headerPanel', label: 'Header' },
     { key: 'statsRow', label: 'Stats' },
+    { key: 'forecast', label: 'Local forecast' },
     { key: 'muonChart', label: 'Muon flux chart' },
     { key: 'spaceWeather', label: 'Space weather' },
     { key: 'earthquakes', label: 'Earthquakes' },
