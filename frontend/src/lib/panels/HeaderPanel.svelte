@@ -9,6 +9,7 @@
   import { healthStore } from '$lib/stores/health';
   import { deriveStaleness } from '$lib/utils/staleness';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import MoonPhase from '$lib/atoms/MoonPhase.svelte';
 
   // Current local time, updated every minute
   let currentTimeSec = Math.floor(Date.now() / 1000);
@@ -63,6 +64,13 @@
     ? `${moonPhaseName($astronomyStore.moon_phase)} · ${Math.round($astronomyStore.moon_illumination_pct)}% illuminated`
     : '—';
 
+  function moonTime(ts: number | null | undefined): string {
+    return ts != null ? tsToLocalTime(ts) : '—';
+  }
+  $: moonRiseSetStr = $astronomyStore
+    ? `Rise ${moonTime($astronomyStore.moonrise_ts)} · Set ${moonTime($astronomyStore.moonset_ts)}`
+    : '—';
+
   $: weatherHealth = $healthStore.data?.local?.weather;
   $: weatherLastTs = $weatherStore.current?.ts ?? weatherHealth?.last_event_ts ?? null;
   $: weatherLevel = (weatherLastTs != null && weatherHealth?.staleness_threshold_sec)
@@ -97,7 +105,20 @@
     </div>
     <div class="aside-stack">
       <span class="aside-label">Moon</span>
-      <span class="aside-value">{moonPhaseStr}</span>
+      <div class="moon-row">
+        {#if $astronomyStore}
+          <MoonPhase
+            phase={$astronomyStore.moon_phase}
+            illuminationPct={$astronomyStore.moon_illumination_pct}
+            phaseName={moonPhaseName($astronomyStore.moon_phase)}
+            size={78}
+          />
+        {/if}
+        <div class="moon-text">
+          <span class="aside-value">{moonPhaseStr}</span>
+          <span class="aside-value">{moonRiseSetStr}</span>
+        </div>
+      </div>
     </div>
   </aside>
 </header>
@@ -118,11 +139,28 @@
     min-width: 0;
   }
 
-  @media (max-width: 900px) {
+  /* Portrait phones/tablets: stack hero over the aside. Scoped to portrait so a
+     phone in LANDSCAPE keeps the side-by-side row below (which fills the width
+     instead of leaving the right half empty). */
+  @media (max-width: 900px) and (orientation: portrait) {
     .header {
       flex-direction: column;
       gap: 32px;
       /* token: section-bottom-margin (UI-15) — 48px tier at ≤900px */
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+    }
+  }
+
+  /* Landscape phones (short viewport): keep hero + aside side-by-side so the
+     aside occupies the right half rather than collapsing to a left column with
+     a large empty gap. max-height:500px targets phones, not landscape tablets. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .header {
+      flex-direction: row;
+      gap: 32px;
+      align-items: flex-start;
+      /* match the ≤900px spacing tier */
       margin-bottom: 48px;
       padding-bottom: 32px;
     }
@@ -197,5 +235,29 @@
     font-size: 13px;
     font-weight: 400;
     color: var(--text);
+  }
+
+  .moon-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .moon-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Portrait phones: put the moon disc beside its text so the block fills the
+     row width (stacked disc-above-text left a large empty gap on the right).
+     Desktop and landscape keep the disc-above-text layout. */
+  @media (max-width: 900px) and (orientation: portrait) {
+    .moon-row {
+      flex-direction: row;
+      align-items: center;
+      gap: 16px;
+    }
   }
 </style>

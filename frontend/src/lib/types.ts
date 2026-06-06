@@ -62,6 +62,10 @@ export interface AstronomyData {
   sunset_ts: number;
   moon_phase: number;
   moon_illumination_pct: number;
+  /** UTC epoch seconds of moonrise today, or null when the moon doesn't rise. */
+  moonrise_ts?: number | null;
+  /** UTC epoch seconds of moonset today, or null when the moon doesn't set. */
+  moonset_ts?: number | null;
 }
 
 export interface SnapshotData {

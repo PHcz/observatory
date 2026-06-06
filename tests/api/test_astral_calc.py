@@ -29,13 +29,15 @@ class TestGetAstronomy:
     LON = -0.1278  # London
     LAT = 51.5074
 
-    def test_returns_all_four_keys(self) -> None:
+    def test_returns_all_keys(self) -> None:
         result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 11))
         assert set(result.keys()) == {
             "sunrise_ts",
             "sunset_ts",
             "moon_phase",
             "moon_illumination_pct",
+            "moonrise_ts",
+            "moonset_ts",
         }
 
     def test_types(self) -> None:
@@ -44,6 +46,22 @@ class TestGetAstronomy:
         assert isinstance(result["sunset_ts"], int)
         assert isinstance(result["moon_phase"], float)
         assert isinstance(result["moon_illumination_pct"], float)
+
+    def test_moonrise_moonset_present_as_int_or_none(self) -> None:
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 1, 11))
+        for key in ("moonrise_ts", "moonset_ts"):
+            assert result[key] is None or isinstance(result[key], int)
+
+    def test_moonrise_moonset_typical_day_are_ints(self) -> None:
+        # London, 2026-06-03: both a moonrise and a moonset occur this UTC day.
+        result = get_astronomy(self.LAT, self.LON, today=datetime.date(2026, 6, 3))
+        assert isinstance(result["moonrise_ts"], int)
+        assert isinstance(result["moonset_ts"], int)
+
+    def test_moonrise_none_at_high_latitude(self) -> None:
+        # Svalbard (78°N): the moon does not rise on this date -> None, no raise.
+        result = get_astronomy(78.0, 15.0, today=datetime.date(2026, 6, 3))
+        assert result["moonrise_ts"] is None
 
     def test_new_moon_illumination_near_zero(self) -> None:
         # 2024-01-11 was a new moon
