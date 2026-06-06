@@ -27,6 +27,8 @@ SCHEMA_0001 = REPO_ROOT / "migrations" / "0001_initial_schema.sql"
 SCHEMA_0002 = REPO_ROOT / "migrations" / "0002_poller_runs.sql"
 # Phase 8.5 UI-18: /api/earthquakes router selects is_local; api tmp_db must carry it.
 SCHEMA_0004 = REPO_ROOT / "migrations" / "0004_earthquakes_is_local.sql"
+# Phase 10 FCAST-02: /api/forecast router reads forecast_* tables; api tmp_db must carry them.
+SCHEMA_0005 = REPO_ROOT / "migrations" / "0005_forecast.sql"
 
 
 @pytest.fixture(autouse=True)
@@ -37,6 +39,7 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     conn.executescript(SCHEMA_0001.read_text())
     conn.executescript(SCHEMA_0002.read_text())
     conn.executescript(SCHEMA_0004.read_text())
+    conn.executescript(SCHEMA_0005.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
     conn.close()
 
