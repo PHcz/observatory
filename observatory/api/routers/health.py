@@ -71,6 +71,20 @@ def _max_ts(conn: sqlite3.Connection, table: str, source_filter: str | None) -> 
     return int(m) if m is not None else None
 
 
+def _forecast_last_fetched(conn: sqlite3.Connection) -> int | None:
+    """Return forecast_meta.fetched_at (when the forecast was last polled).
+
+    This is the freshness anchor for the `forecast` source — NOT MAX(ts) of
+    forecast_hourly/daily, whose ts runs ~7 days into the future and would
+    therefore always look fresh (10-RESEARCH Open Question 2).
+    """
+    row = conn.execute("SELECT fetched_at FROM forecast_meta WHERE id = 1").fetchone()
+    if not row:
+        return None
+    val = row["fetched_at"]
+    return int(val) if val is not None else None
+
+
 def _last_poll(conn: sqlite3.Connection, source: str) -> tuple[int | None, str | None]:
     row = conn.execute(
         "SELECT ended_at, status FROM poller_runs WHERE source=? ORDER BY ended_at DESC LIMIT 1",
@@ -151,6 +165,32 @@ def health() -> dict[str, Any]:
                 "cadence_warning": cadence_warning(now, last, name),
             }
             worst_f = worst(worst_f, f)
+
+        # forecast: bespoke external entry. Freshness anchors on
+        # forecast_meta.fetched_at (NOT MAX(ts) — the horizon is ~7 days out and
+        # would always look fresh). Kept off the EXTERNAL_SOURCES loop because
+        # that path routes through _max_ts(ts), which is the wrong column here.
+        fc_interval = INTERVALS_SEC["forecast"]
+        fc_last = _forecast_last_fetched(conn)
+        fc_poll_ts, fc_poll_status = _last_poll(conn, "forecast")
+        # Freshness anchor: forecast_meta.fetched_at. If a meta row hasn't been
+        # written yet but the last poll succeeded, the successful poll timestamp
+        # is itself proof of a fresh fetch (the writer upserts meta on success).
+        fc_anchor = fc_last
+        if fc_anchor is None and fc_poll_status in ("success", "partial"):
+            fc_anchor = fc_poll_ts
+        fc_age = (now - fc_anchor) if fc_anchor is not None else _NO_EVENT_AGE_SEC
+        fc_event_f = freshness(fc_age, fc_interval)
+        fc_f = cross_check_poller(fc_event_f, fc_poll_status, fc_poll_ts, now, fc_interval)
+        out["external"]["forecast"] = {
+            "last_event_ts": fc_last,
+            "last_poll_ts": fc_poll_ts,
+            "last_poll_status": fc_poll_status,
+            "freshness": fc_f,
+            "staleness_threshold_sec": HEALTHY_MULT * fc_interval,
+            "cadence_warning": cadence_warning(now, fc_last, "forecast"),
+        }
+        worst_f = worst(worst_f, fc_f)
 
     pi = _pi_block()
     out["pi"] = pi
