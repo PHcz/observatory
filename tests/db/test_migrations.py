@@ -14,6 +14,8 @@ EXPECTED_TABLES = {
     "space_weather",
     "lightning_strikes",
     "aurora_status",
+    "air_quality",
+    "air_quality_meta",
 }
 
 EXPECTED_INDEXES = {
