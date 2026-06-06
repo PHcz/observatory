@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 
 from observatory.api.db_watcher import db_watcher_loop
 from observatory.api.middleware import OriginAllowlistMiddleware
+from observatory.api.routers import air_quality as air_quality_router
 from observatory.api.routers import aurora as aurora_router
 from observatory.api.routers import current as current_router
 from observatory.api.routers import earthquakes as earthquakes_router
@@ -109,6 +110,7 @@ app.include_router(aurora_router.router, prefix="/api", tags=["aurora"])
 app.include_router(events_router.router, prefix="/api", tags=["events"])
 app.include_router(stats_router.router, prefix="/api", tags=["stats"])
 app.include_router(forecast_router.router, prefix="/api", tags=["forecast"])
+app.include_router(air_quality_router.router, prefix="/api", tags=["air_quality"])
 app.include_router(ws_router.router, tags=["ws"])  # no /api prefix
 
 # StaticFiles LAST. Skip if bundle dir absent (dev/CI without built frontend).
