@@ -10,6 +10,10 @@ export type PanelKey =
   | 'forecast'
   | 'airQuality'
   | 'muonChart'
+  | 'adcSpectrum'
+  | 'barometric'
+  | 'nmdbOverlay'
+  | 'forbush'
   | 'spaceWeather'
   | 'earthquakes'
   | 'lightning'
@@ -31,6 +35,10 @@ export const ALL_PANELS: PanelKey[] = [
   'forecast',
   'airQuality',
   'muonChart',
+  'adcSpectrum',
+  'barometric',
+  'nmdbOverlay',
+  'forbush',
   'spaceWeather',
   'earthquakes',
   'lightning',

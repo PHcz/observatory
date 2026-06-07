@@ -4,6 +4,9 @@
   import { initHealthPolling } from '$lib/stores/health';
   import { initForecastPolling } from '$lib/stores/forecast';
   import { initAirQualityPolling } from '$lib/stores/airQuality';
+  import { initMuonAnalysisPolling } from '$lib/stores/muonAnalysis';
+  import { initNmdbPolling } from '$lib/stores/nmdb';
+  import { initForbushPolling } from '$lib/stores/forbush';
   import { settingsStore } from '$lib/stores/settings';
   import Container from '$lib/Container.svelte';
   import CadenceWarningBanner from '$lib/components/CadenceWarningBanner.svelte';
@@ -12,6 +15,10 @@
   import ForecastPanel from '$lib/panels/ForecastPanel.svelte';
   import AirQualityPanel from '$lib/panels/AirQualityPanel.svelte';
   import MuonChart from '$lib/panels/MuonChart.svelte';
+  import AdcSpectrumPanel from '$lib/panels/AdcSpectrumPanel.svelte';
+  import BarometricPanel from '$lib/panels/BarometricPanel.svelte';
+  import NmdbOverlayPanel from '$lib/panels/NmdbOverlayPanel.svelte';
+  import ForbushPanel from '$lib/panels/ForbushPanel.svelte';
   import SpaceWeatherPanel from '$lib/panels/SpaceWeatherPanel.svelte';
   import EarthquakeList from '$lib/panels/EarthquakeList.svelte';
   import LightningPanel from '$lib/panels/LightningPanel.svelte';
@@ -26,12 +33,18 @@
   let cleanupHealth: (() => void) | undefined;
   let cleanupForecast: (() => void) | undefined;
   let cleanupAirQuality: (() => void) | undefined;
+  let cleanupMuonAnalysis: (() => void) | undefined;
+  let cleanupNmdb: (() => void) | undefined;
+  let cleanupForbush: (() => void) | undefined;
 
   onMount(() => {
     cleanupWs = initWs();
     cleanupHealth = initHealthPolling();
     cleanupForecast = initForecastPolling();
     cleanupAirQuality = initAirQualityPolling();
+    cleanupMuonAnalysis = initMuonAnalysisPolling();
+    cleanupNmdb = initNmdbPolling();
+    cleanupForbush = initForbushPolling();
   });
 
   onDestroy(() => {
@@ -39,6 +52,9 @@
     cleanupHealth?.();
     cleanupForecast?.();
     cleanupAirQuality?.();
+    cleanupMuonAnalysis?.();
+    cleanupNmdb?.();
+    cleanupForbush?.();
   });
 </script>
 
@@ -53,6 +69,10 @@
   {#if $settingsStore.panels.forecast}<ForecastPanel />{/if}
   {#if $settingsStore.panels.airQuality}<AirQualityPanel />{/if}
   {#if $settingsStore.panels.muonChart}<MuonChart />{/if}
+  {#if $settingsStore.panels.adcSpectrum}<AdcSpectrumPanel />{/if}
+  {#if $settingsStore.panels.barometric}<BarometricPanel />{/if}
+  {#if $settingsStore.panels.nmdbOverlay}<NmdbOverlayPanel />{/if}
+  {#if $settingsStore.panels.forbush}<ForbushPanel />{/if}
   {#if $settingsStore.panels.spaceWeather}<SpaceWeatherPanel />{/if}
 
   {#if $settingsStore.panels.earthquakes || $settingsStore.panels.lightning}

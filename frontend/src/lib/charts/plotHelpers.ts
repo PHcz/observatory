@@ -538,8 +538,8 @@ export function buildBarometricScatterPlot(
  * lines up across both despite very different absolute count rates.
  */
 export function buildOverlayPlot(
-  local: NmdbLocalPoint[],
-  nmdb: NmdbSeriesPoint[],
+  local: Pick<NmdbLocalPoint, 'ts' | 'pct_baseline'>[],
+  nmdb: Pick<NmdbSeriesPoint, 'ts' | 'pct_baseline'>[],
   width: number,
 ): SVGElement | HTMLElement {
   const now = Date.now();
@@ -570,23 +570,23 @@ export function buildOverlayPlot(
       Plot.ruleY([100], { stroke: t.grid, strokeWidth: 1 }),
       // NMDB (Oulu) reference line — muted.
       Plot.line(nmdbValid, {
-        x: (d: NmdbSeriesPoint) => new Date(d.ts * 1000),
-        y: (d: NmdbSeriesPoint) => d.pct_baseline as number,
+        x: (d: Pick<NmdbSeriesPoint, 'ts' | 'pct_baseline'>) => new Date(d.ts * 1000),
+        y: (d: Pick<NmdbSeriesPoint, 'ts' | 'pct_baseline'>) => d.pct_baseline as number,
         stroke: t.raw,
         strokeWidth: 2,
       }),
       // Local muon flux line — primary emphasis.
       Plot.line(localValid, {
-        x: (d: NmdbLocalPoint) => new Date(d.ts * 1000),
-        y: (d: NmdbLocalPoint) => d.pct_baseline as number,
+        x: (d: Pick<NmdbLocalPoint, 'ts' | 'pct_baseline'>) => new Date(d.ts * 1000),
+        y: (d: Pick<NmdbLocalPoint, 'ts' | 'pct_baseline'>) => d.pct_baseline as number,
         stroke: t.data,
         strokeWidth: 2,
       }),
       ...(lastLocal != null
         ? [
             Plot.dot([lastLocal], {
-              x: (d: NmdbLocalPoint) => new Date(d.ts * 1000),
-              y: (d: NmdbLocalPoint) => d.pct_baseline as number,
+              x: (d: Pick<NmdbLocalPoint, 'ts' | 'pct_baseline'>) => new Date(d.ts * 1000),
+              y: (d: Pick<NmdbLocalPoint, 'ts' | 'pct_baseline'>) => d.pct_baseline as number,
               fill: t.marker,
               r: 5,
             }),
