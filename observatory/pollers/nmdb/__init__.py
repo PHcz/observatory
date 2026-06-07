@@ -1,6 +1,7 @@
 """NMDB / NEST neutron-monitor poller package (Phase 13, MU2-06).
 
-Wave-0 RED skeleton: the parser + __main__ raise NotImplementedError; Wave 3
-(plan 13-04) fills them in. The package exists so the RED test scaffolds import
-cleanly and fail at runtime rather than at collection.
+An isolated hourly oneshot poller that caches the Oulu neutron monitor's counts/s
+(NEST ``output=ascii``, ``yunits=0``) into SQLite — the global cosmic-ray reference
+the dashboard overlays against local muon flux. See README.md for the citation /
+acceptable-use note and the deploy migration reminder.
 """

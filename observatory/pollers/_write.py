@@ -639,10 +639,81 @@ def write_nmdb(
 ) -> None:
     """Append-window write of NMDB counts + always emit one poller_runs row.
 
-    Wave-0 RED skeleton (Phase 13, MU2-06): the real append-window
-    (``INSERT OR IGNORE`` on ``UNIQUE(station, ts)``) + ``nmdb_meta`` upsert +
-    two-transaction audit discipline is implemented in Wave 3 (plan 13-04).
-    Raising ``NotImplementedError`` keeps the symbol importable so the RED tests
-    collect cleanly and fail at runtime.
+    NMDB counts are an APPEND window (migration 0007 ``nmdb_counts``): each poll
+    fetches an overlapping ~8-day window, so rows are ``INSERT OR IGNORE`` on
+    ``UNIQUE(station, ts)`` — a re-fetch of overlapping intervals does not
+    duplicate. The single-row ``nmdb_meta`` (id CHECK=1) is upserted as the
+    ``/api/health`` freshness anchor (``fetched_at``, NOT MAX(ts) — Pitfall 2).
+
+    Two transactions (data write, then audit insert) follow the Phase 4 discipline
+    so the ``poller_runs`` audit row survives any data-write rollback (Pitfall 10).
+    On a failure ``status`` (``counts``/``meta`` None) no rows are written but the
+    audit row is still emitted.
+
+    Args:
+        counts: parsed NMDB counts, or ``None`` on fetch/parse failure.
+        meta: parser meta dict (``fetched_at`` / ``station``), or ``None`` on
+            failure. ``failures`` (if present) is ignored here — the threshold is
+            decided in ``__main__`` before the write.
+        started_at: poll start time (unix epoch seconds).
+        status: ``poller_runs.status`` — ``success`` | ``transient_fail`` |
+            ``parse_fail`` | ``db_fail``.
+        error_summary: short human-readable summary, truncated to 200 chars.
     """
-    raise NotImplementedError("write_nmdb is implemented in Wave 3 (plan 13-04)")
+    source = "nmdb"
+    fetched = len(counts) if counts is not None else 0
+    written = 0
+    events_status = status
+    events_error = error_summary
+
+    # --- Transaction 1: append-window data write (only with counts + meta) ---
+    if counts is not None and meta is not None:
+        fetched_at = int(meta["fetched_at"])
+        nmdb_station = str(meta["station"])
+        try:
+            with get_write_conn() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                try:
+                    conn.executemany(
+                        "INSERT OR IGNORE INTO nmdb_counts "
+                        "(station, ts, counts_per_sec) VALUES (?,?,?)",
+                        [(c.station, c.ts, c.counts_per_sec) for c in counts],
+                    )
+                    conn.execute(
+                        "INSERT OR REPLACE INTO nmdb_meta (id, fetched_at, station) "
+                        "VALUES (1, ?, ?)",
+                        (fetched_at, nmdb_station),
+                    )
+                    written = len(counts)
+                    conn.execute("COMMIT")
+                except Exception:
+                    conn.execute("ROLLBACK")
+                    raise
+        except (sqlite3.Error, sqlite3.ProgrammingError, sqlite3.InterfaceError) as exc:
+            events_status = "db_fail"
+            events_error = f"{type(exc).__name__}: {exc}"
+            written = 0
+            log.error("nmdb_write_db_failure", source=source, error=str(exc))
+
+    # --- Transaction 2: audit row (always attempted) ---
+    ended_at = int(time.time())
+    try:
+        with get_write_conn() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO poller_runs "
+                "(source, started_at, ended_at, status, events_fetched, "
+                "events_written, error_summary) VALUES (?,?,?,?,?,?,?)",
+                (
+                    source,
+                    started_at,
+                    ended_at,
+                    events_status,
+                    fetched,
+                    written,
+                    events_error[:200] if events_error else None,
+                ),
+            )
+            conn.execute("COMMIT")
+    except sqlite3.Error as exc:
+        log.error("poller_runs_emit_failed", source=source, error=str(exc))

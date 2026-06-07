@@ -129,6 +129,26 @@ class Settings(BaseSettings):
         "&timezone=auto"
     )
 
+    # --- NMDB / NEST neutron monitor (Phase 13, MU2-06) ---
+    # Keyless NEST ASCII export of the Oulu neutron monitor (the canonical global
+    # Forbush reference). {station} is substituted at runtime from
+    # poller_nmdb_station so the station stays configurable. yunits=0 is MANDATORY
+    # (Pitfall 3): it returns ABSOLUTE counts/s, not a relative/percent scale, which
+    # the %-of-baseline math depends on. dtype=corr_for_efficiency + tresolution=60
+    # gives ~hourly corrected counts; last_days=8 covers a full 7-day baseline window
+    # with margin. Timestamps are UTC (parsed directly to epoch, not via the
+    # naive-local carve-out). Host is www.nmdb.eu over HTTPS (NMDB-recommended modern
+    # endpoint; rt.nmdb.eu is the legacy alias). NMDB asks scripted users to be gentle
+    # and cite the database — hourly poll + observatory/0.1 UA is well within norms
+    # (see observatory/pollers/nmdb/README.md).
+    poller_nmdb_url: str = (
+        "https://www.nmdb.eu/nest/draw_graph.php"
+        "?formchk=1&stations[]={station}&tabchoice=revori&dtype=corr_for_efficiency"
+        "&tresolution=60&yunits=0&date_choice=last&last_days=8&last_label=days_label"
+        "&output=ascii"
+    )
+    poller_nmdb_station: str = "OULU"
+
     # --- Blitzortung lightning (Phase 5) ---
     # Port (8056 vs 443) probed at 05-04 first-task; URL list defaults to wss:// (443).
     # Plan 05-04 may flip these defaults after probe via a follow-up edit.

@@ -289,6 +289,21 @@ systemctl daemon-reload
 # or the route lazy-imports and degrades to empty-state.
 systemctl enable obs-airquality-poll.timer
 
+# --- SECTION 14g: install Phase 13 NMDB neutron-monitor poller timer (do NOT start) ---
+log "Section 14g: Phase 13 NMDB neutron-monitor poller timer (Oulu)"
+for unit in \
+  obs-nmdb-poll.service obs-nmdb-poll.timer; do
+  install -m 644 "$REPO_ROOT/deploy/systemd/$unit" /etc/systemd/system/
+done
+systemctl daemon-reload
+# Enable but do NOT start — OPERATOR STEP: operator gates start on chrony
+# convergence + env review, then `systemctl start obs-nmdb-poll.timer`.
+# REMINDER: obs-api does NOT auto-apply migrations — apply_migrations() (Section 12
+# above) must have run so the 0007 nmdb_counts + nmdb_meta tables (Phase 13 MU2-06)
+# exist BEFORE the API or this poller touch them. On upgrade, re-run
+# apply_migrations() for 0007 BEFORE restarting obs-api or /api/nmdb 500s.
+systemctl enable obs-nmdb-poll.timer
+
 # --- SECTION 15: install journald drop-in for log rotation (OPS-03) ---
 log "Section 15: journald drop-in for log rotation"
 install -d -m 755 /etc/systemd/journald.conf.d
@@ -324,4 +339,7 @@ log " 10. Phase 10: start the forecast timer: sudo systemctl start obs-forecast-
 log " 11. Phase 11: start the air-quality timer: sudo systemctl start obs-airquality-poll.timer"
 log "     (apply_migrations runs 0006 air_quality/air_quality_meta during bootstrap; obs-api"
 log "      does NOT auto-migrate — re-run apply_migrations() before restart on upgrade.)"
-log " 12. Health check: curl http://observatory.local:8000/api/health | jq"
+log " 12. Phase 13: start the NMDB timer: sudo systemctl start obs-nmdb-poll.timer"
+log "     (apply_migrations runs 0007 nmdb_counts/nmdb_meta during bootstrap; obs-api"
+log "      does NOT auto-migrate — re-run apply_migrations() before restart on upgrade.)"
+log " 13. Health check: curl http://observatory.local:8000/api/health | jq"
