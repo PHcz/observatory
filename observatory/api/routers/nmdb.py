@@ -44,8 +44,14 @@ def _local_muon_series(conn: Any, frm: int, to: int) -> list[dict[str, Any]]:
         "GROUP BY bucket_ts ORDER BY bucket_ts",
         (_BUCKET_SEC, _BUCKET_SEC, frm, to),
     ).fetchall()
+    # Keep only FULLY-elapsed, fully-in-window hourly buckets. The current hour
+    # (bucket_ts + 3600 > to) has only minutes of data so far, and the first hour
+    # (bucket_ts < frm) starts before the window — both undercount events and would
+    # render as spurious flux crashes (trailing/leading dips) on the overlay.
     return [
-        {"ts": int(r["bucket_ts"]), "rate_per_min": r["n"] / (_BUCKET_SEC / 60.0)} for r in rows
+        {"ts": int(r["bucket_ts"]), "rate_per_min": r["n"] / (_BUCKET_SEC / 60.0)}
+        for r in rows
+        if r["bucket_ts"] >= frm and r["bucket_ts"] + _BUCKET_SEC <= to
     ]
 
 

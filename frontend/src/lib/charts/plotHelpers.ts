@@ -59,6 +59,25 @@ export function xTimeTickValues(startMs: number, endMs: number): Date[] {
 }
 
 /**
+ * One tick per local midnight across [startMs, endMs] — for multi-day charts
+ * (e.g. the 7-day cosmic-ray overlay) where 4-hourly ticks crowd the axis.
+ * DST-safe (steps by calendar day, not a fixed 24h).
+ */
+export function xDateTickValues(startMs: number, endMs: number): Date[] {
+  const d = new Date(startMs);
+  d.setHours(0, 0, 0, 0);
+  if (d.getTime() < startMs) d.setDate(d.getDate() + 1); // first midnight >= start
+  const ticks: Date[] = [];
+  for (let t = d.getTime(); t <= endMs; ) {
+    ticks.push(new Date(t));
+    const next = new Date(t);
+    next.setDate(next.getDate() + 1);
+    t = next.getTime();
+  }
+  return ticks;
+}
+
+/**
  * Filter out muon points whose ts is within the last 90 seconds of wall-clock time.
  * Guards the right edge of the chart against client/server clock skew and
  * backend aggregation lag (the most recent minute can still be filling).
@@ -561,7 +580,9 @@ export function buildOverlayPlot(
     x: {
       type: 'time',
       domain: [start, end],
-      ticks: xTimeTickValues(start.getTime(), end.getTime()),
+      // Dates only — one tick per day; 4-hourly ticks crowd a 7-day axis.
+      ticks: xDateTickValues(start.getTime(), end.getTime()),
+      tickFormat: (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
     },
     y: { label: '% of baseline', grid: true },
     marks: [
