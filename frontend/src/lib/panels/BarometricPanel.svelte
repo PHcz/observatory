@@ -28,12 +28,17 @@
 
   function render() {
     if (!container) return;
+    // Read the store directly (NOT the reactive `data`/`fit` vars): the
+    // store.subscribe(render) callback fires before Svelte recomputes `$:`
+    // statements, so those vars are stale on the populating update. (MuonChart pattern.)
+    const d = $muonAnalysisStore.data;
     container.innerHTML = '';
-    if (isEmpty) return;
+    if (!d) return;
+    const f = d.barometric ?? null;
     // Per-bucket scatter points from /api/muon/analysis (barometric.points),
     // empty until a fit exists; the fit line + stat cards carry the headline.
-    const points = fit?.points ?? [];
-    container.appendChild(buildBarometricScatterPlot(points, fit, container.clientWidth || 600));
+    const points = f?.points ?? [];
+    container.appendChild(buildBarometricScatterPlot(points, f, container.clientWidth || 600));
   }
 
   $: muonHealth = $healthStore.data?.local?.muon;

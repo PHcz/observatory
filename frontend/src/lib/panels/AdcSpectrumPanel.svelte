@@ -18,9 +18,13 @@
 
   function render() {
     if (!container) return;
+    // Read the store directly (NOT the reactive `data`/`isEmpty` vars): the
+    // store.subscribe(render) callback fires before Svelte recomputes `$:`
+    // statements, so those vars are stale on the populating update. (MuonChart pattern.)
+    const d = $muonAnalysisStore.data;
     container.innerHTML = '';
-    if (isEmpty || !data) return;
-    container.appendChild(buildAdcHistogramPlot(data.adc_histogram, container.clientWidth || 600));
+    if (!d || d.adc_histogram.length === 0) return;
+    container.appendChild(buildAdcHistogramPlot(d.adc_histogram, container.clientWidth || 600));
   }
 
   // Muon-source staleness from /api/health local.muon.

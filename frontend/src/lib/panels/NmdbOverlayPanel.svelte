@@ -18,9 +18,13 @@
 
   function render() {
     if (!container) return;
+    // Read the store directly (NOT the reactive `data`/`isEmpty` vars): the
+    // store.subscribe(render) callback fires before Svelte recomputes `$:`
+    // statements, so those vars are stale on the populating update. (MuonChart pattern.)
+    const d = $nmdbStore.data;
     container.innerHTML = '';
-    if (isEmpty || !data) return;
-    container.appendChild(buildOverlayPlot(data.local, data.series, container.clientWidth || 600));
+    if (!d || d.series.length === 0) return;
+    container.appendChild(buildOverlayPlot(d.local, d.series, container.clientWidth || 600));
   }
 
   // NMDB-source staleness from /api/health external.nmdb (fetched_at fallback),
