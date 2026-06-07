@@ -56,9 +56,11 @@
       <p class="empty-heading">No muon data yet</p>
       <p class="empty-body">The PicoMuon detector hasn't logged events yet. Panels populate once 7 days of data accumulate — partial windows show what's available.</p>
     </div>
-  {:else}
-    <div bind:this={container} data-chart="adc-spectrum" class="chart-container"></div>
   {/if}
+  <!-- Container is ALWAYS in the DOM (mirrors MuonChart) so bind:this resolves
+       at mount and the reactive build re-runs once data arrives. Harmless /
+       0-height while empty. -->
+  <div bind:this={container} data-chart="adc-spectrum" class="chart-container"></div>
 </section>
 
 <style>

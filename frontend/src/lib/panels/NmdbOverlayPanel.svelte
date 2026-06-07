@@ -65,9 +65,11 @@
       <p class="empty-heading">Cosmic-ray reference not available yet</p>
       <p class="empty-body">The Oulu neutron-monitor poller hasn't fetched data yet. New counts arrive hourly — the overlay and Forbush indicator populate shortly.</p>
     </div>
-  {:else}
-    <div bind:this={container} data-chart="nmdb-overlay" class="chart-container"></div>
   {/if}
+  <!-- Container is ALWAYS in the DOM (mirrors MuonChart) so bind:this resolves
+       at mount and the reactive build re-runs once data arrives. Harmless /
+       0-height while empty. -->
+  <div bind:this={container} data-chart="nmdb-overlay" class="chart-container"></div>
 </section>
 
 <style>
