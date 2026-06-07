@@ -37,10 +37,10 @@ describe('HealthRow', () => {
     wsStatus.set('connected');
   });
 
-  it('renders 9 health entries', () => {
+  it('renders 12 health entries', () => {
     const { container } = render(HealthRow);
     const entries = container.querySelectorAll('.health-entry');
-    expect(entries).toHaveLength(9);
+    expect(entries).toHaveLength(12);
   });
 
   it('renders at least one green status dot', () => {
@@ -60,6 +60,9 @@ describe('HealthRow', () => {
     expect(text).toContain('NOAA');
     expect(text).toContain('Lightning');
     expect(text).toContain('AuroraWatch');
+    expect(text).toContain('Forecast');
+    expect(text).toContain('Air quality');
+    expect(text).toContain('NMDB');
     expect(text).toContain('Live updates');
   });
 });

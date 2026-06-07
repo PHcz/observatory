@@ -21,6 +21,9 @@
     font-size: 13px;
     color: var(--text-muted);
     display: block;
+    /* 4px groups the caption tightly under the sub-copy above; 16px gives a
+       clear gap before the panel data below (was flush — too tight). */
     margin-top: 4px;
+    margin-bottom: 16px;
   }
 </style>

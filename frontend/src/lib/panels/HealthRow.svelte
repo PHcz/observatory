@@ -24,6 +24,9 @@
     { key: 'noaa',        group: 'external', label: 'NOAA' },
     { key: 'blitzortung', group: 'external', label: 'Lightning' },
     { key: 'aurora',      group: 'external', label: 'AuroraWatch' },
+    { key: 'forecast',    group: 'external', label: 'Forecast' },
+    { key: 'air_quality', group: 'external', label: 'Air quality' },
+    { key: 'nmdb',        group: 'external', label: 'NMDB' },
     { key: 'live-updates', group: 'ws',      label: 'Live updates' },
   ];
 
