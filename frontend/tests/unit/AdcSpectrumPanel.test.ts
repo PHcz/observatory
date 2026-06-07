@@ -37,4 +37,27 @@ describe('AdcSpectrumPanel (RED until Wave 5)', () => {
     await tick();
     expect(screen.queryByText(/No muon data yet/i)).toBeNull();
   });
+
+  it('renders the chart container unconditionally, even before data', () => {
+    const { container } = render(AdcSpectrumPanel);
+    // Mount-bug regression: the bind:this container must exist at mount so the
+    // reactive build re-runs once data arrives (mirrors MuonChart).
+    expect(container.querySelector('[data-chart="adc-spectrum"]')).toBeTruthy();
+  });
+
+  it('mounts an <svg> into the container once histogram data arrives', async () => {
+    const { container } = render(AdcSpectrumPanel);
+    setMuonAnalysis({
+      adc_histogram: [
+        { bin_center: 320, count: 12 },
+        { bin_center: 340, count: 28 },
+      ],
+      barometric: null,
+      raw_uncorrected: true,
+    });
+    await tick();
+    const host = container.querySelector('[data-chart="adc-spectrum"]');
+    expect(host).toBeTruthy();
+    expect(host?.querySelector('svg')).toBeTruthy();
+  });
 });

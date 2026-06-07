@@ -20,6 +20,7 @@ from observatory.muon.analysis_adapter import (
     build_barometric_frame,
     live_adc_histogram,
     live_barometric,
+    live_barometric_points,
 )
 
 # A muon_events-shaped row sequence: (ts_epoch_s, amplitude, detector_pressure_hpa, coincidence)
@@ -84,3 +85,22 @@ def test_live_barometric_returns_none_on_too_few_buckets() -> None:
 
 def test_live_barometric_returns_none_on_empty_rows() -> None:
     assert live_barometric([], bucket_seconds=_BUCKET) is None
+
+
+def test_live_barometric_points_match_fit_buckets() -> None:
+    # When a fit is returned, points are a non-empty list of
+    # {pressure_hpa, rate_per_min} — one per usable bucket (root cause 2).
+    points = live_barometric_points(_rows(), bucket_seconds=_BUCKET)
+    fit = live_barometric(_rows(), bucket_seconds=_BUCKET)
+    assert fit is not None
+    assert points, "expected non-empty scatter points when a fit exists"
+    assert len(points) == fit.n
+    for pt in points:
+        assert set(pt) == {"pressure_hpa", "rate_per_min"}
+    # rate_per_min = rate_hz * 60 = (per_bucket / bucket_seconds) * 60.
+    assert abs(points[0]["rate_per_min"] - (40.0 / _BUCKET) * 60.0) < 1e-3
+
+
+def test_live_barometric_points_empty_on_thin_data() -> None:
+    assert live_barometric_points(_rows(n_buckets=1, per_bucket=40), bucket_seconds=_BUCKET) == []
+    assert live_barometric_points([], bucket_seconds=_BUCKET) == []

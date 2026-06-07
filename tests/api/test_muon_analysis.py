@@ -71,6 +71,30 @@ def test_serves_analysis_for_populated_window(api_client: TestClient, health_db:
     if body["barometric"] is not None:
         assert "beta" in body["barometric"]
         assert "r_squared" in body["barometric"]
+        # Scatter points are surfaced end-to-end (root cause 2): a non-empty
+        # list of {pressure_hpa, rate_per_min} whenever a fit is returned.
+        points = body["barometric"]["points"]
+        assert isinstance(points, list) and points, "expected non-empty scatter points"
+        for pt in points:
+            assert set(pt) == {"pressure_hpa", "rate_per_min"}
+            assert isinstance(pt["pressure_hpa"], int | float)
+            assert isinstance(pt["rate_per_min"], int | float)
+
+
+def test_thin_data_has_no_barometric_points(api_client: TestClient, health_db: Path) -> None:
+    # One bucket -> no pressure range -> live_barometric is None, so the response
+    # carries barometric: null and surfaces no points (the [] / absent contract).
+    now = int(time.time())
+    conn = sqlite3.connect(str(health_db), isolation_level=None)
+    try:
+        _seed_muon(conn, now, n_buckets=1, per_bucket=40)
+    finally:
+        conn.close()
+
+    body = api_client.get("/api/muon/analysis").json()
+    assert body["barometric"] is None
+    # barometric is null on thin data -> there is no points list to surface.
+    assert "points" not in (body["barometric"] or {})
 
 
 def test_router_is_local_first_no_httpx() -> None:

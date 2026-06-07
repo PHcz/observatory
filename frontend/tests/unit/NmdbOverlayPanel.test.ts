@@ -35,4 +35,25 @@ describe('NmdbOverlayPanel (RED until Wave 5)', () => {
     await tick();
     expect(screen.queryByText(/Cosmic-ray reference not available yet/i)).toBeNull();
   });
+
+  it('renders the chart container unconditionally, even before data', () => {
+    const { container } = render(NmdbOverlayPanel);
+    // Mount-bug regression: container present at mount (mirrors MuonChart).
+    expect(container.querySelector('[data-chart="nmdb-overlay"]')).toBeTruthy();
+  });
+
+  it('mounts an <svg> into the container once series data arrives', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const { container } = render(NmdbOverlayPanel);
+    setNmdb({
+      series: [{ ts: now, counts_per_sec: 100, pct_baseline: 100 }],
+      local: [{ ts: now, rate_per_min: 60, pct_baseline: 100 }],
+      baseline_window_days: 7,
+      fetched_at: now,
+    });
+    await tick();
+    const host = container.querySelector('[data-chart="nmdb-overlay"]');
+    expect(host).toBeTruthy();
+    expect(host?.querySelector('svg')).toBeTruthy();
+  });
 });
