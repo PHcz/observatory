@@ -10,18 +10,24 @@ describe('settingsSchema DEFAULTS', () => {
     expect(Object.values(DEFAULTS.panels).every((v) => v === true)).toBe(true);
   });
 
-  it('exposes exactly 14 panel keys', () => {
-    expect(Object.keys(DEFAULTS.panels).length).toBe(14);
-    expect(ALL_PANELS.length).toBe(14);
+  it('exposes exactly 18 panel keys', () => {
+    expect(Object.keys(DEFAULTS.panels).length).toBe(18);
+    expect(ALL_PANELS.length).toBe(18);
   });
 
   it('PanelKey enum has the locked members', () => {
+    // Phase 13 (MU2-05/06/07): the four new live-science panels are inserted
+    // immediately after `muonChart` and before `spaceWeather`.
     const expected = [
       'headerPanel',
       'statsRow',
       'forecast',
       'airQuality',
       'muonChart',
+      'adcSpectrum',
+      'barometric',
+      'nmdbOverlay',
+      'forbush',
       'spaceWeather',
       'earthquakes',
       'lightning',

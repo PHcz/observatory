@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { buildMuonPlot, buildTempPlot, rollingAverage, withinSafetyMargin } from '$lib/charts/plotHelpers';
+// Phase 13 (MU2-05/06) — RED until Wave 5 (plan 13-05): these three build
+// functions do not exist yet, so this import fails RED exactly as intended.
+import {
+  buildAdcHistogramPlot,
+  buildBarometricScatterPlot,
+  buildOverlayPlot,
+} from '$lib/charts/plotHelpers';
 import type { MuonPoint } from '$lib/types';
 
 describe('plotHelpers', () => {
@@ -183,5 +190,42 @@ describe('buildMuonPlot dual-layer (UI-13)', () => {
     expect(html).toContain('stroke="#cccccc"');
     expect(html).toContain('stroke-opacity="0.55"');
     expect(html).toContain('stroke="#111111"');
+  });
+});
+
+describe('Phase 13 plotHelpers (RED until Wave 5)', () => {
+  it('buildAdcHistogramPlot returns a DOM node for histogram bins', () => {
+    const hist = [
+      { bin_center: 320, count: 12 },
+      { bin_center: 340, count: 28 },
+      { bin_center: 360, count: 9 },
+    ];
+    expect(buildAdcHistogramPlot(hist, 600)).toBeInstanceOf(Element);
+  });
+
+  it('buildAdcHistogramPlot returns a node for empty data', () => {
+    expect(buildAdcHistogramPlot([], 600)).toBeInstanceOf(Element);
+  });
+
+  it('buildBarometricScatterPlot returns a DOM node with points + fit', () => {
+    const points = [
+      { pressure_hpa: 1000, rate_per_min: 0.65 },
+      { pressure_hpa: 1010, rate_per_min: 0.62 },
+    ];
+    const fit = { beta: -0.18, r_squared: 0.4, p_value: 0.02, n: 168 };
+    expect(buildBarometricScatterPlot(points, fit, 600)).toBeInstanceOf(Element);
+  });
+
+  it('buildOverlayPlot returns a DOM node for dual %-baseline series', () => {
+    const now = Math.floor(Date.now() / 1000);
+    const local = [
+      { ts: now - 3600, pct_baseline: 100 },
+      { ts: now, pct_baseline: 98 },
+    ];
+    const nmdb = [
+      { ts: now - 3600, pct_baseline: 100 },
+      { ts: now, pct_baseline: 96 },
+    ];
+    expect(buildOverlayPlot(local, nmdb, 600)).toBeInstanceOf(Element);
   });
 });

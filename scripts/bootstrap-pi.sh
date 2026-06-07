@@ -280,8 +280,13 @@ systemctl daemon-reload
 # Enable but do NOT start — OPERATOR STEP: operator gates start on chrony
 # convergence + env review, then `systemctl start obs-airquality-poll.timer`.
 # REMINDER: obs-api does NOT auto-apply migrations — apply_migrations() (Section 12
-# above) must have run so the 0006 air_quality + air_quality_meta tables exist
-# BEFORE the API or poller touch them (Phase 10 deploy lesson).
+# above) must have run so the 0006 air_quality + air_quality_meta tables AND the
+# 0007 nmdb_counts + nmdb_meta tables (Phase 13 MU2-06) exist BEFORE the API or
+# pollers touch them (Phase 10 deploy lesson). On upgrade, re-run apply_migrations()
+# for 0007 BEFORE restarting obs-api or the /api/nmdb /api/forbush routes 500.
+# NOTE: the live muon-analysis route (/api/muon/analysis) imports picomuon
+# (polars/scipy) in-process — the obs-api venv must carry the `.[analysis]` extra,
+# or the route lazy-imports and degrades to empty-state.
 systemctl enable obs-airquality-poll.timer
 
 # --- SECTION 15: install journald drop-in for log rotation (OPS-03) ---
