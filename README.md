@@ -1,6 +1,6 @@
 # Observatory
 
-> A Raspberry Pi weather station, cosmic-ray muon detector, and space/earth-event dashboard — all served on your home network.
+> A Raspberry Pi weather station, cosmic-ray muon detector, and hyperlocal science dashboard — forecast, air quality, earth & space events, and muon-flux analysis — all served on your home network.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -12,7 +12,20 @@ This repository is a **build-your-own guide**: everything you need to assemble a
 
 Observatory turns a Raspberry Pi 4 into the brain of a small home science station. An outdoor [Pimoroni Enviro Weather](https://thepihut.com/products/enviro-weather-pico-w-aboard-board-only) board reports temperature, humidity, pressure, and light over wifi; a [PicoMuon](https://ukraa.com/store/categories/cosmic-rays) cosmic-ray detector sits next to the Pi and streams muon events over USB. The Pi also polls free public APIs for earthquakes, solar weather, lightning, and aurora alerts.
 
-Everything logs to a single SQLite database. A FastAPI backend exposes the data as JSON and pushes live updates over a WebSocket, and serves a SvelteKit dashboard from the same process. Open `http://observatory.local` from any device on your home wifi and you get the whole picture in one place. No cloud, no tunnels — local-first by design.
+It also polls free, keyless public APIs for a local weather forecast, outdoor air quality, earthquakes, space weather, lightning, aurora, and the NMDB neutron-monitor network. Everything logs to a single SQLite database. A FastAPI backend exposes the data as JSON and pushes live updates over a WebSocket, and serves a SvelteKit dashboard from the same process. Open `http://observatory.local` from any device on your home wifi and you get the whole picture in one place. No cloud, no tunnels — local-first by design.
+
+## What it tracks
+
+The dashboard brings everything together on one local page:
+
+- **Local weather** — live temperature, humidity, pressure, and light from the outdoor Enviro node
+- **Local forecast** — Open-Meteo hourly + 7-day outlook, with a forecast-vs-actual check against your own sensor
+- **Outdoor air quality** — European AQI, PM2.5 / PM10 / NO₂ / O₃ / SO₂, in-season pollen, and UV — health-band coloured
+- **Cosmic-ray muons** — live flux, ADC / Landau spectrum, and a fitted barometric coefficient from your PicoMuon
+- **Space-weather science** — an NMDB (Oulu) neutron-monitor overlay and a Forbush-decrease indicator correlated with solar activity
+- **Earth & space events** — earthquakes (USGS / EMSC / BGS), solar flares + Kp + solar wind (NOAA), lightning (Blitzortung), and aurora (AuroraWatch)
+
+It also ships an offline **`picomuon` CLI** that turns raw detector CSV logs into a self-contained HTML analysis report — dead-time-corrected flux, a barometric-coefficient fit, and the ADC histogram — openable on any device with no server.
 
 ## What you'll need
 
@@ -38,8 +51,10 @@ A short summary of the core kit. The full bill of materials with supplier links 
 │  ├── Mosquitto (MQTT broker)                     │
 │  ├── Muon detector via USB serial                │
 │  ├── External API pollers ─── earthquakes,       │
-│  │                            solar, lightning,  │
-│  │                            aurora             │
+│  │                            space weather,     │
+│  │                            lightning, aurora, │
+│  │                            forecast, air      │
+│  │                            quality, NMDB      │
 │  ├── SQLite                                      │
 │  └── FastAPI ── JSON + WebSocket + static files  │
 │                 (serves the SvelteKit bundle)    │
@@ -67,7 +82,8 @@ A short summary of the core kit. The full bill of materials with supplier links 
 
 - The **Enviro Weather** node wakes from deep sleep on a schedule (e.g. every 5 minutes), reads its sensors, publishes a single MQTT message to the Pi, and sleeps again — running for months on 2× AA rechargeables.
 - The **muon detector** streams events over USB serial; a Python service writes them to SQLite. The PicoMuon's onboard BMP280 gives pressure-corrected flux from a single device.
-- **External API pollers** — one small isolated Python service per source — fetch from public APIs on a schedule and write events to SQLite.
+- **External API pollers** — one small isolated Python service per source (forecast, air quality, earthquakes, space weather, lightning, aurora, NMDB) — fetch from free keyless public APIs on their own systemd timers and write to SQLite. A failure in one never takes down the others.
+- **Muon science** is computed on demand from the logged `muon_events` (live ADC spectrum + barometric fit), with the NMDB neutron-monitor overlay and Forbush indicator derived from cached NMDB + NOAA data. The standalone `picomuon` library/CLI does the same maths offline on raw CSV logs.
 - **FastAPI** reads SQLite, serves REST + WebSocket, and serves the built SvelteKit bundle from `/`. The browser loads the page and opens a WebSocket back to the same host — no CORS to wrangle.
 
 ## Quick start
@@ -100,6 +116,7 @@ Actively maintained personal project. Issues and pull requests are welcome — s
 - **[docs/SETUP.md](docs/SETUP.md)** — fresh build and deploy from a clean clone
 - **[docs/OPERATIONS.md](docs/OPERATIONS.md)** — day-to-day running and maintenance
 - **[deploy/enviro/PROVISIONING.md](deploy/enviro/PROVISIONING.md)** — weather-node provisioning runbook
+- **[picomuon/README.md](picomuon/README.md)** — the offline `picomuon` muon-analysis CLI (flux, barometric fit, ADC histogram, HTML report)
 - **[observatory_brief.md](observatory_brief.md)** — the original project brief and reference material
 
 ## License
