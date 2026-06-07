@@ -23,6 +23,8 @@ SCHEMA_0004 = REPO_ROOT / "migrations" / "0004_earthquakes_is_local.sql"
 SCHEMA_0005 = REPO_ROOT / "migrations" / "0005_forecast.sql"
 # Phase 11 OAQ-02: air-quality poller write/read tests need air_quality* tables.
 SCHEMA_0006 = REPO_ROOT / "migrations" / "0006_air_quality.sql"
+# Phase 13 MU2-06: NMDB poller write/read tests need nmdb_counts + nmdb_meta tables.
+SCHEMA_0007 = REPO_ROOT / "migrations" / "0007_nmdb.sql"
 
 
 @pytest.fixture(autouse=True)
@@ -71,6 +73,7 @@ def _configure_structlog(monkeypatch: pytest.MonkeyPatch) -> None:
         "observatory.pollers.blitzortung.__main__",
         "observatory.pollers.forecast.__main__",
         "observatory.pollers.airquality.__main__",
+        "observatory.pollers.nmdb.__main__",
     ):
         try:
             _m = importlib.import_module(mod_path)
@@ -114,6 +117,7 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
         "observatory.pollers.blitzortung.client",
         "observatory.pollers.forecast.__main__",
         "observatory.pollers.airquality.__main__",
+        "observatory.pollers.nmdb.__main__",
     ):
         try:
             _m = importlib.import_module(mod_path)
@@ -138,6 +142,7 @@ def tmp_db(tmp_path: Path) -> Path:
     conn.executescript(SCHEMA_0004.read_text())
     conn.executescript(SCHEMA_0005.read_text())
     conn.executescript(SCHEMA_0006.read_text())
+    conn.executescript(SCHEMA_0007.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA synchronous=NORMAL")

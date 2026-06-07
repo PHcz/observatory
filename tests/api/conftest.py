@@ -31,6 +31,8 @@ SCHEMA_0004 = REPO_ROOT / "migrations" / "0004_earthquakes_is_local.sql"
 SCHEMA_0005 = REPO_ROOT / "migrations" / "0005_forecast.sql"
 # Phase 11 OAQ-02: /api/air-quality + /api/health read air_quality* tables; tmp_db must carry them.
 SCHEMA_0006 = REPO_ROOT / "migrations" / "0006_air_quality.sql"
+# Phase 13 MU2-06: /api/nmdb + /api/forbush + /api/health read nmdb* tables; tmp_db must carry them.
+SCHEMA_0007 = REPO_ROOT / "migrations" / "0007_nmdb.sql"
 
 
 @pytest.fixture(autouse=True)
@@ -43,6 +45,7 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     conn.executescript(SCHEMA_0004.read_text())
     conn.executescript(SCHEMA_0005.read_text())
     conn.executescript(SCHEMA_0006.read_text())
+    conn.executescript(SCHEMA_0007.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
     conn.close()
 
