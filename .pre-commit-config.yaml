@@ -68,6 +68,11 @@ repos:
           - aiomqtt
           - uvicorn
           - websockets
+          # analysis stack — observatory.muon.analysis_adapter imports picomuon
+          # (Phase 13), which mypy follows into; picomuon needs these to resolve.
+          - numpy
+          - polars
+          - scipy
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.3
