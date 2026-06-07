@@ -95,8 +95,13 @@
 </Container>
 
 <style>
-  :global(.is-stale-amber) { opacity: 0.6; transition: opacity 0.3s ease; }
-  :global(.is-stale-red)   { opacity: 0.6; transition: opacity 0.3s ease; }
+  /* Dim a stale panel's BODY to signal staleness, but keep its ChartHeader
+     (<header class="chart-header"> — the green title + source) at full opacity
+     so section titles stay consistent regardless of freshness. (A child can't
+     be more opaque than a dimmed parent, so the dim must target the body, not
+     the whole section.) Panels without a ChartHeader dim all children as before. */
+  :global(.is-stale-amber > :not(header)),
+  :global(.is-stale-red > :not(header)) { opacity: 0.6; transition: opacity 0.3s ease; }
 
   .dashboard-footer {
     margin-top: 48px;
