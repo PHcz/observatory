@@ -2,6 +2,7 @@
   import { weatherStore, maxLuxToday } from '$lib/stores/weather';
   import { muonDisplayRate } from '$lib/stores/muon';
   import { dewPointC, dewComfort } from '$lib/utils/dewpoint';
+  import { tendency } from '$lib/utils/tendency';
   import { healthStore } from '$lib/stores/health';
   import { deriveStaleness } from '$lib/utils/staleness';
   import { ageSeconds } from '$lib/utils/time';
@@ -13,7 +14,12 @@
     ? weather.pressure_hpa.toFixed(0)
     : null;
 
-  $: pressureMeta = 'hPa · steady';
+  // Real 3-hour tendency from weather history (was hardcoded "steady").
+  $: pressureMeta = `hPa · ${
+    weather?.pressure_hpa != null && weather?.ts != null
+      ? tendency($weatherStore.history, 'pressure_hpa', weather.pressure_hpa, weather.ts, 1.0)
+      : 'steady'
+  }`;
 
   $: humidityStr = weather?.humidity_pct != null
     ? weather.humidity_pct.toFixed(0)
@@ -23,7 +29,11 @@
     ? `${dewPointC(weather.temp_c, weather.humidity_pct)}°C`
     : '—';
 
-  $: humidityMeta = `steady · dew point ${dewPtStr}`;
+  $: humidityMeta = `${
+    weather?.humidity_pct != null && weather?.ts != null
+      ? tendency($weatherStore.history, 'humidity_pct', weather.humidity_pct, weather.ts, 5)
+      : 'steady'
+  } · dew point ${dewPtStr}`;
 
   $: dewComfortStr = (weather?.temp_c != null && weather?.humidity_pct != null)
     ? dewComfort(dewPointC(weather.temp_c, weather.humidity_pct))
