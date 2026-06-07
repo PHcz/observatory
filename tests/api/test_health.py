@@ -24,6 +24,8 @@ LOCAL_SOURCES = ("weather", "muon")
 # Phase 10 FCAST-01 (additive): `forecast` joins the external source set once
 # Wave 2 registers it in _freshness + /api/health. RED until then.
 # Phase 11 OAQ-02 (additive): `air_quality` joins once Wave 2 registers it.
+# Phase 13 MU2-06 (additive): `nmdb` joins once Wave 3 registers it in
+# _freshness + /api/health (freshness anchored on nmdb_meta.fetched_at). RED until then.
 EXTERNAL_SOURCES = (
     "usgs",
     "emsc",
@@ -33,6 +35,7 @@ EXTERNAL_SOURCES = (
     "aurora",
     "forecast",
     "air_quality",
+    "nmdb",
 )
 
 
@@ -307,6 +310,33 @@ def test_air_quality_source_present_in_health(
     body = api_client.get("/api/health").json()
     assert "air_quality" in body["external"]
     assert body["external"]["air_quality"]["freshness"] == "healthy"
+
+
+# ---- nmdb source (Phase 13 MU2-06, additive — RED until Wave 3) ----
+
+
+def test_nmdb_source_present_in_health(
+    api_client: TestClient,
+    health_db: Path,
+    stub_thermal: Callable[..., None],
+) -> None:
+    """`nmdb` appears in /api/health with freshness derived from
+    nmdb_meta.fetched_at (mirrors the forecast/air_quality freshness anchor,
+    NOT MAX(ts) of the count series)."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(health_db), isolation_level=None)
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO nmdb_meta (id, fetched_at, station) VALUES (1, ?, ?)",
+            (now - 30, "OULU"),
+        )
+        _insert_poller_run(conn, "nmdb", now - 30, "success")
+    finally:
+        conn.close()
+
+    body = api_client.get("/api/health").json()
+    assert "nmdb" in body["external"]
+    assert body["external"]["nmdb"]["freshness"] == "healthy"
 
 
 # ---- Pi thermal integration ----

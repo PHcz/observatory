@@ -151,3 +151,19 @@ class AirQualitySnapshot:
     mugwort_pollen: float | None
     olive_pollen: float | None
     ragweed_pollen: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class NmdbCount:
+    """One NMDB neutron-monitor count reading (Phase 13, MU2-06).
+
+    ``ts`` is a UTC epoch at the BEGIN of the NMDB measurement interval — parsed
+    directly from the NEST ASCII timestamp (UTC by convention), NOT via the
+    naive-local carve-out used by forecast/air_quality. ``counts_per_sec`` is the
+    absolute counts/s from a ``yunits=0`` NEST export; it is nullable for gaps
+    (``null`` tokens in the response).
+    """
+
+    ts: int  # UTC epoch, BEGIN of the interval
+    station: str  # e.g. "OULU"
+    counts_per_sec: float | None

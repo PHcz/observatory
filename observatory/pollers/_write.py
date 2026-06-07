@@ -20,6 +20,7 @@ from observatory.pollers._types import (
     ForecastDaily,
     ForecastHourly,
     LightningStrike,
+    NmdbCount,
     SpaceWeatherSnapshot,
 )
 
@@ -627,3 +628,21 @@ def write_aurora_status(
         log.error("poller_runs_emit_failed", source=source, error=str(exc))
 
     return fetched, written
+
+
+def write_nmdb(
+    counts: list[NmdbCount] | None,
+    meta: dict[str, int | str] | None,
+    started_at: int,
+    status: str,
+    error_summary: str | None = None,
+) -> None:
+    """Append-window write of NMDB counts + always emit one poller_runs row.
+
+    Wave-0 RED skeleton (Phase 13, MU2-06): the real append-window
+    (``INSERT OR IGNORE`` on ``UNIQUE(station, ts)``) + ``nmdb_meta`` upsert +
+    two-transaction audit discipline is implemented in Wave 3 (plan 13-04).
+    Raising ``NotImplementedError`` keeps the symbol importable so the RED tests
+    collect cleanly and fail at runtime.
+    """
+    raise NotImplementedError("write_nmdb is implemented in Wave 3 (plan 13-04)")
