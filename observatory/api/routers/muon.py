@@ -167,7 +167,8 @@ def get_muon_analysis() -> dict[str, Any]:
 
         {
             "adc_histogram": [{"bin_center": float, "count": int}, ...],
-            "barometric": {"beta", "r_squared", "p_value", "n"} | null,
+            "barometric": {"beta", "r_squared", "p_value", "n",
+                           "points": [{"pressure_hpa", "rate_per_min"}, ...]} | null,
             "window": {"from": int, "to": int, "days": 7},
             "raw_uncorrected": true,
             "analysis_available": bool
@@ -187,6 +188,7 @@ def get_muon_analysis() -> dict[str, Any]:
         from observatory.muon.analysis_adapter import (
             live_adc_histogram,
             live_barometric,
+            live_barometric_points,
         )
     except ImportError:
         return _empty_analysis(frm, now, analysis_available=False)
@@ -217,11 +219,14 @@ def get_muon_analysis() -> dict[str, Any]:
     if fit is None:
         barometric_out = None
     else:
+        # Points use the same thin-data gate as the fit, so they're a non-empty
+        # list whenever barometric is non-null and [] otherwise.
         barometric_out = {
             "beta": fit.beta,
             "r_squared": fit.r_squared,
             "p_value": fit.p_value,
             "n": fit.n,
+            "points": live_barometric_points(rows),
         }
 
     return {

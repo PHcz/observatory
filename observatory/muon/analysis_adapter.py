@@ -98,14 +98,14 @@ def live_adc_histogram(rows: list[MuonRow]) -> pl.DataFrame:
     return adc_histogram(build_adc_frame(rows), id="C", bin_width=20)
 
 
-def live_barometric(
-    rows: list[MuonRow], bucket_seconds: int = 3600, min_buckets: int = MIN_BUCKETS
-) -> BarometricFit | None:
-    """Barometric fit over the muon_events window, or ``None`` on thin data.
+def _usable_buckets(
+    rows: list[MuonRow], bucket_seconds: int, min_buckets: int
+) -> pl.DataFrame | None:
+    """Shared gate for the barometric fit + its scatter points.
 
-    Returns ``None`` (UI empty-state, never a crash) when there are too few
-    usable buckets (< ``min_buckets``) or no pressure variation (fewer than two
-    distinct ``pressure_mean`` values) — both make the regression meaningless.
+    Returns the usable bucket frame (non-null positive rate, >=2 distinct
+    pressures, >= ``min_buckets`` rows) or ``None`` when the data is too thin —
+    so the fit and its points agree on exactly which buckets were used.
     """
     if not rows:
         return None
@@ -115,4 +115,46 @@ def live_barometric(
         return None
     if usable["pressure_mean"].drop_nulls().n_unique() < 2:
         return None
+    return usable
+
+
+def live_barometric(
+    rows: list[MuonRow], bucket_seconds: int = 3600, min_buckets: int = MIN_BUCKETS
+) -> BarometricFit | None:
+    """Barometric fit over the muon_events window, or ``None`` on thin data.
+
+    Returns ``None`` (UI empty-state, never a crash) when there are too few
+    usable buckets (< ``min_buckets``) or no pressure variation (fewer than two
+    distinct ``pressure_mean`` values) — both make the regression meaningless.
+    """
+    usable = _usable_buckets(rows, bucket_seconds, min_buckets)
+    if usable is None:
+        return None
     return barometric_fit(usable)
+
+
+# A per-bucket scatter point: {pressure_hpa: <pressure_mean>, rate_per_min: <rate_hz*60>}.
+BarometricPoint = dict[str, float]
+
+
+def live_barometric_points(
+    rows: list[MuonRow], bucket_seconds: int = 3600, min_buckets: int = MIN_BUCKETS
+) -> list[BarometricPoint]:
+    """Per-bucket scatter points for the buckets used in the barometric fit.
+
+    Returns ``[{"pressure_hpa": <pressure_mean>, "rate_per_min": <rate_hz*60>}]``
+    for exactly the buckets ``live_barometric`` fits over, or ``[]`` on thin data
+    (gates identically, so points are present iff the fit is). Pressure is
+    rounded to 2 dp and rate/min to 4 dp.
+    """
+    usable = _usable_buckets(rows, bucket_seconds, min_buckets)
+    if usable is None:
+        return []
+    return [
+        {"pressure_hpa": round(p, 2), "rate_per_min": round(r * 60.0, 4)}
+        for p, r in zip(
+            usable["pressure_mean"].to_list(),
+            usable["rate_hz"].to_list(),
+            strict=True,
+        )
+    ]

@@ -212,6 +212,9 @@ export interface BarometricFitResult {
   r_squared: number;
   p_value: number;
   n: number;
+  // Per-bucket scatter points used in the fit (present when barometric is
+  // non-null). Optional-safe for older payloads / RED test fixtures.
+  points?: { pressure_hpa: number; rate_per_min: number }[];
 }
 
 export interface MuonAnalysisResponse {

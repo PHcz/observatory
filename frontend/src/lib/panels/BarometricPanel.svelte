@@ -30,9 +30,10 @@
     if (!container) return;
     container.innerHTML = '';
     if (isEmpty) return;
-    // Scatter points are not surfaced by /api/muon/analysis (v1) — render the
-    // fit line on its own when present; the stat cards carry the headline.
-    container.appendChild(buildBarometricScatterPlot([], fit, container.clientWidth || 600));
+    // Per-bucket scatter points from /api/muon/analysis (barometric.points),
+    // empty until a fit exists; the fit line + stat cards carry the headline.
+    const points = fit?.points ?? [];
+    container.appendChild(buildBarometricScatterPlot(points, fit, container.clientWidth || 600));
   }
 
   $: muonHealth = $healthStore.data?.local?.muon;
@@ -89,9 +90,11 @@
     {#if fit == null}
       <p class="thin-data">Not enough pressure range yet for a reliable fit — the coefficient appears once the 7-day window spans a wider pressure swing.</p>
     {/if}
-
-    <div bind:this={container} data-chart="barometric" class="chart-container"></div>
   {/if}
+  <!-- Container is ALWAYS in the DOM (mirrors MuonChart) so bind:this resolves
+       at mount and the reactive build re-runs once data arrives. The build
+       block bails while isEmpty, so the container stays harmless / 0-height. -->
+  <div bind:this={container} data-chart="barometric" class="chart-container"></div>
 </section>
 
 <style>
