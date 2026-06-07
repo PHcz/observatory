@@ -1,5 +1,12 @@
 import * as Plot from '@observablehq/plot';
-import type { MuonPoint, WeatherPoint } from '$lib/types';
+import type {
+  MuonPoint,
+  WeatherPoint,
+  AdcHistogramBin,
+  BarometricFitResult,
+  NmdbSeriesPoint,
+  NmdbLocalPoint,
+} from '$lib/types';
 import { loess } from '$lib/charts/loess';
 import { niceFloorDomain } from '$lib/charts/domain';
 import { dewPointC } from '$lib/utils/dewpoint';
@@ -20,6 +27,7 @@ function tokens() {
       grid: '#f0f0ec',
       marker: '#6b8e6b',
       dewpoint: '#6b8e6b',
+      accent: '#6b8e6b',
     };
   }
   const cs = getComputedStyle(document.documentElement);
@@ -29,6 +37,7 @@ function tokens() {
     grid: cs.getPropertyValue('--chart-grid').trim() || '#f0f0ec',
     marker: cs.getPropertyValue('--chart-marker').trim() || '#6b8e6b',
     dewpoint: cs.getPropertyValue('--chart-dewpoint').trim() || '#6b8e6b',
+    accent: cs.getPropertyValue('--accent').trim() || '#6b8e6b',
   };
 }
 
@@ -387,6 +396,197 @@ export function buildLightPlot(data: WeatherPoint[], width: number): SVGElement 
             Plot.dot([last], {
               x: (d: LightPoint) => new Date(d.ts * 1000),
               y: 'lux',
+              fill: t.marker,
+              r: 5,
+            }),
+          ]
+        : []),
+    ],
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Phase 13 (MU2-05/06) — live muon science build functions.
+// Tokens read at render time (theme-swap safe); no hex literals introduced.
+// ---------------------------------------------------------------------------
+
+const NMDB_WINDOW_SEC = 7 * 86400;
+
+/**
+ * ADC pulse-height histogram (bar chart, 20-unit bins). The modal bin (the
+ * MIP / Landau peak) is highlighted in --accent; all other bars are neutral
+ * --chart-raw. x label is the hyphen-minus form "ADC (0-1023)" (RUF lesson).
+ */
+export function buildAdcHistogramPlot(
+  hist: AdcHistogramBin[],
+  width: number,
+): SVGElement | HTMLElement {
+  const t = tokens();
+
+  // Modal bin index — the bar with the highest count gets the sage highlight.
+  let modalIdx = -1;
+  let modalCount = -Infinity;
+  for (let i = 0; i < hist.length; i++) {
+    if (hist[i].count > modalCount) {
+      modalCount = hist[i].count;
+      modalIdx = i;
+    }
+  }
+  const modal = modalIdx >= 0 ? hist[modalIdx] : null;
+
+  return Plot.plot({
+    width,
+    height: 180,
+    marginLeft: 46,
+    marginRight: 12,
+    marginBottom: 28,
+    marginTop: 8,
+    x: { label: 'ADC (0-1023)', tickFormat: (d: number) => `${d}` },
+    y: { label: null, grid: true },
+    marks: [
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
+      Plot.rectY(hist, {
+        x: 'bin_center',
+        y: 'count',
+        interval: 20,
+        fill: (d: AdcHistogramBin) =>
+          modal != null && d.bin_center === modal.bin_center ? t.accent : t.raw,
+      }),
+      ...(modal != null
+        ? [
+            Plot.text([modal], {
+              x: 'bin_center',
+              y: 'count',
+              text: () => 'MIP peak',
+              dy: -8,
+              fill: t.accent,
+              fontSize: 11,
+            }),
+          ]
+        : []),
+    ],
+  });
+}
+
+/**
+ * Barometric coefficient scatter: raw rate-vs-pressure points (--chart-raw)
+ * with the fitted regression line (--accent) overlaid. The fit line is drawn
+ * across the observed pressure range using the fitted slope (β in %/hPa).
+ */
+export function buildBarometricScatterPlot(
+  points: { pressure_hpa: number; rate_per_min: number }[],
+  fit: BarometricFitResult | null,
+  width: number,
+): SVGElement | HTMLElement {
+  const t = tokens();
+
+  // Fit line endpoints: a straight segment across the observed pressure range.
+  // β is the % change in rate per hPa; convert to an absolute slope around the
+  // mean pressure/rate so the line sits visually over the scatter.
+  const fitLine: { pressure_hpa: number; rate_per_min: number }[] = [];
+  if (fit != null && points.length > 0) {
+    const pressures = points.map((p) => p.pressure_hpa);
+    const rates = points.map((p) => p.rate_per_min);
+    const pMin = Math.min(...pressures);
+    const pMax = Math.max(...pressures);
+    const pMean = pressures.reduce((a, b) => a + b, 0) / pressures.length;
+    const rMean = rates.reduce((a, b) => a + b, 0) / rates.length;
+    // slope per hPa in absolute rate units = (β/100) * rMean.
+    const slope = (fit.beta / 100) * rMean;
+    fitLine.push(
+      { pressure_hpa: pMin, rate_per_min: rMean + slope * (pMin - pMean) },
+      { pressure_hpa: pMax, rate_per_min: rMean + slope * (pMax - pMean) },
+    );
+  }
+
+  return Plot.plot({
+    width,
+    height: 180,
+    marginLeft: 46,
+    marginRight: 12,
+    marginBottom: 28,
+    marginTop: 8,
+    x: { label: 'pressure (hPa)' },
+    y: { label: 'rate / min', grid: true },
+    marks: [
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
+      Plot.dot(points, {
+        x: 'pressure_hpa',
+        y: 'rate_per_min',
+        fill: t.raw,
+        r: 3,
+      }),
+      ...(fitLine.length > 0
+        ? [
+            Plot.line(fitLine, {
+              x: 'pressure_hpa',
+              y: 'rate_per_min',
+              stroke: t.accent,
+              strokeWidth: 2,
+            }),
+          ]
+        : []),
+    ],
+  });
+}
+
+/**
+ * NMDB-vs-local %-of-baseline overlay over a shared 7-day time axis. The local
+ * muon flux uses the primary --chart-data emphasis (with a current-value
+ * --chart-marker dot); the Oulu neutron monitor uses muted --chart-raw. A 100%
+ * reference rule (--chart-grid) marks the shared baseline so a Forbush dip
+ * lines up across both despite very different absolute count rates.
+ */
+export function buildOverlayPlot(
+  local: NmdbLocalPoint[],
+  nmdb: NmdbSeriesPoint[],
+  width: number,
+): SVGElement | HTMLElement {
+  const now = Date.now();
+  const start = new Date(now - NMDB_WINDOW_SEC * 1000);
+  const end = new Date(now);
+  const t = tokens();
+
+  const localValid = local.filter((p) => p.pct_baseline != null);
+  const nmdbValid = nmdb.filter((p) => p.pct_baseline != null);
+  const lastLocal = localValid.length > 0 ? localValid[localValid.length - 1] : null;
+
+  return Plot.plot({
+    width,
+    height: 240,
+    marginLeft: 46,
+    marginRight: 12,
+    marginBottom: 28,
+    marginTop: 8,
+    x: {
+      type: 'time',
+      domain: [start, end],
+      ticks: xTimeTickValues(start.getTime(), end.getTime()),
+    },
+    y: { label: '% of baseline', grid: true },
+    marks: [
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
+      // 100% baseline reference rule.
+      Plot.ruleY([100], { stroke: t.grid, strokeWidth: 1 }),
+      // NMDB (Oulu) reference line — muted.
+      Plot.line(nmdbValid, {
+        x: (d: NmdbSeriesPoint) => new Date(d.ts * 1000),
+        y: (d: NmdbSeriesPoint) => d.pct_baseline as number,
+        stroke: t.raw,
+        strokeWidth: 2,
+      }),
+      // Local muon flux line — primary emphasis.
+      Plot.line(localValid, {
+        x: (d: NmdbLocalPoint) => new Date(d.ts * 1000),
+        y: (d: NmdbLocalPoint) => d.pct_baseline as number,
+        stroke: t.data,
+        strokeWidth: 2,
+      }),
+      ...(lastLocal != null
+        ? [
+            Plot.dot([lastLocal], {
+              x: (d: NmdbLocalPoint) => new Date(d.ts * 1000),
+              y: (d: NmdbLocalPoint) => d.pct_baseline as number,
               fill: t.marker,
               r: 5,
             }),

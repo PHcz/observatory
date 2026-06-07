@@ -200,6 +200,56 @@ export interface AirQualityResponse {
   fetched_at: number | null;
 }
 
+// Phase 13 (MU2-05/06/07) — live muon science response types.
+
+export interface AdcHistogramBin {
+  bin_center: number;
+  count: number;
+}
+
+export interface BarometricFitResult {
+  beta: number;
+  r_squared: number;
+  p_value: number;
+  n: number;
+}
+
+export interface MuonAnalysisResponse {
+  adc_histogram: AdcHistogramBin[];
+  barometric: BarometricFitResult | null;
+  raw_uncorrected: boolean;
+}
+
+export interface NmdbSeriesPoint {
+  ts: number;
+  counts_per_sec: number | null;
+  pct_baseline: number | null;
+}
+
+export interface NmdbLocalPoint {
+  ts: number;
+  rate_per_min: number | null;
+  pct_baseline: number | null;
+}
+
+export interface NmdbResponse {
+  series: NmdbSeriesPoint[];
+  local: NmdbLocalPoint[];
+  baseline_window_days: number;
+  fetched_at: number | null;
+}
+
+export type ForbushState = 'quiet' | 'watch' | 'forbush';
+
+export interface ForbushResponse {
+  state: ForbushState;
+  nmdb_drop_pct: number | null;
+  kp: number | null;
+  solar_wind_kms: number | null;
+  local_drop_pct: number | null;
+  detail: string;
+}
+
 // Chart series point types
 export interface MuonPoint {
   ts: number;

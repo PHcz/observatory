@@ -1,4 +1,13 @@
-import type { MuonPoint, WeatherPoint, HealthResponse, ForecastResponse, AirQualityResponse } from '$lib/types';
+import type {
+  MuonPoint,
+  WeatherPoint,
+  HealthResponse,
+  ForecastResponse,
+  AirQualityResponse,
+  MuonAnalysisResponse,
+  NmdbResponse,
+  ForbushResponse,
+} from '$lib/types';
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
@@ -43,4 +52,18 @@ export async function fetchForecast(): Promise<ForecastResponse> {
 
 export async function fetchAirQuality(): Promise<AirQualityResponse> {
   return getJson<AirQualityResponse>('/api/air-quality');
+}
+
+// Phase 13 (MU2-05/06/07) — live muon science feeds.
+
+export async function fetchMuonAnalysis(): Promise<MuonAnalysisResponse> {
+  return getJson<MuonAnalysisResponse>('/api/muon/analysis');
+}
+
+export async function fetchNmdb(): Promise<NmdbResponse> {
+  return getJson<NmdbResponse>('/api/nmdb');
+}
+
+export async function fetchForbush(): Promise<ForbushResponse> {
+  return getJson<ForbushResponse>('/api/forbush');
 }
