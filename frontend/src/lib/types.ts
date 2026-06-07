@@ -175,6 +175,31 @@ export interface ForecastResponse {
   fetched_at: number | null;
 }
 
+// Air quality (Phase 11 — /api/air-quality). Single current snapshot.
+export interface AirQualityPollutants {
+  pm2_5: number | null;
+  pm10: number | null;
+  nitrogen_dioxide: number | null;
+  ozone: number | null;
+  sulphur_dioxide: number | null;
+}
+export interface AirQualityPollen {
+  alder_pollen: number | null;
+  birch_pollen: number | null;
+  grass_pollen: number | null;
+  mugwort_pollen: number | null;
+  olive_pollen: number | null;
+  ragweed_pollen: number | null;
+}
+export interface AirQualityResponse {
+  aqi: number | null;
+  pollutants: AirQualityPollutants;
+  pollen: AirQualityPollen | null;
+  uv: number | null;
+  ts?: number;
+  fetched_at: number | null;
+}
+
 // Chart series point types
 export interface MuonPoint {
   ts: number;
