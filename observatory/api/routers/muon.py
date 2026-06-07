@@ -13,6 +13,7 @@ rate_per_min derivation:
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -133,3 +134,100 @@ def get_muon(
         agg=resolved,
         rows=rows,
     )
+
+
+# --- Phase 13 (MU2-05): live muon-analysis panels -------------------------------
+
+_ANALYSIS_WINDOW_DAYS = 7
+_ANALYSIS_WINDOW_SEC = _ANALYSIS_WINDOW_DAYS * 86400
+
+
+def _empty_analysis(frm: int, to: int, *, analysis_available: bool = True) -> dict[str, Any]:
+    """Empty-state body for /api/muon/analysis (200, never 404/500)."""
+    return {
+        "adc_histogram": [],
+        "barometric": None,
+        "window": {"from": frm, "to": to, "days": _ANALYSIS_WINDOW_DAYS},
+        "raw_uncorrected": True,
+        "analysis_available": analysis_available,
+    }
+
+
+@router.get("/muon/analysis")
+def get_muon_analysis() -> dict[str, Any]:
+    """Live ADC histogram + barometric coefficient over a rolling 7-day window.
+
+    Computed on-request from ``muon_events`` (SQLite only — LOCAL-FIRST, never
+    upstream) via ``observatory.muon.analysis_adapter``, which reuses the
+    Phase-12 ``picomuon`` core. The live rate is RAW wall-clock count/bucket
+    with NO dead-time correction (``raw_uncorrected: true`` — the honesty line);
+    the offline CLI stays the dead-time-corrected source of truth.
+
+    Response shape::
+
+        {
+            "adc_histogram": [{"bin_center": float, "count": int}, ...],
+            "barometric": {"beta", "r_squared", "p_value", "n"} | null,
+            "window": {"from": int, "to": int, "days": 7},
+            "raw_uncorrected": true,
+            "analysis_available": bool
+        }
+
+    Empty / thin data -> empty-state 200 (NOT 404/500). If the ``[analysis]``
+    extra (polars/scipy via picomuon) is missing from the API venv, the lazy
+    import fails and the route degrades to an empty-state 200 with
+    ``analysis_available: false`` rather than a 500 (Pitfall 7).
+    """
+    now = int(time.time())
+    frm = now - _ANALYSIS_WINDOW_SEC
+
+    # Lazy-import the analysis stack so a missing [analysis] extra degrades to an
+    # empty-state 200 rather than taking down the rest of the API on import.
+    try:
+        from observatory.muon.analysis_adapter import (
+            live_adc_histogram,
+            live_barometric,
+        )
+    except ImportError:
+        return _empty_analysis(frm, now, analysis_available=False)
+
+    with get_conn() as conn:
+        cursor = conn.execute(
+            """
+            SELECT ts, amplitude, detector_pressure_hpa
+            FROM muon_events
+            WHERE ts BETWEEN ? AND ? AND coincidence = 1
+            ORDER BY ts ASC
+            """,
+            (frm, now),
+        )
+        rows = [(r["ts"], r["amplitude"], r["detector_pressure_hpa"], 1) for r in cursor]
+
+    if not rows:
+        return _empty_analysis(frm, now)
+
+    hist = live_adc_histogram(rows)
+    adc_histogram_out = [
+        {"bin_center": bc, "count": c}
+        for bc, c in zip(hist["bin_center"].to_list(), hist["count"].to_list(), strict=True)
+    ]
+
+    fit = live_barometric(rows)
+    barometric_out: dict[str, Any] | None
+    if fit is None:
+        barometric_out = None
+    else:
+        barometric_out = {
+            "beta": fit.beta,
+            "r_squared": fit.r_squared,
+            "p_value": fit.p_value,
+            "n": fit.n,
+        }
+
+    return {
+        "adc_histogram": adc_histogram_out,
+        "barometric": barometric_out,
+        "window": {"from": frm, "to": now, "days": _ANALYSIS_WINDOW_DAYS},
+        "raw_uncorrected": True,
+        "analysis_available": True,
+    }

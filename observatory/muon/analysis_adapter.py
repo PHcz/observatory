@@ -8,11 +8,11 @@ the polars frames the Phase-12 ``picomuon`` core reads:
 
 The live rate is WALL-CLOCK (``count / bucket_seconds``) with NO dead-time
 correction. ``muon_events`` has no dead-time / elapsed field (unlike the
-PicoMuon CSV), so ``picomuon.rates.bin_rate`` is deliberately bypassed — using
-it would require fabricating ``dead_s`` / ``elapsed_s`` and would silently claim
-a dead-time correction the live path must not promise. The offline CLI (Phase
-12) stays the dead-time-corrected source of truth; the live panels are labelled
-"raw — not dead-time corrected".
+PicoMuon CSV), so the Phase-12 rate helper that needs those columns is
+deliberately NOT used here — reusing it would require fabricating live-time
+fields and would silently claim a dead-time correction the live path must not
+promise. The offline CLI (Phase 12) stays the dead-time-corrected source of
+truth; the live panels are labelled "raw — not dead-time corrected".
 
 The module is pure (DataFrame-in/out, no FastAPI / SQLite import) so it
 unit-tests without the API. ``polars`` and the ``picomuon`` core (polars+scipy)
