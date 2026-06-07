@@ -39,13 +39,16 @@ INTERVALS_SEC: Final[dict[str, int]] = {
     "forecast": 3600,
     # air_quality polls hourly; HEALTHY_MULT(2)*3600 == 7200s healthy window.
     "air_quality": 3600,
+    # nmdb polls hourly; HEALTHY_MULT(2)*3600 == 7200s healthy window.
+    "nmdb": 3600,
 }
 
 # Map source name -> (data table, optional source-column filter for earthquakes).
-# NOTE: `forecast` and `air_quality` are deliberately ABSENT here — their
-# freshness must track {forecast,air_quality}_meta.fetched_at (when we last
+# NOTE: `forecast`, `air_quality` and `nmdb` are deliberately ABSENT here — their
+# freshness must track {forecast,air_quality,nmdb}_meta.fetched_at (when we last
 # polled), NOT MAX(ts) (forecast's horizon is 7 days ahead; air_quality is a
-# single-row snapshot). health.py reads fetched_at directly for both.
+# single-row snapshot; nmdb_counts.ts is upstream data time, not poll time —
+# Pitfall 2). health.py reads fetched_at directly for all three.
 DATA_TABLE: Final[dict[str, tuple[str, str | None]]] = {
     "weather": ("weather", None),
     "muon": ("muon_events", None),
@@ -122,6 +125,7 @@ EXPECTED_INTERVAL_SEC: Final[dict[str, int]] = {
     "aurora": 900,  # 15min
     "forecast": 3600,  # 1h — UI-20 cadence_warning fires at 2x (2h overdue)
     "air_quality": 3600,  # 1h — UI-20 cadence_warning fires at 2x (2h overdue)
+    "nmdb": 3600,  # 1h — UI-20 cadence_warning fires at 2x (2h overdue)
 }
 
 

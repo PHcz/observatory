@@ -674,11 +674,12 @@ def write_nmdb(
             with get_write_conn() as conn:
                 conn.execute("BEGIN IMMEDIATE")
                 try:
-                    conn.executemany(
-                        "INSERT OR IGNORE INTO nmdb_counts "
-                        "(station, ts, counts_per_sec) VALUES (?,?,?)",
-                        [(c.station, c.ts, c.counts_per_sec) for c in counts],
-                    )
+                    for c in counts:
+                        conn.execute(
+                            "INSERT OR IGNORE INTO nmdb_counts "
+                            "(station, ts, counts_per_sec) VALUES (?,?,?)",
+                            (c.station, c.ts, c.counts_per_sec),
+                        )
                     conn.execute(
                         "INSERT OR REPLACE INTO nmdb_meta (id, fetched_at, station) "
                         "VALUES (1, ?, ?)",

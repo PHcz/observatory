@@ -98,6 +98,21 @@ def _air_quality_last_fetched(conn: sqlite3.Connection) -> int | None:
     return int(val) if val is not None else None
 
 
+def _nmdb_last_fetched(conn: sqlite3.Connection) -> int | None:
+    """Return nmdb_meta.fetched_at (when the NMDB counts were last polled).
+
+    This is the freshness anchor for the `nmdb` source — NOT MAX(ts) of
+    nmdb_counts (the count series carries upstream data time, which can lag or
+    look fresh independently of our poll; Pitfall 2). Mirrors the
+    forecast/air_quality carve-out.
+    """
+    row = conn.execute("SELECT fetched_at FROM nmdb_meta WHERE id = 1").fetchone()
+    if not row:
+        return None
+    val = row["fetched_at"]
+    return int(val) if val is not None else None
+
+
 def _last_poll(conn: sqlite3.Connection, source: str) -> tuple[int | None, str | None]:
     row = conn.execute(
         "SELECT ended_at, status FROM poller_runs WHERE source=? ORDER BY ended_at DESC LIMIT 1",
@@ -227,6 +242,31 @@ def health() -> dict[str, Any]:
             "cadence_warning": cadence_warning(now, aq_last, "air_quality"),
         }
         worst_f = worst(worst_f, aq_f)
+
+        # nmdb: bespoke external entry. Freshness anchors on nmdb_meta.fetched_at
+        # (NOT MAX(ts) of the count series — Pitfall 2). Kept off the
+        # EXTERNAL_SOURCES loop because that path routes through _max_ts(ts), which
+        # is the wrong column here — mirrors forecast/air_quality above.
+        nmdb_interval = INTERVALS_SEC["nmdb"]
+        nmdb_last = _nmdb_last_fetched(conn)
+        nmdb_poll_ts, nmdb_poll_status = _last_poll(conn, "nmdb")
+        nmdb_anchor = nmdb_last
+        if nmdb_anchor is None and nmdb_poll_status in ("success", "partial"):
+            nmdb_anchor = nmdb_poll_ts
+        nmdb_age = (now - nmdb_anchor) if nmdb_anchor is not None else _NO_EVENT_AGE_SEC
+        nmdb_event_f = freshness(nmdb_age, nmdb_interval)
+        nmdb_f = cross_check_poller(
+            nmdb_event_f, nmdb_poll_status, nmdb_poll_ts, now, nmdb_interval
+        )
+        out["external"]["nmdb"] = {
+            "last_event_ts": nmdb_last,
+            "last_poll_ts": nmdb_poll_ts,
+            "last_poll_status": nmdb_poll_status,
+            "freshness": nmdb_f,
+            "staleness_threshold_sec": HEALTHY_MULT * nmdb_interval,
+            "cadence_warning": cadence_warning(now, nmdb_last, "nmdb"),
+        }
+        worst_f = worst(worst_f, nmdb_f)
 
     pi = _pi_block()
     out["pi"] = pi

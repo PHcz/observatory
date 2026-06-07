@@ -28,6 +28,7 @@ from observatory.api.routers import forecast as forecast_router
 from observatory.api.routers import health as health_router
 from observatory.api.routers import lightning as lightning_router
 from observatory.api.routers import muon as muon_router
+from observatory.api.routers import nmdb as nmdb_router
 from observatory.api.routers import space_weather as space_weather_router
 from observatory.api.routers import stats as stats_router
 from observatory.api.routers import weather as weather_router
@@ -111,6 +112,7 @@ app.include_router(events_router.router, prefix="/api", tags=["events"])
 app.include_router(stats_router.router, prefix="/api", tags=["stats"])
 app.include_router(forecast_router.router, prefix="/api", tags=["forecast"])
 app.include_router(air_quality_router.router, prefix="/api", tags=["air_quality"])
+app.include_router(nmdb_router.router, prefix="/api", tags=["nmdb"])
 app.include_router(ws_router.router, tags=["ws"])  # no /api prefix
 
 # StaticFiles LAST. Skip if bundle dir absent (dev/CI without built frontend).
