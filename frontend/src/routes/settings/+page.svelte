@@ -10,6 +10,7 @@
     { key: 'headerPanel', label: 'Header' },
     { key: 'statsRow', label: 'Stats' },
     { key: 'forecast', label: 'Local forecast' },
+    { key: 'airQuality', label: 'Air quality' },
     { key: 'muonChart', label: 'Muon flux chart' },
     { key: 'spaceWeather', label: 'Space weather' },
     { key: 'earthquakes', label: 'Earthquakes' },

@@ -48,20 +48,22 @@ describe('airQualityBands uvBand()', () => {
 
 describe('airQualityBands pollenBand()', () => {
   it('tree/weed types use the high thresholds (alder/birch/olive/mugwort)', () => {
-    expect(pollenBand('birch', 5).label).toBe('Low');
-    expect(pollenBand('birch', 5).token).toBe('--accent');
-    expect(pollenBand('birch', 50).label).toBe('Moderate');
-    expect(pollenBand('birch', 50).token).toBe('--warn');
-    expect(pollenBand('birch', 150).label).toBe('High');
-    expect(pollenBand('birch', 150).token).toBe('--alert');
-    expect(pollenBand('birch', 400).label).toBe('Very high');
-    expect(pollenBand('birch', 400).token).toBe('--alert');
+    // pollenBand returns Band | null (null for value <= 0); all values here are
+    // non-zero so the band is always present — non-null assert for type-checking.
+    expect(pollenBand('birch', 5)!.label).toBe('Low');
+    expect(pollenBand('birch', 5)!.token).toBe('--accent');
+    expect(pollenBand('birch', 50)!.label).toBe('Moderate');
+    expect(pollenBand('birch', 50)!.token).toBe('--warn');
+    expect(pollenBand('birch', 150)!.label).toBe('High');
+    expect(pollenBand('birch', 150)!.token).toBe('--alert');
+    expect(pollenBand('birch', 400)!.label).toBe('Very high');
+    expect(pollenBand('birch', 400)!.token).toBe('--alert');
   });
 
   it('low-threshold types use the lower thresholds (grass/ragweed)', () => {
-    expect(pollenBand('grass', 1).label).toBe('Low');
-    expect(pollenBand('grass', 10).label).toBe('Moderate');
-    expect(pollenBand('grass', 60).label).toBe('High');
-    expect(pollenBand('grass', 200).label).toBe('Very high');
+    expect(pollenBand('grass', 1)!.label).toBe('Low');
+    expect(pollenBand('grass', 10)!.label).toBe('Moderate');
+    expect(pollenBand('grass', 60)!.label).toBe('High');
+    expect(pollenBand('grass', 200)!.label).toBe('Very high');
   });
 });

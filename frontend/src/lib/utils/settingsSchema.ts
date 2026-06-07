@@ -8,6 +8,7 @@ export type PanelKey =
   | 'headerPanel'
   | 'statsRow'
   | 'forecast'
+  | 'airQuality'
   | 'muonChart'
   | 'spaceWeather'
   | 'earthquakes'
@@ -28,6 +29,7 @@ export const ALL_PANELS: PanelKey[] = [
   'headerPanel',
   'statsRow',
   'forecast',
+  'airQuality',
   'muonChart',
   'spaceWeather',
   'earthquakes',
