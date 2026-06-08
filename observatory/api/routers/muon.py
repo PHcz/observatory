@@ -29,6 +29,14 @@ from observatory.api._serializers import (
 from observatory.config import settings
 from observatory.db.connection import get_conn
 from observatory.muon.flux import absolute_flux
+from observatory.muon.poisson import (
+    anomaly_severity,
+    anomaly_z_score,
+    dt_exponential_histogram,
+    poisson_band,
+    rate_pmf,
+    rolling_median_baseline,
+)
 from observatory.muon.pressure import stp_corrected_rate
 
 router = APIRouter()
@@ -98,17 +106,29 @@ def get_muon(
                 (from_, to, MAX_ROWS),
             )
             raw_rows = [dict(r) for r in cursor]
-            rows = []
+            # First pass: compute rate_per_min for each bucket so we can derive
+            # the rolling-median baseline used for Poisson anomaly detection.
+            intermediate = []
             for r in raw_rows:
                 event_count: int = r["event_count"]
                 raw_rate = event_count * 60 / bucket_sec
-                # UKRAA STP pressure correction (see observatory.muon.pressure):
-                # normalize the rate to 20 degC / 1013.25 hPa using the bucket's
-                # mean detector temp + pressure. Unchanged when either is missing.
                 corrected = stp_corrected_rate(
                     raw_rate, r["detector_temp_c"], r["detector_pressure_hpa"]
                 )
                 rate_per_min = round(corrected if corrected is not None else raw_rate, 2)
+                intermediate.append((r, event_count, rate_per_min))
+
+            # Compute baseline from all bucket rates (median is robust to anomalies).
+            all_rates: list[float | None] = [rate for (_, _, rate) in intermediate]
+            baseline = rolling_median_baseline(all_rates)
+
+            # Second pass: build final rows with Poisson band + anomaly keys.
+            rows = []
+            for r, event_count, rate_per_min in intermediate:
+                band = poisson_band(event_count, bucket_sec)
+                z = anomaly_z_score(
+                    rate_per_min, baseline if baseline is not None else 0.0, bucket_sec / 60.0
+                )
                 rows.append(
                     {
                         "ts": r["ts"],
@@ -118,6 +138,10 @@ def get_muon(
                             absolute_flux(rate_per_min, settings.effective_area_cm2), 4
                         ),
                         "effective_area_cm2": settings.effective_area_cm2,
+                        "lower_1sigma": band["lower_1sigma"],
+                        "upper_1sigma": band["upper_1sigma"],
+                        "anomaly_z": round(z, 2) if z is not None else None,
+                        "anomaly_severity": anomaly_severity(z),
                         "detector_pressure_hpa": (
                             round(r["detector_pressure_hpa"], 2)
                             if r["detector_pressure_hpa"] is not None
@@ -290,4 +314,92 @@ def get_muon_analysis() -> dict[str, Any]:
         "window": {"from": frm, "to": now, "days": _ANALYSIS_WINDOW_DAYS},
         "raw_uncorrected": True,
         "analysis_available": True,
+    }
+
+
+# --- Phase 16 (ENH-02): Poisson diagnostics panel ----------------------------
+
+_DIAGNOSTICS_WINDOW_SEC = 24 * 3600
+_DIAGNOSTICS_MIN_SAMPLE_MINUTES = 60
+
+
+def _empty_diagnostics(sample_size_minutes: int) -> dict[str, Any]:
+    """Empty-state body for /api/muon/diagnostics (200, never 404/500)."""
+    return {
+        "dt_histogram": [],
+        "rate_pmf": [],
+        "baseline_rate": None,
+        "sample_size_minutes": sample_size_minutes,
+    }
+
+
+@router.get("/muon/diagnostics")
+def get_muon_diagnostics() -> dict[str, Any]:
+    """Poisson diagnostics: Δt inter-arrival histogram + rate-vs-Poisson PMF.
+
+    Reads the last 24 h of coincidence muon events from SQLite (LOCAL-FIRST,
+    no upstream HTTP). Computes:
+      - dt_histogram: inter-arrival time histogram (exponential distributed
+        for a true Poisson process — deviations indicate non-Poisson behaviour)
+      - rate_pmf: observed per-minute count histogram vs Poisson PMF at the
+        rolling-median baseline rate
+
+    Empty-state rule: if fewer than 60 distinct minute-buckets are present
+    the sample is too thin to be meaningful. Returns 200 with empty arrays
+    and baseline_rate: null — never 404/500.
+
+    Response shape::
+
+        {
+            "dt_histogram": [{"bin_s": float, "count": int}, ...],
+            "rate_pmf": [
+                {"count_per_min": int, "observed_prob": float, "poisson_prob": float},
+                ...
+            ],
+            "baseline_rate": float | null,
+            "sample_size_minutes": int
+        }
+    """
+    now = int(time.time())
+    frm = now - _DIAGNOSTICS_WINDOW_SEC
+
+    with get_conn() as conn:
+        cursor = conn.execute(
+            """
+            SELECT ts
+            FROM muon_events
+            WHERE ts BETWEEN ? AND ? AND coincidence = 1
+            ORDER BY ts ASC
+            """,
+            (frm, now),
+        )
+        event_ts_list = [r["ts"] for r in cursor]
+
+    if not event_ts_list:
+        return _empty_diagnostics(0)
+
+    # Group events into per-minute buckets to compute per-minute counts.
+    # A "minute bucket" is floor(ts / 60).
+    minute_buckets: dict[int, int] = {}
+    for ts in event_ts_list:
+        bucket = ts // 60
+        minute_buckets[bucket] = minute_buckets.get(bucket, 0) + 1
+
+    per_minute_counts = list(minute_buckets.values())
+    sample_size_minutes = len(minute_buckets)
+
+    if sample_size_minutes < _DIAGNOSTICS_MIN_SAMPLE_MINUTES:
+        return _empty_diagnostics(sample_size_minutes)
+
+    per_minute_rates: list[float | None] = [float(c) for c in per_minute_counts]
+    baseline = rolling_median_baseline(per_minute_rates)
+
+    dt_hist = dt_exponential_histogram(event_ts_list)
+    pmf = rate_pmf(per_minute_counts, baseline)
+
+    return {
+        "dt_histogram": dt_hist,
+        "rate_pmf": pmf,
+        "baseline_rate": baseline,
+        "sample_size_minutes": sample_size_minutes,
     }
