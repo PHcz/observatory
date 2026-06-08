@@ -1,6 +1,8 @@
-"""DATA-04: backup creates .db + .ok sentinel; fails fast on missing mount; prunes 14d+.
+"""DATA-04: backup creates .db.gz + .ok sentinel; fails fast on missing mount; prunes 10d+.
 
-Phase 16 ENH-07: extended with gzip output test and .db.gz _prune() test.
+Uses sqlite3.Connection.backup() — WAL-coherent snapshot. Output is gzip-compressed.
+
+Phase 16 ENH-07: gzip output (RETENTION_DAYS=10, double-suffix prune via removesuffix).
 """
 
 from __future__ import annotations
@@ -39,7 +41,7 @@ def test_backup_fails_if_mount_missing(populated_source_db: Path, tmp_path: Path
     # tmp dirs are NOT real mountpoints, so is_mount() returns False naturally
     rc = backup_mod.run_backup(source_db=populated_source_db, backup_mount=fake_mount)
     assert rc == 1
-    assert not any(fake_mount.glob("observatory-*.db"))
+    assert not any(fake_mount.glob("observatory-*.db.gz"))
 
 
 def test_backup_creates_db_and_sentinel(
@@ -52,7 +54,7 @@ def test_backup_creates_db_and_sentinel(
     rc = backup_mod.run_backup(source_db=populated_source_db, backup_mount=mount)
     assert rc == 0
     today = date.today().isoformat()
-    assert (mount / f"observatory-{today}.db").exists()
+    assert (mount / f"observatory-{today}.db.gz").exists()
     assert (mount / f"observatory-{today}.ok").exists()
 
 
@@ -65,10 +67,22 @@ def test_backup_db_passes_integrity_check(
     backup_mod.run_backup(source_db=populated_source_db, backup_mount=mount)
 
     today = date.today().isoformat()
-    conn = sqlite3.connect(str(mount / f"observatory-{today}.db"))
-    result = conn.execute("PRAGMA integrity_check").fetchone()[0]
-    conn.close()
-    assert result == "ok"
+    gz_file = mount / f"observatory-{today}.db.gz"
+    # Decompress and check integrity
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_f:
+        tmp_path2 = Path(tmp_f.name)
+    try:
+        with gzip.open(gz_file, "rb") as f_in, tmp_path2.open("wb") as f_out:
+            while chunk := f_in.read(1024 * 1024):
+                f_out.write(chunk)
+        conn = sqlite3.connect(str(tmp_path2))
+        result = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        conn.close()
+        assert result == "ok"
+    finally:
+        tmp_path2.unlink(missing_ok=True)
 
 
 def test_backup_row_count_matches(
@@ -80,10 +94,21 @@ def test_backup_row_count_matches(
     backup_mod.run_backup(source_db=populated_source_db, backup_mount=mount)
 
     today = date.today().isoformat()
-    conn = sqlite3.connect(str(mount / f"observatory-{today}.db"))
-    n = conn.execute("SELECT COUNT(*) FROM t").fetchone()[0]
-    conn.close()
-    assert n == 3
+    gz_file = mount / f"observatory-{today}.db.gz"
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_f:
+        tmp_path2 = Path(tmp_f.name)
+    try:
+        with gzip.open(gz_file, "rb") as f_in, tmp_path2.open("wb") as f_out:
+            while chunk := f_in.read(1024 * 1024):
+                f_out.write(chunk)
+        conn = sqlite3.connect(str(tmp_path2))
+        n = conn.execute("SELECT COUNT(*) FROM t").fetchone()[0]
+        conn.close()
+        assert n == 3
+    finally:
+        tmp_path2.unlink(missing_ok=True)
 
 
 def test_backup_idempotent_same_day(
@@ -96,34 +121,34 @@ def test_backup_idempotent_same_day(
     assert backup_mod.run_backup(source_db=populated_source_db, backup_mount=mount) == 0
     today = date.today().isoformat()
     sentinel_mtime = (mount / f"observatory-{today}.ok").stat().st_mtime
-    db_mtime = (mount / f"observatory-{today}.db").stat().st_mtime
+    gz_mtime = (mount / f"observatory-{today}.db.gz").stat().st_mtime
 
     # second call should short-circuit on sentinel
     assert backup_mod.run_backup(source_db=populated_source_db, backup_mount=mount) == 0
     assert (mount / f"observatory-{today}.ok").stat().st_mtime == sentinel_mtime
-    assert (mount / f"observatory-{today}.db").stat().st_mtime == db_mtime
+    assert (mount / f"observatory-{today}.db.gz").stat().st_mtime == gz_mtime
 
 
-def test_pruning_removes_files_older_than_14_days(tmp_path: Path) -> None:
+def test_pruning_removes_files_older_than_10_days(tmp_path: Path) -> None:
     mount = tmp_path / "mnt"
     mount.mkdir()
 
     today = date(2026, 5, 23)
-    old_date = today - timedelta(days=20)
+    old_date = today - timedelta(days=15)
     fresh_date = today - timedelta(days=3)
 
-    old_db = mount / f"observatory-{old_date.isoformat()}.db"
+    old_gz = mount / f"observatory-{old_date.isoformat()}.db.gz"
     old_ok = mount / f"observatory-{old_date.isoformat()}.ok"
-    fresh_db = mount / f"observatory-{fresh_date.isoformat()}.db"
+    fresh_gz = mount / f"observatory-{fresh_date.isoformat()}.db.gz"
     fresh_ok = mount / f"observatory-{fresh_date.isoformat()}.ok"
-    for f in [old_db, old_ok, fresh_db, fresh_ok]:
+    for f in [old_gz, old_ok, fresh_gz, fresh_ok]:
         f.touch()
 
-    deleted = backup_mod._prune(mount, retention_days=14, today=today)
+    deleted = backup_mod._prune(mount, retention_days=10, today=today)
     assert deleted == 1
-    assert not old_db.exists()
+    assert not old_gz.exists()
     assert not old_ok.exists()
-    assert fresh_db.exists()
+    assert fresh_gz.exists()
     assert fresh_ok.exists()
 
 
@@ -162,15 +187,19 @@ def test_backup_accepts_live_writer_drift(
                 pass
         return conn
 
-    # Patch sqlite3.connect only for the 2nd open (after src.backup(dst)).
-    call_count = {"n": 0}
+    # Patch sqlite3.connect only for the call that opens the source for row-count
+    # cross-check. The new gzip flow opens: (1) source for backup, (2) tmp for backup
+    # dst, then (3) check_db for integrity, then (4) source again for row-count.
+    # We want to inject on the 2nd source-db open = call #4 overall, which is
+    # the 2nd time populated_source_db appears in the path.
+    source_open_count = {"n": 0}
 
     def selective_connect(path: str, *args: Any, **kwargs: Any) -> sqlite3.Connection:
-        call_count["n"] += 1
-        if call_count["n"] == 2 and str(populated_source_db) in str(path):
-            return connect_and_append(path, *args, **kwargs)
-        conn: sqlite3.Connection = orig_connect(path, *args, **kwargs)
-        return conn
+        if str(populated_source_db) in str(path):
+            source_open_count["n"] += 1
+            if source_open_count["n"] == 2:
+                return connect_and_append(path, *args, **kwargs)
+        return orig_connect(path, *args, **kwargs)
 
     monkeypatch.setattr("scripts.backup.sqlite3.connect", selective_connect)
 
@@ -178,7 +207,7 @@ def test_backup_accepts_live_writer_drift(
     assert rc == 0, "backup should succeed when source grew during backup (append-only)"
 
     today = date.today().isoformat()
-    assert (mount / f"observatory-{today}.db").exists()
+    assert (mount / f"observatory-{today}.db.gz").exists()
     assert (mount / f"observatory-{today}.ok").exists()
 
 
@@ -196,11 +225,7 @@ def test_backup_accepts_live_writer_drift(
 def test_gzip_output(
     populated_source_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """run_backup() must write observatory-YYYY-MM-DD.db.gz (not .db) to the mount.
-
-    RED: backup.py currently writes .db, not .db.gz. This test will fail until
-    ENH-07 implementation replaces the uncompressed backup with a gzip stream.
-    """
+    """run_backup() must write observatory-YYYY-MM-DD.db.gz (not .db) to the mount."""
     mount = tmp_path / "mnt"
     mount.mkdir()
     monkeypatch.setattr(Path, "is_mount", lambda self: self == mount)
@@ -221,9 +246,7 @@ def test_gzip_output(
 def test_prune_gz(tmp_path: Path) -> None:
     """_prune() must handle .db.gz files and delete those older than retention_days.
 
-    RED: backup._prune() currently globs for *.db files. This test will fail until
-    ENH-07 implementation updates _prune() to glob for *.db.gz and use
-    f.name.removesuffix('.db.gz') for date extraction (Pitfall 5).
+    Uses name.removesuffix() pattern for date extraction (Pitfall 5 avoided).
     """
     mount = tmp_path / "mnt"
     mount.mkdir()
