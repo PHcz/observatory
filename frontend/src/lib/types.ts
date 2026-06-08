@@ -257,6 +257,46 @@ export interface ForbushResponse {
 export interface MuonPoint {
   ts: number;
   rate_per_min: number;
+  /** ±1σ Poisson confidence interval (ENH-02). Optional — absent on older cached rows. */
+  lower_1sigma?: number | null;
+  upper_1sigma?: number | null;
+  /** Z-score of the bin relative to the rolling baseline (ENH-02). Null when uncalculated. */
+  anomaly_z?: number | null;
+  /** Severity flag when |z| threshold crossed. 'warn'=|z|>3, 'alert'=|z|>5. */
+  anomaly_severity?: 'warn' | 'alert' | null;
+  /** Pressure-corrected flux in cm⁻² min⁻¹ (ENH-01). Optional. */
+  flux_cm2_min?: number | null;
+}
+
+// Phase 16 (ENH-01/02) — muon diagnostics + gain-drift response types.
+
+export interface MuonDiagnosticsDtBin {
+  bin_s: number;
+  count: number;
+}
+
+export interface MuonDiagnosticsRatePmf {
+  count_per_min: number;
+  observed_prob: number;
+  poisson_prob: number;
+}
+
+export interface MuonDiagnosticsResponse {
+  dt_histogram: MuonDiagnosticsDtBin[];
+  rate_pmf: MuonDiagnosticsRatePmf[];
+  baseline_rate: number;
+  sample_size_minutes: number;
+}
+
+export interface MuonGainDriftWeek {
+  week_start_ts: number;
+  mip_peak_adc: number;
+  sample_events: number;
+}
+
+export interface MuonGainDriftResponse {
+  weeks: MuonGainDriftWeek[];
+  baseline_adc: number;
 }
 
 export interface WeatherPoint {

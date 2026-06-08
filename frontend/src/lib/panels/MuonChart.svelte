@@ -65,6 +65,9 @@
     ? deriveStaleness(ageSeconds(muonLastTs), muonHealth.staleness_threshold_sec)
     : 'fresh';
 
+  // ENH-02: anomaly badge — count of bins with a non-null severity flag.
+  $: anomalyCount = $muonStore.history.filter(r => r.anomaly_severity != null).length;
+
   onDestroy(() => {
     if (intervalId) clearInterval(intervalId);
     if (stopReseed) stopReseed();
@@ -76,7 +79,10 @@
 
 <section class="section" class:is-stale-amber={muonLevel === 'amber'} class:is-stale-red={muonLevel === 'red'}>
   <ChartHeader title="MUONS" sensor="PICO µ" />
-  <p class="section-sub">Events per minute, corrected for atmospheric pressure</p>
+  <p class="section-sub">Events per minute · raw, not dead-time corrected · atmospheric pressure corrected</p>
+  {#if anomalyCount > 0}
+    <p class="anomaly-badge">! {anomalyCount} {anomalyCount === 1 ? 'anomaly' : 'anomalies'}</p>
+  {/if}
   <!-- WS-pushed source: caption permanently hidden, UI-14 -->
   <StalenessCaption lastTs={muonLastTs} level="fresh" />
   <div bind:this={container} data-chart="muon" class="chart-container"></div>
@@ -93,7 +99,15 @@
   .section-sub {
     font-size: 13px;
     color: var(--text-muted);
-    margin: 0 0 24px 0;
+    margin: 0 0 8px 0;
+  }
+  /* ENH-02: anomaly badge — visible when |z|>3 bins are present. */
+  .anomaly-badge {
+    font-size: 11px;
+    color: var(--warn);
+    border-left: 4px solid var(--warn);
+    padding-left: 8px;
+    margin: 0 0 16px 0;
   }
   .chart-container {
     width: 100%;

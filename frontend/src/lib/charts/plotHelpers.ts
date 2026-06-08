@@ -28,6 +28,9 @@ function tokens() {
       marker: '#6b8e6b',
       dewpoint: '#6b8e6b',
       accent: '#6b8e6b',
+      warn: '#c97f3a',
+      alert: '#b8504a',
+      bg: '#ffffff',
     };
   }
   const cs = getComputedStyle(document.documentElement);
@@ -38,6 +41,9 @@ function tokens() {
     marker: cs.getPropertyValue('--chart-marker').trim() || '#6b8e6b',
     dewpoint: cs.getPropertyValue('--chart-dewpoint').trim() || '#6b8e6b',
     accent: cs.getPropertyValue('--accent').trim() || '#6b8e6b',
+    warn: cs.getPropertyValue('--warn').trim() || '#c97f3a',
+    alert: cs.getPropertyValue('--alert').trim() || '#b8504a',
+    bg: cs.getPropertyValue('--bg').trim() || '#ffffff',
   };
 }
 
@@ -128,6 +134,16 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
   const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
   const yScale = niceFloorDomain([...rawYs, ...smoothedYs], 4);
 
+  // ENH-02: anomaly dots — bins with anomaly_severity set (|z|>3 warn, |z|>5 alert).
+  const warnDots = safe.filter(p => p.anomaly_severity === 'warn');
+  const alertDots = safe.filter(p => p.anomaly_severity === 'alert');
+
+  // ENH-02: Poisson band — only when at least one point carries the band fields.
+  const hasBand = safe.some(p => p.lower_1sigma != null && p.upper_1sigma != null);
+  const bandData = hasBand
+    ? safe.filter(p => p.lower_1sigma != null && p.upper_1sigma != null)
+    : [];
+
   return Plot.plot({
     width,
     height: 240,
@@ -139,7 +155,7 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
     y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
-      // Raw line — BEHIND smoothed (array order = z-order; Pitfall 2)
+      // Layer 1: Raw scatter — BEHIND everything (array order = z-order; Pitfall 2)
       Plot.line(safe, {
         x: (d: MuonPoint) => new Date(d.ts * 1000),
         y: 'rate_per_min',
@@ -147,7 +163,21 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
         strokeWidth: 0.5,
         strokeOpacity: 0.55,
       }),
-      // Smoothed line — on top
+      // Layer 2: Poisson confidence band (ENH-02) — behind LOESS line.
+      // Guard: only rendered when at least one point has band fields (older cached rows omit them).
+      ...(hasBand
+        ? [
+            Plot.areaY(bandData, {
+              x: (d: MuonPoint) => new Date(d.ts * 1000),
+              y1: (d: MuonPoint) => d.lower_1sigma as number,
+              y2: (d: MuonPoint) => d.upper_1sigma as number,
+              fill: t.data,
+              fillOpacity: 0.10,
+              stroke: 'none',
+            }),
+          ]
+        : []),
+      // Layer 3: Smoothed LOESS line — on top of raw + band
       Plot.line(smoothed, {
         x: (d: MuonPoint) => new Date(d.ts * 1000),
         y: 'rate_per_min',
@@ -156,6 +186,33 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
         strokeLinejoin: 'round',
         strokeLinecap: 'round',
       }),
+      // Layer 4a: |z|>3 anomaly dots (warn colour) — above LOESS line
+      ...(warnDots.length > 0
+        ? [
+            Plot.dot(warnDots, {
+              x: (d: MuonPoint) => new Date(d.ts * 1000),
+              y: 'rate_per_min',
+              r: 4,
+              fill: t.warn,
+              stroke: t.bg,
+              strokeWidth: 1.5,
+            }),
+          ]
+        : []),
+      // Layer 4b: |z|>5 anomaly dots (alert colour) — above warn dots
+      ...(alertDots.length > 0
+        ? [
+            Plot.dot(alertDots, {
+              x: (d: MuonPoint) => new Date(d.ts * 1000),
+              y: 'rate_per_min',
+              r: 4,
+              fill: t.alert,
+              stroke: t.bg,
+              strokeWidth: 1.5,
+            }),
+          ]
+        : []),
+      // Layer 5: current-value marker
       ...(last
         ? [
             Plot.dot([last], {
@@ -166,6 +223,23 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
             }),
           ]
         : []),
+      // Layer 6: sea-level reference rule (ENH-01) — always on, above data, below labels.
+      // Canonical sea-level muon flux: ~1 cm⁻² min⁻¹.
+      Plot.ruleY([1.0], {
+        stroke: t.marker,
+        strokeDasharray: '4 3',
+        strokeWidth: 1,
+        opacity: 0.7,
+      }),
+      Plot.text([{ y: 1.0, label: 'sea level ~1 cm⁻² min⁻¹' }], {
+        x: () => end,
+        y: 'y',
+        text: 'label',
+        textAnchor: 'end',
+        dy: -4,
+        fontSize: 11,
+        fill: t.raw,
+      }),
     ],
   });
 }
