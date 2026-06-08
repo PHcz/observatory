@@ -4,6 +4,8 @@
   import { initHealthPolling } from '$lib/stores/health';
   import { initForecastPolling } from '$lib/stores/forecast';
   import { initAirQualityPolling } from '$lib/stores/airQuality';
+  import { initAlertsPolling } from '$lib/stores/alerts';
+  import { initWeatherDerivedPolling } from '$lib/stores/weatherDerived';
   import { initMuonAnalysisPolling } from '$lib/stores/muonAnalysis';
   import { initMuonDiagnosticsPolling } from '$lib/stores/muonDiagnostics';
   import { initMuonGainDriftPolling } from '$lib/stores/muonGainDrift';
@@ -14,6 +16,9 @@
   import CadenceWarningBanner from '$lib/components/CadenceWarningBanner.svelte';
   import HeaderPanel from '$lib/panels/HeaderPanel.svelte';
   import StatsRow from '$lib/panels/StatsRow.svelte';
+  import TodayStrip from '$lib/panels/TodayStrip.svelte';
+  import ZambrettiCard from '$lib/panels/ZambrettiCard.svelte';
+  import WeatherAlertsPanel from '$lib/panels/WeatherAlertsPanel.svelte';
   import ForecastPanel from '$lib/panels/ForecastPanel.svelte';
   import AirQualityPanel from '$lib/panels/AirQualityPanel.svelte';
   import MuonChart from '$lib/panels/MuonChart.svelte';
@@ -42,6 +47,8 @@
   let cleanupMuonGainDrift: (() => void) | undefined;
   let cleanupNmdb: (() => void) | undefined;
   let cleanupForbush: (() => void) | undefined;
+  let cleanupAlerts: (() => void) | undefined;
+  let cleanupWeatherDerived: (() => void) | undefined;
 
   onMount(() => {
     cleanupWs = initWs();
@@ -53,6 +60,8 @@
     cleanupMuonGainDrift = initMuonGainDriftPolling();
     cleanupNmdb = initNmdbPolling();
     cleanupForbush = initForbushPolling();
+    cleanupAlerts = initAlertsPolling();
+    cleanupWeatherDerived = initWeatherDerivedPolling();
   });
 
   onDestroy(() => {
@@ -65,6 +74,8 @@
     cleanupMuonGainDrift?.();
     cleanupNmdb?.();
     cleanupForbush?.();
+    cleanupAlerts?.();
+    cleanupWeatherDerived?.();
   });
 </script>
 
@@ -76,6 +87,9 @@
   <CadenceWarningBanner />
   {#if $settingsStore.panels.headerPanel}<HeaderPanel />{/if}
   {#if $settingsStore.panels.statsRow}<StatsRow />{/if}
+  {#if $settingsStore.panels.todayStrip}<TodayStrip />{/if}
+  {#if $settingsStore.panels.zambrettiCard}<ZambrettiCard />{/if}
+  {#if $settingsStore.panels.weatherAlerts}<WeatherAlertsPanel />{/if}
   {#if $settingsStore.panels.forecast}<ForecastPanel />{/if}
   {#if $settingsStore.panels.airQuality}<AirQualityPanel />{/if}
   {#if $settingsStore.panels.muonChart}<MuonChart />{/if}

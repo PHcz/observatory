@@ -10,6 +10,7 @@
   import { deriveStaleness } from '$lib/utils/staleness';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
   import MoonPhase from '$lib/atoms/MoonPhase.svelte';
+  import { feelsLikeC } from '$lib/utils/heatIndex';
 
   // Current local time, updated every minute
   let currentTimeSec = Math.floor(Date.now() / 1000);
@@ -76,6 +77,15 @@
   $: weatherLevel = (weatherLastTs != null && weatherHealth?.staleness_threshold_sec)
     ? deriveStaleness(ageSeconds(weatherLastTs), weatherHealth.staleness_threshold_sec)
     : 'fresh';
+
+  // Feels-like (heat index): show only when temp_c > 0 and both values are present.
+  // Wind chill not shown — no wind sensor. (UI-SPEC §5a, RESEARCH Pattern 7)
+  $: feelsLikeStr = (() => {
+    const temp = $weatherStore.current?.temp_c;
+    const hum = $weatherStore.current?.humidity_pct;
+    if (temp == null || hum == null || temp <= 0) return null;
+    return `${Math.round(feelsLikeC(temp, hum))}°C`;
+  })();
 </script>
 
 <header class="header" class:is-stale-amber={weatherLevel === 'amber'} class:is-stale-red={weatherLevel === 'red'}>
@@ -88,6 +98,9 @@
         —
       {/if}
     </h1>
+    {#if feelsLikeStr !== null}
+      <p class="feels-like">Feels like {feelsLikeStr}</p>
+    {/if}
     <p class="subtitle">{subtitle}</p>
     {#if weatherLevel !== 'fresh'}
       <StalenessCaption lastTs={weatherLastTs} />
@@ -194,6 +207,16 @@
     letter-spacing: -0.02em;
     vertical-align: baseline;
     margin-left: 4px;
+  }
+
+  /* Feels-like sub-line: 14px --text-muted, between hero numeral and subtitle.
+     Only rendered when temp_c > 0 and humidity_pct present (UI-SPEC §5a). */
+  .feels-like {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin: 0 0 8px 0;
   }
 
   /* token: subtitle-bottom-margin (UI-15) — narrative subtitle is the last element

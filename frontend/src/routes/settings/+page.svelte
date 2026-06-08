@@ -9,6 +9,9 @@
   const PANEL_LABELS: ReadonlyArray<{ key: PanelKey; label: string }> = [
     { key: 'headerPanel', label: 'Header' },
     { key: 'statsRow', label: 'Stats' },
+    { key: 'todayStrip', label: 'Today so far (daily summary strip)' },
+    { key: 'zambrettiCard', label: 'Near-term outlook (Zambretti)' },
+    { key: 'weatherAlerts', label: 'Weather alerts (frost & pressure-fall rules)' },
     { key: 'forecast', label: 'Local forecast' },
     { key: 'airQuality', label: 'Air quality' },
     { key: 'muonChart', label: 'Muon flux chart' },
