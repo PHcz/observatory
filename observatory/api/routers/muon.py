@@ -26,7 +26,9 @@ from observatory.api._serializers import (
     TimeSeriesResponse,
     resolve_agg,
 )
+from observatory.config import settings
 from observatory.db.connection import get_conn
+from observatory.muon.flux import absolute_flux
 from observatory.muon.pressure import stp_corrected_rate
 
 router = APIRouter()
@@ -112,6 +114,10 @@ def get_muon(
                         "ts": r["ts"],
                         "event_count": event_count,
                         "rate_per_min": rate_per_min,
+                        "flux_cm2_min": round(
+                            absolute_flux(rate_per_min, settings.effective_area_cm2), 4
+                        ),
+                        "effective_area_cm2": settings.effective_area_cm2,
                         "detector_pressure_hpa": (
                             round(r["detector_pressure_hpa"], 2)
                             if r["detector_pressure_hpa"] is not None
@@ -134,6 +140,55 @@ def get_muon(
         agg=resolved,
         rows=rows,
     )
+
+
+# --- Phase 16 (ENH-01): muon gain-drift series ---------------------------------
+
+_GAIN_DRIFT_WEEKS = 12
+
+
+@router.get("/muon/gain-drift")
+def get_muon_gain_drift() -> dict[str, Any]:
+    """Weekly MIP-peak gain-drift series for the last 12 weeks.
+
+    Reads ``muon_weekly_summary`` (populated by the db_watcher gain-drift compute
+    tick) and returns the weekly series with ``baseline_adc`` (first stored
+    week's MIP-peak, or ``null`` on empty DB).
+
+    Response shape::
+
+        {
+            "weeks": [
+                {"week_start_ts": int, "mip_peak_adc": float, "sample_events": int},
+                ...
+            ],
+            "baseline_adc": float | null
+        }
+
+    Empty DB -> 200 with {"weeks": [], "baseline_adc": null} (never 404/500).
+    LOCAL-FIRST: reads from SQLite only, no upstream HTTP.
+    """
+    with get_conn() as conn:
+        cursor = conn.execute(
+            """
+            SELECT week_start_ts, mip_peak_adc, sample_events
+            FROM muon_weekly_summary
+            ORDER BY week_start_ts ASC
+            LIMIT ?
+            """,
+            (_GAIN_DRIFT_WEEKS,),
+        )
+        weeks = [
+            {
+                "week_start_ts": int(r["week_start_ts"]),
+                "mip_peak_adc": float(r["mip_peak_adc"]),
+                "sample_events": int(r["sample_events"]),
+            }
+            for r in cursor
+        ]
+
+    baseline_adc = weeks[0]["mip_peak_adc"] if weeks else None
+    return {"weeks": weeks, "baseline_adc": baseline_adc}
 
 
 # --- Phase 13 (MU2-05): live muon-analysis panels -------------------------------

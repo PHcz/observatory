@@ -6,6 +6,10 @@ new rows out to connected WebSocket clients via fanout_event.
 Bootstrap: reads MAX(ts) per table at startup so old rows are never replayed
 to new connections.
 
+Phase 16 (ENH-01): a tick-counter runs the weekly MIP-peak gain-drift compute
+every ``settings.muon_gain_drift_compute_interval_sec`` (default 3600s).
+The compute runs in a try/except so a failure never kills the watcher loop.
+
 Import direction: db_watcher.py → ws.py (one-way).
 Plan 06-07 wires this into FastAPI lifespan:
     task = asyncio.create_task(db_watcher_loop())
@@ -17,6 +21,7 @@ Plan 06-07 wires this into FastAPI lifespan:
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Any
 
 import structlog
@@ -26,6 +31,10 @@ from observatory.config import settings
 from observatory.db.connection import get_conn
 
 log = structlog.get_logger(__name__)
+
+# Gain-drift tick counter — counts how many watcher sleeps have elapsed since
+# the last compute_and_store_weekly_mip_peak call.
+_gain_drift_ticks: int = 0
 
 # Table name → WebSocket event type name.
 # Keys are whitelisted here; no user input reaches the SQL f-strings below.
@@ -68,6 +77,13 @@ async def db_watcher_loop() -> None:
     # ------------------------------------------------------------------
     # Step 2: Main poll loop
     # ------------------------------------------------------------------
+    global _gain_drift_ticks
+    _gain_drift_ticks = 0
+    gain_drift_threshold = max(
+        1,
+        settings.muon_gain_drift_compute_interval_sec // settings.api_db_watcher_interval_sec,
+    )
+
     try:
         while True:
             await asyncio.sleep(settings.api_db_watcher_interval_sec)
@@ -87,6 +103,20 @@ async def db_watcher_loop() -> None:
                         await fanout_event(envelope)
                     if rows:
                         last_seen[tbl] = int(rows[-1]["ts"])
+
+                # Gain-drift MIP-peak compute on configured cadence.
+                _gain_drift_ticks += 1
+                if _gain_drift_ticks >= gain_drift_threshold:
+                    _gain_drift_ticks = 0
+                    try:
+                        from observatory.muon.gain_drift import (
+                            compute_and_store_weekly_mip_peak,
+                        )
+
+                        compute_and_store_weekly_mip_peak(conn, int(time.time()))
+                        log.debug("gain_drift_computed")
+                    except Exception as exc:
+                        log.warning("gain_drift_compute_failed", exc=str(exc))
 
     except asyncio.CancelledError:
         log.info("db_watcher_cancelled")

@@ -77,6 +77,11 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 
     monkeypatch.setattr(_thermal_mod, "settings", s, raising=False)
 
+    # Rebind muon router — Phase 16 ENH-01 reads settings.effective_area_cm2.
+    import observatory.api.routers.muon as _muon_mod
+
+    monkeypatch.setattr(_muon_mod, "settings", s, raising=False)
+
     # Rebind db_watcher — used by lifespan; reads settings.api_db_watcher_interval_sec.
     import observatory.api.db_watcher as _db_watcher_mod
 

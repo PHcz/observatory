@@ -61,6 +61,14 @@ def test_muon_flux_fields_present(client: TestClient, db_path: Path) -> None:
     )
 
 
+def test_gain_drift_empty_db_returns_200(client: TestClient) -> None:
+    """GET /api/muon/gain-drift on an empty DB returns 200 with empty weeks list."""
+    resp = client.get("/api/muon/gain-drift")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body == {"weeks": [], "baseline_adc": None}
+
+
 def test_muon_flux_value_correct(client: TestClient, db_path: Path) -> None:
     """flux_cm2_min == round(rate_per_min / effective_area_cm2, 4)."""
     now = int(time.time())
