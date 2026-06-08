@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from observatory.api.db_watcher import db_watcher_loop
 from observatory.api.middleware import OriginAllowlistMiddleware
 from observatory.api.routers import air_quality as air_quality_router
+from observatory.api.routers import alerts as alerts_router
 from observatory.api.routers import aurora as aurora_router
 from observatory.api.routers import current as current_router
 from observatory.api.routers import earthquakes as earthquakes_router
@@ -116,6 +117,7 @@ app.include_router(forecast_router.router, prefix="/api", tags=["forecast"])
 app.include_router(air_quality_router.router, prefix="/api", tags=["air_quality"])
 app.include_router(nmdb_router.router, prefix="/api", tags=["nmdb"])
 app.include_router(forbush_router.router, prefix="/api", tags=["forbush"])
+app.include_router(alerts_router.router, prefix="/api", tags=["alerts"])
 app.include_router(ws_router.router, tags=["ws"])  # no /api prefix
 app.include_router(
     ingest_router.router, tags=["ingest"]

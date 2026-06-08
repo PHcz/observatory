@@ -36,6 +36,13 @@ log = structlog.get_logger(__name__)
 # the last compute_and_store_weekly_mip_peak call.
 _gain_drift_ticks: int = 0
 
+# Alert tick counter — counts watcher sleeps since the last evaluate_rules call.
+# Independent of _gain_drift_ticks so the two cadences never interfere.
+_alert_ticks: int = 0
+
+# Alert evaluation interval in seconds (evaluate rules once per minute).
+ALERT_EVAL_INTERVAL = 60
+
 # Table name → WebSocket event type name.
 # Keys are whitelisted here; no user input reaches the SQL f-strings below.
 TABLE_EVENT_TYPES: dict[str, str] = {
@@ -77,8 +84,9 @@ async def db_watcher_loop() -> None:
     # ------------------------------------------------------------------
     # Step 2: Main poll loop
     # ------------------------------------------------------------------
-    global _gain_drift_ticks
+    global _gain_drift_ticks, _alert_ticks
     _gain_drift_ticks = 0
+    _alert_ticks = 0
     gain_drift_threshold = max(
         1,
         settings.muon_gain_drift_compute_interval_sec // settings.api_db_watcher_interval_sec,
@@ -117,6 +125,21 @@ async def db_watcher_loop() -> None:
                         log.debug("gain_drift_computed")
                     except Exception as exc:
                         log.warning("gain_drift_compute_failed", exc=str(exc))
+
+                # Alert rules evaluation — independent cadence (every ~60 s).
+                # Separate counter from gain-drift so the two never interfere.
+                _alert_ticks += 1
+                alert_threshold = max(
+                    1, ALERT_EVAL_INTERVAL // settings.api_db_watcher_interval_sec
+                )
+                if _alert_ticks >= alert_threshold:
+                    _alert_ticks = 0
+                    try:
+                        from observatory.weather.alerts.engine import evaluate_rules
+
+                        evaluate_rules(conn)
+                    except Exception as exc:
+                        log.warning("alert_eval.failed", error=str(exc))
 
     except asyncio.CancelledError:
         log.info("db_watcher_cancelled")
