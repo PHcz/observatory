@@ -33,6 +33,10 @@ SCHEMA_0005 = REPO_ROOT / "migrations" / "0005_forecast.sql"
 SCHEMA_0006 = REPO_ROOT / "migrations" / "0006_air_quality.sql"
 # Phase 13 MU2-06: /api/nmdb + /api/forbush + /api/health read nmdb* tables; tmp_db must carry them.
 SCHEMA_0007 = REPO_ROOT / "migrations" / "0007_nmdb.sql"
+# Phase 16 ENH-04: /api/alerts reads alerts table; tmp_db must carry it.
+SCHEMA_0008 = REPO_ROOT / "migrations" / "0008_alerts.sql"
+# Phase 16 ENH-01: muon_weekly_summary table.
+SCHEMA_0009 = REPO_ROOT / "migrations" / "0009_muon_weekly_summary.sql"
 
 
 @pytest.fixture(autouse=True)
@@ -46,6 +50,8 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     conn.executescript(SCHEMA_0005.read_text())
     conn.executescript(SCHEMA_0006.read_text())
     conn.executescript(SCHEMA_0007.read_text())
+    conn.executescript(SCHEMA_0008.read_text())
+    conn.executescript(SCHEMA_0009.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
     conn.close()
 

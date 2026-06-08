@@ -1,7 +1,11 @@
-"""DATA-04: backup creates .db + .ok sentinel; fails fast on missing mount; prunes 14d+."""
+"""DATA-04: backup creates .db + .ok sentinel; fails fast on missing mount; prunes 14d+.
+
+Phase 16 ENH-07: extended with gzip output test and .db.gz _prune() test.
+"""
 
 from __future__ import annotations
 
+import gzip
 import sqlite3
 import sys
 from datetime import date, timedelta
@@ -182,3 +186,60 @@ def test_backup_accepts_live_writer_drift(
 # but it's untestable cheaply because sqlite3.Connection is an immutable C type
 # that can't be monkeypatched. The defensive check is verified by code review
 # at scripts/backup.py "if dst_n > src_n:" rather than by a runtime test.
+
+
+# ---------------------------------------------------------------------------
+# Phase 16 ENH-07: gzip output + .db.gz _prune()
+# ---------------------------------------------------------------------------
+
+
+def test_gzip_output(
+    populated_source_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """run_backup() must write observatory-YYYY-MM-DD.db.gz (not .db) to the mount.
+
+    RED: backup.py currently writes .db, not .db.gz. This test will fail until
+    ENH-07 implementation replaces the uncompressed backup with a gzip stream.
+    """
+    mount = tmp_path / "mnt"
+    mount.mkdir()
+    monkeypatch.setattr(Path, "is_mount", lambda self: self == mount)
+
+    rc = backup_mod.run_backup(source_db=populated_source_db, backup_mount=mount)
+    assert rc == 0
+
+    today = date.today().isoformat()
+    gz_file = mount / f"observatory-{today}.db.gz"
+    assert gz_file.exists(), f"Expected .db.gz file at {gz_file}; found: {list(mount.iterdir())}"
+
+    # The .gz file must be a valid gzip archive (not corrupt)
+    with gzip.open(gz_file, "rb") as f:
+        data = f.read()
+    assert len(data) > 0, "Gzip backup file is empty"
+
+
+def test_prune_gz(tmp_path: Path) -> None:
+    """_prune() must handle .db.gz files and delete those older than retention_days.
+
+    RED: backup._prune() currently globs for *.db files. This test will fail until
+    ENH-07 implementation updates _prune() to glob for *.db.gz and use
+    f.name.removesuffix('.db.gz') for date extraction (Pitfall 5).
+    """
+    mount = tmp_path / "mnt"
+    mount.mkdir()
+
+    today = date(2026, 6, 8)
+    old_date = today - timedelta(days=15)  # 15 days old → beyond 10-day retention
+    fresh_date = today - timedelta(days=3)  # 3 days old → within retention
+
+    old_gz = mount / f"observatory-{old_date.isoformat()}.db.gz"
+    old_ok = mount / f"observatory-{old_date.isoformat()}.ok"
+    fresh_gz = mount / f"observatory-{fresh_date.isoformat()}.db.gz"
+    fresh_ok = mount / f"observatory-{fresh_date.isoformat()}.ok"
+    for f in [old_gz, old_ok, fresh_gz, fresh_ok]:
+        f.touch()
+
+    deleted = backup_mod._prune(mount, retention_days=10, today=today)
+    assert deleted >= 1, f"Expected at least 1 deletion, got {deleted}"
+    assert not old_gz.exists(), f"Old .db.gz should have been pruned: {old_gz}"
+    assert fresh_gz.exists(), f"Fresh .db.gz must NOT be pruned: {fresh_gz}"
