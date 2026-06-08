@@ -7,6 +7,8 @@ import type {
   MuonAnalysisResponse,
   NmdbResponse,
   ForbushResponse,
+  MuonDiagnosticsResponse,
+  MuonGainDriftResponse,
 } from '$lib/types';
 
 async function getJson<T>(url: string): Promise<T> {
@@ -66,4 +68,14 @@ export async function fetchNmdb(): Promise<NmdbResponse> {
 
 export async function fetchForbush(): Promise<ForbushResponse> {
   return getJson<ForbushResponse>('/api/forbush');
+}
+
+// Phase 16 (ENH-01/02) — muon diagnostics + gain-drift feeds.
+
+export async function fetchMuonDiagnostics(): Promise<MuonDiagnosticsResponse> {
+  return getJson<MuonDiagnosticsResponse>('/api/muon/diagnostics');
+}
+
+export async function fetchMuonGainDrift(): Promise<MuonGainDriftResponse> {
+  return getJson<MuonGainDriftResponse>('/api/muon/gain-drift');
 }

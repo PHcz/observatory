@@ -48,11 +48,13 @@ describe('settingsStore', () => {
     expect(JSON.parse(written as string).theme).toBe('light');
   });
 
-  it('resetToDefaults restores theme=auto and all panels true', () => {
+  it('resetToDefaults restores theme=auto and panels to DEFAULTS', () => {
     settingsStore.set({ ...DEFAULTS, theme: 'dark' as const, panels: { ...DEFAULTS.panels, lightning: false } });
     settingsStore.resetToDefaults();
     const v = get(settingsStore);
     expect(v.theme).toBe('auto');
-    expect(Object.values(v.panels).every((p) => p === true)).toBe(true);
+    // Phase 16: muonDiagnostics + muonGainDrift default OFF (advanced panels).
+    // All other panels default ON. Check against DEFAULTS rather than all-true.
+    expect(v.panels).toEqual(DEFAULTS.panels);
   });
 });

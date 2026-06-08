@@ -5,6 +5,8 @@
   import { initForecastPolling } from '$lib/stores/forecast';
   import { initAirQualityPolling } from '$lib/stores/airQuality';
   import { initMuonAnalysisPolling } from '$lib/stores/muonAnalysis';
+  import { initMuonDiagnosticsPolling } from '$lib/stores/muonDiagnostics';
+  import { initMuonGainDriftPolling } from '$lib/stores/muonGainDrift';
   import { initNmdbPolling } from '$lib/stores/nmdb';
   import { initForbushPolling } from '$lib/stores/forbush';
   import { settingsStore } from '$lib/stores/settings';
@@ -15,6 +17,8 @@
   import ForecastPanel from '$lib/panels/ForecastPanel.svelte';
   import AirQualityPanel from '$lib/panels/AirQualityPanel.svelte';
   import MuonChart from '$lib/panels/MuonChart.svelte';
+  import MuonDiagnosticsPanel from '$lib/panels/MuonDiagnosticsPanel.svelte';
+  import MuonGainDriftPanel from '$lib/panels/MuonGainDriftPanel.svelte';
   import AdcSpectrumPanel from '$lib/panels/AdcSpectrumPanel.svelte';
   import BarometricPanel from '$lib/panels/BarometricPanel.svelte';
   import NmdbOverlayPanel from '$lib/panels/NmdbOverlayPanel.svelte';
@@ -34,6 +38,8 @@
   let cleanupForecast: (() => void) | undefined;
   let cleanupAirQuality: (() => void) | undefined;
   let cleanupMuonAnalysis: (() => void) | undefined;
+  let cleanupMuonDiagnostics: (() => void) | undefined;
+  let cleanupMuonGainDrift: (() => void) | undefined;
   let cleanupNmdb: (() => void) | undefined;
   let cleanupForbush: (() => void) | undefined;
 
@@ -43,6 +49,8 @@
     cleanupForecast = initForecastPolling();
     cleanupAirQuality = initAirQualityPolling();
     cleanupMuonAnalysis = initMuonAnalysisPolling();
+    cleanupMuonDiagnostics = initMuonDiagnosticsPolling();
+    cleanupMuonGainDrift = initMuonGainDriftPolling();
     cleanupNmdb = initNmdbPolling();
     cleanupForbush = initForbushPolling();
   });
@@ -53,6 +61,8 @@
     cleanupForecast?.();
     cleanupAirQuality?.();
     cleanupMuonAnalysis?.();
+    cleanupMuonDiagnostics?.();
+    cleanupMuonGainDrift?.();
     cleanupNmdb?.();
     cleanupForbush?.();
   });
@@ -69,6 +79,8 @@
   {#if $settingsStore.panels.forecast}<ForecastPanel />{/if}
   {#if $settingsStore.panels.airQuality}<AirQualityPanel />{/if}
   {#if $settingsStore.panels.muonChart}<MuonChart />{/if}
+  {#if $settingsStore.panels.muonDiagnostics}<MuonDiagnosticsPanel />{/if}
+  {#if $settingsStore.panels.muonGainDrift}<MuonGainDriftPanel />{/if}
   {#if $settingsStore.panels.adcSpectrum}<AdcSpectrumPanel />{/if}
   {#if $settingsStore.panels.barometric}<BarometricPanel />{/if}
   {#if $settingsStore.panels.nmdbOverlay}<NmdbOverlayPanel />{/if}
