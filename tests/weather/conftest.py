@@ -73,6 +73,8 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
     for mod_path in (
         "observatory.weather.subscriber",
         "observatory.weather.writer",
+        "observatory.weather.alerts.notifier",
+        "observatory.weather.alerts.rules",
     ):
         try:
             _m = importlib.import_module(mod_path)
