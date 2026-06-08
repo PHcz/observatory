@@ -138,10 +138,20 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
   const warnDots = safe.filter(p => p.anomaly_severity === 'warn');
   const alertDots = safe.filter(p => p.anomaly_severity === 'alert');
 
-  // ENH-02: Poisson band — only when at least one point carries the band fields.
+  // ENH-02: Poisson band — ±1σ (√N/Δt) per bin, drawn around the SMOOTHED line
+  // rather than the raw per-bucket values. Centering on the LOESS line turns it
+  // into a clean ribbon (the spec's "±1σ around the LOESS line"); the original
+  // raw-centered band was a jagged sliver lost inside the ±60 per-minute scatter.
+  // Half-width σ = (upper − lower) / 2 from the server-computed bounds.
   const hasBand = safe.some(p => p.lower_1sigma != null && p.upper_1sigma != null);
   const bandData = hasBand
-    ? safe.filter(p => p.lower_1sigma != null && p.upper_1sigma != null)
+    ? safe
+        .map((p, i) => {
+          if (p.lower_1sigma == null || p.upper_1sigma == null) return null;
+          const sigma = ((p.upper_1sigma as number) - (p.lower_1sigma as number)) / 2;
+          return { ts: p.ts, band_lo: smoothedYs[i] - sigma, band_hi: smoothedYs[i] + sigma };
+        })
+        .filter((x): x is { ts: number; band_lo: number; band_hi: number } => x !== null)
     : [];
 
   return Plot.plot({
@@ -163,16 +173,17 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
         strokeWidth: 0.5,
         strokeOpacity: 0.55,
       }),
-      // Layer 2: Poisson confidence band (ENH-02) — behind LOESS line.
-      // Guard: only rendered when at least one point has band fields (older cached rows omit them).
+      // Layer 2: Poisson confidence band (ENH-02) — accent ribbon around the LOESS
+      // line, on top of the raw scatter so it reads. Guard: only when band fields
+      // are present (older cached rows omit them).
       ...(hasBand
         ? [
             Plot.areaY(bandData, {
-              x: (d: MuonPoint) => new Date(d.ts * 1000),
-              y1: (d: MuonPoint) => d.lower_1sigma as number,
-              y2: (d: MuonPoint) => d.upper_1sigma as number,
-              fill: t.data,
-              fillOpacity: 0.10,
+              x: (d: { ts: number }) => new Date(d.ts * 1000),
+              y1: 'band_lo',
+              y2: 'band_hi',
+              fill: t.marker,
+              fillOpacity: 0.18,
               stroke: 'none',
             }),
           ]
