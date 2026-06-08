@@ -18,10 +18,11 @@ It also polls free, keyless public APIs for a local weather forecast, outdoor ai
 
 The dashboard brings everything together on one local page:
 
-- **Local weather** — live temperature, humidity, pressure, and light from the outdoor Enviro node
+- **Local weather** — live temperature, humidity, pressure, and light from the outdoor Enviro node, with a feels-like reading, sea-level pressure (MSLP), a Zambretti near-term outlook, and a "today so far" min/max strip
 - **Local forecast** — Open-Meteo hourly + 7-day outlook, with a forecast-vs-actual check against your own sensor
 - **Outdoor air quality** — European AQI, PM2.5 / PM10 / NO₂ / O₃ / SO₂, in-season pollen, and UV — health-band coloured
-- **Cosmic-ray muons** — live flux, ADC / Landau spectrum, and a fitted barometric coefficient from your PicoMuon
+- **Threshold alerts** — frost and rapid-pressure-fall (storm) warnings, surfaced on the dashboard and optionally pushed to your phone via [ntfy](https://ntfy.sh) (off by default)
+- **Cosmic-ray muons** — live flux with an absolute (cm⁻² min⁻¹) sea-level reference, a ±1σ Poisson confidence band and anomaly flags, ADC / Landau spectrum, a fitted barometric coefficient, weekly MIP-peak gain-drift tracking, and a data-quality diagnostics panel — all from your PicoMuon
 - **Space-weather science** — an NMDB (Oulu) neutron-monitor overlay and a Forbush-decrease indicator correlated with solar activity
 - **Earth & space events** — earthquakes (USGS / EMSC / BGS), solar flares + Kp + solar wind (NOAA), lightning (Blitzortung), and aurora (AuroraWatch)
 

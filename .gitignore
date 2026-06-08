@@ -63,3 +63,6 @@ STATUS.local.md
 # Editor noise
 *.swp
 *.swo
+
+# Local Claude Code tooling config (preview launcher, local permissions) — not for the public repo
+.claude/

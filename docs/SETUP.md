@@ -52,8 +52,26 @@ Deploy flow once the Pi is bootstrapped:
 
 1. Build the frontend locally: `cd frontend && npm ci && npm run build`.
 2. `rsync` the built `frontend/build/` bundle to the Pi (FastAPI serves it as static
-   files from `/`, alongside the JSON + WebSocket API on the same host).
-3. Restart the API service on the Pi to pick up the new bundle.
+   files from `/`, alongside the JSON + WebSocket API on the same host). `scripts/deploy-frontend.sh`
+   does this (`OBS_SSH_TARGET=ph@observatory.local`).
+3. For backend changes, `rsync` `observatory/`, `picomuon/`, `migrations/`, `scripts/`, and
+   `deploy/` to `/opt/observatory/` (as root, e.g. `rsync --rsync-path="sudo rsync"`), then
+   `sudo chown -R observatory:observatory` the synced dirs.
+4. **Apply new migrations BEFORE restarting** — obs-api does NOT auto-apply. On any upgrade
+   that adds one (e.g. `0008_alerts`, `0009_muon_weekly_summary`):
+   ```bash
+   sudo -u observatory /opt/observatory/.venv/bin/python -c \
+     "from observatory.db.migrations import apply_migrations; print(apply_migrations('/var/lib/observatory/observatory.db'))"
+   ```
+5. Restart the API: `sudo systemctl restart obs-api.service`. (The alert engine + muon
+   gain-drift run inside its `db_watcher` loop, so they pick up on restart.)
+
+**New config (`/etc/observatory/observatory.env`)** — see `.env.example` for the full set.
+Phase-16 keys are optional (sensible defaults): `OBSERVATORY_STATION_ALTITUDE_M` (accurate MSLP;
+0 = sea-level-adjusted label), `OBSERVATORY_EFFECTIVE_AREA_CM2` (muon flux), the
+`OBSERVATORY_ALERT_*` thresholds, the `OBSERVATORY_ALERT_NTFY_*` push settings (disabled by
+default), and `OBSERVATORY_INGEST_BASIC_AUTH_*` for the `POST /ingest` weather fallback. Secrets
+(ntfy token, ingest password) live only on the Pi — never commit them.
 
 For the outdoor weather node — flashing the Enviro Weather firmware and provisioning
 its wifi + MQTT settings — follow [../deploy/enviro/PROVISIONING.md](../deploy/enviro/PROVISIONING.md).

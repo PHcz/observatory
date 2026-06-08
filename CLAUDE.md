@@ -172,7 +172,10 @@ CREATE TABLE aurora_status (
 CREATE INDEX idx_aurora_ts ON aurora_status(ts);
 ```
 
-Back up the `.db` file weekly to a USB stick (cron job, set up in Weekend 1).
+**Migrations beyond the v1 schema** (yoyo, in `migrations/`; obs-api does NOT auto-apply — run `apply_migrations()` before restarting on upgrade):
+`0005` forecast (`forecast_hourly`/`forecast_daily`/`forecast_meta`), `0006` `air_quality`+`air_quality_meta`, `0007` `nmdb_counts`+`nmdb_meta`, `0008` `alerts` (threshold-alert log), `0009` `muon_weekly_summary` (weekly MIP-peak gain-drift). Derived weather metrics (Zambretti / MSLP / feels-like / today-so-far) are computed **read-time** — no tables.
+
+Back the database up daily to a USB stick (`obs-backup.timer`): gzip-compressed `observatory-YYYY-MM-DD.db.gz`, 10-day retention, with a separate **weekly** integrity check (`obs-backup-verify.timer`). Restore: `gunzip -c /mnt/backup/observatory-YYYY-MM-DD.db.gz > /var/lib/observatory/restore.db` (not `/tmp` — it is a small tmpfs).
 
 ---
 
@@ -183,7 +186,17 @@ Back up the `.db` file weekly to a USB stick (cron job, set up in Weekend 1).
 ```
 GET  /api/current               -> latest values across all data
 GET  /api/weather?from&to&agg   -> weather time series
-GET  /api/muon?from&to&agg      -> muon flux time series, pressure-corrected
+GET  /api/weather/today         -> today-so-far min/max (temp/pressure/lux/dewpoint), read-time
+GET  /api/weather/outlook       -> Zambretti verdict + MSLP (mslp_adjusted flag) + 3h tendency
+GET  /api/muon?from&to&agg      -> muon flux time series, pressure-corrected (+ flux_cm2_min, ±1σ Poisson band, anomaly_z/severity)
+GET  /api/muon/diagnostics      -> Δt inter-arrival histogram + rate-vs-Poisson PMF
+GET  /api/muon/gain-drift       -> weekly MIP-peak ADC series (detector-health drift)
+GET  /api/muon/analysis         -> live ADC spectrum + barometric fit (rolling 7-day)
+GET  /api/forecast              -> Open-Meteo hourly + 7-day + forecast-vs-actual
+GET  /api/air-quality           -> AQI / pollutants / pollen / UV
+GET  /api/nmdb                  -> NMDB (Oulu) neutron-monitor %-baseline series
+GET  /api/forbush               -> Forbush-decrease indicator status
+GET  /api/alerts                -> active + recent (24h) threshold alerts (frost / pressure-fall)
 GET  /api/earthquakes?from&to&min_mag -> recent earthquake list
 GET  /api/space-weather/current -> latest Kp, solar wind, flare class
 GET  /api/space-weather?from&to -> time series
@@ -191,12 +204,14 @@ GET  /api/lightning/summary     -> hour counts, nearest strike, total today
 GET  /api/aurora/current        -> current AuroraWatch status
 GET  /api/events/recent         -> mixed event feed
 GET  /api/stats/today           -> daily summary
+GET  /api/health                -> per-source freshness + Pi thermal
+POST /ingest                    -> HTTP fallback for the Enviro weather node (basic auth; bare path, no /api prefix) — survives a Mosquitto outage; dedups on UNIQUE(node_id,ts), returns 2xx so the board clears its cache
 ```
 
 ### WebSocket
 
 ```
-WS  /ws  -> {type: 'weather'|'muon'|'earthquake'|'space_weather'|'lightning'|'aurora', data: {...}}
+WS  /ws  -> {type: 'weather'|'muon'|'earthquake'|'space_weather'|'lightning'|'aurora'|'alert', data: {...}}
 ```
 
 ---
@@ -246,7 +261,7 @@ doubt, assume a value is sensitive and keep it out of git.
 
 - **Phase 1 is intentionally narrow**: weather node + muon detector + external data feeds + web dashboard, served locally. Resist scope creep.
 - **Defer to Phase 2**: iOS app, additional themes, UV sensor, wind/rain sensors, air quality node, radio meteor detector, cloud chamber, Moomin lamp, Tailscale for remote access.
-- **No Cloudflare, no cloud, no tunnels**. Just the Pi on the home network. Tailscale is the right path if remote access becomes a real need later.
+- **No Cloudflare, no cloud, no tunnels**. Just the Pi on the home network. Tailscale is the right path if remote access becomes a real need later. **One sanctioned exception:** outbound [ntfy](https://ntfy.sh) push for threshold alerts (frost/storm) — outbound-only, no inbound exposure, no tunnel into the LAN; same justification as the external API pollers. Off by default; the topic/token live only in the Pi `.env`.
 - **Web app first, no iOS**. If the project earns its keep after six months, build an iOS companion then.
 - **Single theme (Hyborg) keeps the frontend simple**. The four-theme abstraction is deferred.
 - **Set the Pi hostname to `observatory`** during initial install so `http://observatory.local` works via Avahi from day one.

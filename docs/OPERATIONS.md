@@ -101,9 +101,17 @@ The script is idempotent — you can re-run it safely.
    ```bash
    sudo mount -a
    findmnt /mnt/backup    # confirm it's mounted
-   sudo systemctl start obs-backup.timer
-   systemctl list-timers obs-backup.timer
+   sudo systemctl start obs-backup.timer obs-backup-verify.timer
+   systemctl list-timers obs-backup.timer obs-backup-verify.timer
    ```
+
+   **Backup format & retention:** the daily backup (`obs-backup.timer`, 03:00) writes a
+   gzip-compressed `observatory-YYYY-MM-DD.db.gz` (+ a `.ok` sentinel) to `/mnt/backup`,
+   with **10-day** retention. A separate **weekly** integrity check (`obs-backup-verify.timer`,
+   Sun 04:00) gunzips the newest copy and runs `PRAGMA integrity_check` — pure `sqlite3`,
+   local-first (no `uv`/venv churn). **Restore:**
+   `gunzip -c /mnt/backup/observatory-YYYY-MM-DD.db.gz > /var/lib/observatory/restore.db`
+   (never `/tmp` — it is a small tmpfs that can't hold a full DB).
 
 3. **Reboot to activate tmpfs:**
 
@@ -128,7 +136,7 @@ acceptance. This is the literal pull-the-plug test:
    findmnt /var/log                             # expect tmpfs
    swapon --show                                # expect EMPTY output
    systemctl is-active mosquitto                # expect "active"
-   systemctl is-enabled obs-backup.timer        # expect "enabled"
+   systemctl is-enabled obs-backup.timer obs-backup-verify.timer  # expect "enabled" x2
    ```
 
 5. From a phone on the home wifi, load `http://observatory.local` in Safari. It should
