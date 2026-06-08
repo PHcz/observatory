@@ -1,0 +1,17 @@
+[Unit]
+Description=Verify latest SQLite backup integrity
+After=local-fs.target
+ConditionPathIsMountPoint=/mnt/backup
+
+[Service]
+Type=oneshot
+User=observatory
+Group=observatory
+EnvironmentFile=/etc/observatory/observatory.env
+ExecStart=/usr/bin/bash /opt/observatory/scripts/verify-backup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=obs-backup-verify
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

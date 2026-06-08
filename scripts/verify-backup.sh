@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end backup verification (local; does not require Pi or USB stick).
 # Creates a source SQLite DB, runs backup.py against a temp "mount" using a stub
-# that overrides Path.is_mount, and verifies output.
+# that overrides Path.is_mount, gunzips the resulting .db.gz, and verifies output.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -36,16 +36,22 @@ finally:
 sys.exit(rc)
 PY
 
-TODAY="$(date +%Y-%m-%d)"  # local timezone — must match Python's date.today()
-test -f "$MOUNT/observatory-$TODAY.db" || { echo "FAIL: db missing"; exit 1; }
+TODAY="$(date +%Y-%m-%d)"  # local timezone -- must match Python's date.today()
+test -f "$MOUNT/observatory-$TODAY.db.gz" || { echo "FAIL: .db.gz missing"; exit 1; }
 test -f "$MOUNT/observatory-$TODAY.ok" || { echo "FAIL: sentinel missing"; exit 1; }
 
-# Verify integrity of backup file
-RESULT="$(sqlite3 "$MOUNT/observatory-$TODAY.db" "PRAGMA integrity_check")"
+# Gunzip the .db.gz to a temp file for integrity verification
+gunzip -c "$MOUNT/observatory-$TODAY.db.gz" > "$TMP/verify.db"
+
+# Verify integrity of the decompressed backup file
+RESULT="$(sqlite3 "$TMP/verify.db" "PRAGMA integrity_check")"
 [ "$RESULT" = "ok" ] || { echo "FAIL: integrity check returned $RESULT"; exit 1; }
 
 # Row count matches
-N="$(sqlite3 "$MOUNT/observatory-$TODAY.db" "SELECT COUNT(*) FROM w")"
+N="$(sqlite3 "$TMP/verify.db" "SELECT COUNT(*) FROM w")"
 [ "$N" = "3" ] || { echo "FAIL: row count mismatch ($N != 3)"; exit 1; }
 
-echo "OK: backup verified ($TODAY, 3 rows, integrity=ok)"
+# Clean up temp decompressed file (trap handles the parent $TMP dir)
+rm -f "$TMP/verify.db"
+
+echo "OK: backup verified ($TODAY, 3 rows, integrity=ok, gzip confirmed)"

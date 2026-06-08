@@ -198,13 +198,16 @@ sudo -u observatory sqlite3 /var/lib/observatory/observatory.db "PRAGMA journal_
 
 # --- SECTION 13: install + enable backup timer ---
 log "Section 13: backup timer"
-cp "$REPO_ROOT/deploy/systemd/obs-backup.service" /etc/systemd/system/
-cp "$REPO_ROOT/deploy/systemd/obs-backup.timer"   /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-backup.service"        /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-backup.timer"          /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-backup-verify.service" /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-backup-verify.timer"   /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable obs-backup.timer
-# Do NOT start the timer here — it would fire backup.py which requires /mnt/backup
-# to actually be mounted (operator hasn't filled UUID yet). Operator runs:
-#   sudo systemctl start obs-backup.timer
+systemctl enable obs-backup-verify.timer
+# Do NOT start the timers here — they require /mnt/backup to actually be mounted
+# (operator hasn't filled UUID yet). Operator runs:
+#   sudo systemctl start obs-backup.timer obs-backup-verify.timer
 # after configuring the USB stick mount.
 
 # --- SECTION 14: install + enable obs-muon service (do NOT start) ---
