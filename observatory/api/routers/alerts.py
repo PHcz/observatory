@@ -21,6 +21,7 @@ AlertRow shape (matches alerts table):
 
 from __future__ import annotations
 
+import sqlite3
 import time
 
 import structlog
@@ -33,13 +34,13 @@ log = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-def _row_to_dict(row: object) -> dict:
+def _row_to_dict(row: sqlite3.Row) -> dict[str, object]:
     """Convert a sqlite3.Row to a plain dict for JSON serialisation."""
-    return dict(row)  # type: ignore[arg-type]
+    return {key: row[key] for key in row.keys()}
 
 
 @router.get("/alerts")
-def get_alerts() -> dict:
+def get_alerts() -> dict[str, list[dict[str, object]]]:
     """Return active and recently-resolved alerts.
 
     active  — rows where resolved_at_ts IS NULL (still triggering)

@@ -29,6 +29,7 @@ Concurrency:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import sqlite3
 import time
 from typing import Any
@@ -70,11 +71,9 @@ def _schedule_async(coro: Any) -> None:
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
     except RuntimeError:
-        # No running event loop — close the coroutine to avoid resource warning.
-        try:
+        # No running event loop — close the coroutine to avoid a resource warning.
+        with contextlib.suppress(Exception):
             coro.close()
-        except Exception:
-            pass
 
 
 def evaluate_rules(conn: sqlite3.Connection) -> None:

@@ -44,7 +44,7 @@ def station_to_mslp(
     """
     T_K = temp_c + 273.15
     exponent = 5.2561
-    return pressure_hpa * (1.0 + (0.0065 * altitude_m) / T_K) ** exponent
+    return float(pressure_hpa * (1.0 + (0.0065 * altitude_m) / T_K) ** exponent)
 
 
 # ---------------------------------------------------------------------------

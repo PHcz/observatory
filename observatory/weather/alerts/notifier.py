@@ -50,6 +50,6 @@ async def notify_ntfy(
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(url, data=message.encode(), headers=headers)
+            await client.post(url, content=message.encode(), headers=headers)
     except Exception as exc:
         log.warning("ntfy.push_failed", error=str(exc))

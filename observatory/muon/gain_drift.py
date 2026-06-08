@@ -104,7 +104,9 @@ def compute_mip_peak_adc(rows: list[Any]) -> float | None:
     )
     if hist.height == 0:
         return None
-    modal_idx = int(hist["count"].arg_max())
+    modal_idx = hist["count"].arg_max()
+    if modal_idx is None:
+        return None
     return float(hist["bin_center"][modal_idx])
 
 

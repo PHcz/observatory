@@ -43,7 +43,7 @@ security = HTTPBasic()
 async def post_ingest(
     request: Request,
     credentials: HTTPBasicCredentials = Depends(security),  # noqa: B008
-) -> dict:
+) -> dict[str, str]:
     """Accept an Enviro Weather HTTP payload and write it to SQLite.
 
     Validates with existing pydantic WeatherEnvelope model and writes via
