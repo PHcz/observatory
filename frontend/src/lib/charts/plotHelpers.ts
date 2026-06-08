@@ -223,23 +223,9 @@ export function buildMuonPlot(data: MuonPoint[], width: number): SVGElement | HT
             }),
           ]
         : []),
-      // Layer 6: sea-level reference rule (ENH-01) — always on, above data, below labels.
-      // Canonical sea-level muon flux: ~1 cm⁻² min⁻¹.
-      Plot.ruleY([1.0], {
-        stroke: t.marker,
-        strokeDasharray: '4 3',
-        strokeWidth: 1,
-        opacity: 0.7,
-      }),
-      Plot.text([{ y: 1.0, label: 'sea level ~1 cm⁻² min⁻¹' }], {
-        x: () => end,
-        y: 'y',
-        text: 'label',
-        textAnchor: 'end',
-        dy: -4,
-        fontSize: 11,
-        fill: t.raw,
-      }),
+      // Layer 6: sea-level reference was removed (ENH-01 — see 16-05-SUMMARY).
+      // The y-axis is raw events/min (~140-260) so a rule at y=1.0 is unit-mismatched
+      // and invisible. Replaced with a stat annotation in MuonChart.svelte.
     ],
   });
 }

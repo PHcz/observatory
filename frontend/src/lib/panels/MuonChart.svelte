@@ -68,6 +68,17 @@
   // ENH-02: anomaly badge — count of bins with a non-null severity flag.
   $: anomalyCount = $muonStore.history.filter(r => r.anomaly_severity != null).length;
 
+  // ENH-01: sea-level stat annotation. Use flux_cm2_min from the most recent
+  // history row that carries it (REST-seeded rows from 16-01). Guard against
+  // NaN/null so the annotation is hidden rather than shown as "NaN cm⁻² min⁻¹".
+  let currentFlux: number | null = null;
+  $: {
+    const latestWithFlux = [...$muonStore.history]
+      .reverse()
+      .find(r => r.flux_cm2_min != null && isFinite(r.flux_cm2_min as number));
+    currentFlux = latestWithFlux?.flux_cm2_min ?? null;
+  }
+
   onDestroy(() => {
     if (intervalId) clearInterval(intervalId);
     if (stopReseed) stopReseed();
@@ -80,6 +91,9 @@
 <section class="section" class:is-stale-amber={muonLevel === 'amber'} class:is-stale-red={muonLevel === 'red'}>
   <ChartHeader title="MUONS" sensor="PICO µ" />
   <p class="section-sub">Events per minute · raw, not dead-time corrected · atmospheric pressure corrected</p>
+  {#if currentFlux != null}
+    <p class="section-sub sea-level-ref">Current ~{currentFlux.toFixed(1)} cm⁻² min⁻¹ · sea-level reference ~1 cm⁻² min⁻¹ (raw — not dead-time corrected)</p>
+  {/if}
   {#if anomalyCount > 0}
     <p class="anomaly-badge">! {anomalyCount} {anomalyCount === 1 ? 'anomaly' : 'anomalies'}</p>
   {/if}
@@ -100,6 +114,11 @@
     font-size: 13px;
     color: var(--text-muted);
     margin: 0 0 8px 0;
+  }
+  /* ENH-01: sea-level reference annotation — slightly smaller than subtitle */
+  .sea-level-ref {
+    font-size: 12px;
+    margin-top: -4px;
   }
   /* ENH-02: anomaly badge — visible when |z|>3 bins are present. */
   .anomaly-badge {
