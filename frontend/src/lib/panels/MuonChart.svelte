@@ -68,15 +68,24 @@
   // ENH-02: anomaly badge — count of bins with a non-null severity flag.
   $: anomalyCount = $muonStore.history.filter(r => r.anomaly_severity != null).length;
 
-  // ENH-01: sea-level stat annotation. Use flux_cm2_min from the most recent
-  // history row that carries it (REST-seeded rows from 16-01). Guard against
-  // NaN/null so the annotation is hidden rather than shown as "NaN cm⁻² min⁻¹".
+  // ENH-01: sea-level stat annotation. Average flux_cm2_min over the last few
+  // COMPLETE minute buckets (REST-seeded rows from 16-01), excluding the
+  // in-progress bucket (< 90s old) which is still filling and reads
+  // misleadingly low — same 90s safety margin the chart line uses. Without this
+  // the annotation showed the partial last bucket (e.g. ~1.5) right next to the
+  // ~1 sea-level reference, implying the detector is at sea-level rate when it
+  // actually runs several× that. Guard against NaN/null so the annotation hides
+  // rather than rendering "NaN cm⁻² min⁻¹".
   let currentFlux: number | null = null;
   $: {
-    const latestWithFlux = [...$muonStore.history]
-      .reverse()
-      .find(r => r.flux_cm2_min != null && isFinite(r.flux_cm2_min as number));
-    currentFlux = latestWithFlux?.flux_cm2_min ?? null;
+    const nowSec = Date.now() / 1000;
+    const complete = $muonStore.history.filter(
+      r => r.flux_cm2_min != null && isFinite(r.flux_cm2_min as number) && nowSec - r.ts >= 90,
+    );
+    const recent = complete.slice(-5);
+    currentFlux = recent.length
+      ? recent.reduce((sum, r) => sum + (r.flux_cm2_min as number), 0) / recent.length
+      : null;
   }
 
   onDestroy(() => {
