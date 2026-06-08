@@ -26,6 +26,7 @@ esac
 # 2) Never commit real secret/credential files.
 for f in "$@"; do
   case "$f" in
+    *.example) ;;  # .env.example and *.example templates are safe — secrets must be blank
     .env|*/.env|.env.*|*/.env.*|*secret*.env|*.pem|*.key)
       note "refusing to commit secret file: $f" ;;
     deploy/mosquitto/passwords)

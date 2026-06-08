@@ -189,6 +189,50 @@ class Settings(BaseSettings):
     pi_thermal_warning_rate_limit_sec: int = Field(default=600, ge=60, le=3600)
     pi_vcgencmd_path: str = "/usr/bin/vcgencmd"
 
+    # --- Muon science (Phase 16, ENH-01/02) ---
+    # Detector effective area for absolute flux in cm^-2 min^-1.
+    # Default: 25.0 cm^2 (canonical PicoMuon value from picomuon/rates.py AREA_CM2).
+    # Operator-tunable; set OBSERVATORY_EFFECTIVE_AREA_CM2 in Pi .env if area differs.
+    effective_area_cm2: float = Field(default=25.0)
+    # Cadence for the db_watcher MIP-peak gain-drift computation tick (seconds).
+    muon_gain_drift_compute_interval_sec: int = Field(default=3600)
+
+    # --- Station altitude for MSLP (Phase 16, ENH-05) ---
+    # Set OBSERVATORY_STATION_ALTITUDE_M in Pi .env to the station altitude in metres.
+    # Default 0.0 = sea level (no MSLP correction; station pressure ≈ MSLP).
+    # Valid range: -500m (Dead Sea) to 9000m (Everest base camp).
+    station_altitude_m: float = Field(default=0.0, ge=-500.0, le=9000.0)
+
+    # --- Home timezone for local-midnight boundary (Phase 16, ENH-05) ---
+    # IANA timezone string. Used for today-so-far midnight boundary calculation.
+    # Set OBSERVATORY_HOME_TIMEZONE in Pi .env if not UK-based.
+    home_timezone: str = Field(default="Europe/London")
+
+    # --- Alert thresholds (Phase 16, ENH-04) — config-driven, never hardcoded ---
+    # Frost/freeze rule: alert when temp_c below this AND dewpoint spread within spread limit.
+    alert_frost_temp_c: float = Field(default=2.0)
+    alert_frost_dewpoint_spread_c: float = Field(default=2.0)
+    # Rapid pressure fall rule: alert when 3h pressure delta is more negative than this.
+    alert_pressure_fall_hpa_per_3h: float = Field(default=1.6)
+    # Hysteresis: minimum minutes a condition must be active before an ntfy push is sent.
+    alert_min_active_minutes: int = Field(default=5)
+
+    # --- ntfy integration (Phase 16, ENH-04) — the one sanctioned outbound exception ---
+    # ntfy is a self-hostable push notification service. Default: disabled.
+    # Set OBSERVATORY_ALERT_NTFY_ENABLED=true on the Pi .env to enable.
+    alert_ntfy_enabled: bool = Field(default=False)
+    alert_ntfy_url: str = Field(default="https://ntfy.sh")
+    alert_ntfy_topic: str = Field(default="observatory-alerts")
+    # Optional Bearer token for authenticated ntfy topics. Set on Pi only — never commit.
+    alert_ntfy_token: str = Field(default="")
+
+    # --- /ingest HTTP fallback basic auth (Phase 16, ENH-06) ---
+    # HTTP basic-auth credentials for the POST /ingest fallback endpoint.
+    # OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD must be set on the Pi; empty blocks all ingest.
+    ingest_basic_auth_user: str = Field(default="enviro")
+    # Password lives only in Pi .env — never commit a real value.
+    ingest_basic_auth_password: str = Field(default="")
+
 
 def _load() -> Settings:
     """Instantiate Settings; raises ValidationError on missing/invalid env."""
