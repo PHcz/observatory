@@ -9,6 +9,9 @@ import type {
   ForbushResponse,
   MuonDiagnosticsResponse,
   MuonGainDriftResponse,
+  AlertsResponse,
+  WeatherTodayResponse,
+  WeatherOutlookResponse,
 } from '$lib/types';
 
 async function getJson<T>(url: string): Promise<T> {
@@ -78,4 +81,18 @@ export async function fetchMuonDiagnostics(): Promise<MuonDiagnosticsResponse> {
 
 export async function fetchMuonGainDrift(): Promise<MuonGainDriftResponse> {
   return getJson<MuonGainDriftResponse>('/api/muon/gain-drift');
+}
+
+// Phase 16 (ENH-04/05) — weather intelligence feeds.
+
+export async function fetchAlerts(): Promise<AlertsResponse> {
+  return getJson<AlertsResponse>('/api/alerts');
+}
+
+export async function fetchWeatherToday(): Promise<WeatherTodayResponse> {
+  return getJson<WeatherTodayResponse>('/api/weather/today');
+}
+
+export async function fetchWeatherOutlook(): Promise<WeatherOutlookResponse> {
+  return getJson<WeatherOutlookResponse>('/api/weather/outlook');
 }

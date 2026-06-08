@@ -8,6 +8,7 @@ import { setLightning } from '$lib/stores/lightning';
 import { setAurora } from '$lib/stores/aurora';
 import { prependEarthquake, setEarthquakes } from '$lib/stores/earthquakes';
 import { setAstronomy } from '$lib/stores/astronomy';
+import { refetchAlerts } from '$lib/stores/alerts';
 import type { AstronomyData } from '$lib/types';
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
@@ -104,6 +105,11 @@ export function routeMessage(raw: string): void {
       break;
     case 'aurora':
       setAurora(msg.data as AuroraData);
+      break;
+    case 'alert':
+      // Trigger immediate re-fetch of the alerts store so the panel and badge
+      // update within seconds of a new alert or resolution (30s poll + WS push).
+      refetchAlerts();
       break;
     case 'ping':
       if (ws && ws.readyState === WebSocket.OPEN) {

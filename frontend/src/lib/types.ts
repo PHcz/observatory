@@ -307,6 +307,42 @@ export interface WeatherPoint {
   lux?: number | null;
 }
 
+// Phase 16 (ENH-04/05) — weather intelligence types.
+
+export interface AlertRow {
+  id: number;
+  rule: string;
+  severity: 'warn' | 'alert';
+  crossed_at_ts: number;
+  resolved_at_ts: number | null;
+  detail_text: string;
+}
+
+export interface AlertsResponse {
+  active: AlertRow[];
+  recent: AlertRow[];
+}
+
+export interface WeatherTodayResponse {
+  high_c: number | null;
+  low_c: number | null;
+  pressure_high_hpa: number | null;
+  pressure_low_hpa: number | null;
+  peak_lux: number | null;
+  dewpoint_high_c: number | null;
+  dewpoint_low_c: number | null;
+  since_ts: number | null;
+}
+
+export interface WeatherOutlookResponse {
+  verdict: string | null;
+  direction: string | null;
+  based_on_hpa_per_3h: number | null;
+  z_score: number | null;
+  mslp_hpa: number | null;
+  mslp_adjusted: boolean;
+}
+
 // Source keys and interval constants
 export type SourceKey = 'weather' | 'muon' | 'usgs' | 'emsc' | 'bgs' | 'noaa' | 'blitzortung' | 'aurora';
 
