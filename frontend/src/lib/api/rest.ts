@@ -30,7 +30,20 @@ interface TimeSeriesResponse {
 
 export async function fetchMuonHistory(from: number, to: number): Promise<MuonPoint[]> {
   const data = await getJson<TimeSeriesResponse>(`/api/muon?from=${from}&to=${to}&agg=auto`);
-  return data.rows.map(r => ({ ts: r.ts, rate_per_min: (r.rate_per_min as number) ?? 0 }));
+  // Carry ALL Phase-16 fields — the rate chart's sea-level flux annotation
+  // (flux_cm2_min, ENH-01), Poisson confidence band (lower/upper_1sigma, ENH-02),
+  // and anomaly markers (anomaly_z/anomaly_severity, ENH-02) each read a different
+  // one. Mapping only rate_per_min leaves all three permanently inert (same class
+  // of bug as the weather history fetch below).
+  return data.rows.map(r => ({
+    ts: r.ts,
+    rate_per_min: (r.rate_per_min as number) ?? 0,
+    flux_cm2_min: (r.flux_cm2_min as number | null) ?? null,
+    lower_1sigma: (r.lower_1sigma as number | null) ?? null,
+    upper_1sigma: (r.upper_1sigma as number | null) ?? null,
+    anomaly_z: (r.anomaly_z as number | null) ?? null,
+    anomaly_severity: (r.anomaly_severity as 'warn' | 'alert' | null) ?? null,
+  }));
 }
 
 export async function fetchWeatherHistory(from: number, to: number): Promise<WeatherPoint[]> {

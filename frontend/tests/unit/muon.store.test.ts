@@ -22,6 +22,38 @@ describe('muon store buffer', () => {
     expect(state.history[0].rate_per_min).toBe(3);
   });
 
+  it('flush preserves Phase-16 fields on REST-seeded rows (ENH-01/02)', () => {
+    // Regression: flushMuonBuffer rebuilt every history row as {ts, rate_per_min},
+    // stripping flux_cm2_min / Poisson band / anomaly fields on the first live
+    // WS tick — so the rate chart's annotation, band, and dots went inert.
+    const nowSec = Math.floor(Date.now() / 1000);
+    const seededTs = nowSec - 3600; // within 24h, distinct from the live bucket
+    seedMuonHistory([
+      {
+        ts: seededTs,
+        rate_per_min: 104.15,
+        flux_cm2_min: 4.166,
+        lower_1sigma: 95.7,
+        upper_1sigma: 116.3,
+        anomaly_z: -6.19,
+        anomaly_severity: 'alert',
+      },
+    ]);
+
+    // A live event in a different (current) bucket triggers the merge/rebuild.
+    const liveEvt: MuonEvent = { ts: nowSec, latest_event_ts: nowSec, detector_pressure_hpa: null, detector_temp_c: null };
+    bufferMuonEvent(liveEvt);
+    flushMuonBuffer();
+
+    const state = get(muonStore);
+    const seeded = state.history.find(p => p.ts === seededTs);
+    expect(seeded).toBeDefined();
+    expect(seeded?.flux_cm2_min).toBe(4.166);
+    expect(seeded?.lower_1sigma).toBe(95.7);
+    expect(seeded?.upper_1sigma).toBe(116.3);
+    expect(seeded?.anomaly_severity).toBe('alert');
+  });
+
   it('flush with no buffered events is a no-op', () => {
     flushMuonBuffer();
     const state = get(muonStore);

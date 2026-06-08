@@ -49,10 +49,17 @@ export function flushMuonBuffer(): void {
   muonStore.update(s => {
     // Merge increments into existing history (find-or-create per bucket)
     const byTs = new Map<number, MuonPoint>();
-    for (const p of s.history) byTs.set(p.ts, { ts: p.ts, rate_per_min: p.rate_per_min });
+    // Preserve the full REST-seeded row (flux_cm2_min, Poisson band, anomaly
+    // fields — ENH-01/02), not just ts+rate. Spreading keeps those fields alive
+    // across live WS flushes; otherwise the rate chart's annotation/band/dots go
+    // permanently inert after the first flush. Live-edge buckets get fresh
+    // server-computed fields on the next 5-min REST reseed (and are excluded from
+    // rendering by the 90s safety margin anyway).
+    for (const p of s.history) byTs.set(p.ts, { ...p });
     for (const [bucketTs, inc] of bucketIncrements) {
       const existing = byTs.get(bucketTs);
       byTs.set(bucketTs, {
+        ...existing,
         ts: bucketTs,
         rate_per_min: (existing?.rate_per_min ?? 0) + inc,
       });

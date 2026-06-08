@@ -20,11 +20,61 @@ describe('REST history clients', () => {
       }));
 
       const result = await fetchMuonHistory(0, 1000);
-      expect(result).toEqual([{ ts: 100, rate_per_min: 5 }]);
+      // Missing Phase-16 fields map to null (not undefined / not dropped).
+      expect(result).toEqual([
+        {
+          ts: 100,
+          rate_per_min: 5,
+          flux_cm2_min: null,
+          lower_1sigma: null,
+          upper_1sigma: null,
+          anomaly_z: null,
+          anomaly_severity: null,
+        },
+      ]);
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/muon'),
         expect.any(Object),
       );
+    });
+
+    it('carries flux + Poisson band + anomaly fields (ENH-01/02)', async () => {
+      // Regression: fetchMuonHistory previously mapped only {ts, rate_per_min},
+      // leaving the rate chart's sea-level flux annotation, Poisson band, and
+      // anomaly dots permanently inert even though the API serves the fields.
+      const mockResponse = {
+        window: { from: 0, to: 1000 },
+        bucket_size_sec: 60,
+        agg: 'minute',
+        rows: [
+          {
+            ts: 200,
+            rate_per_min: 104.15,
+            flux_cm2_min: 4.166,
+            lower_1sigma: 95.7,
+            upper_1sigma: 116.3,
+            anomaly_z: -6.19,
+            anomaly_severity: 'alert',
+          },
+        ],
+      };
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      }));
+
+      const result = await fetchMuonHistory(0, 1000);
+      expect(result).toEqual([
+        {
+          ts: 200,
+          rate_per_min: 104.15,
+          flux_cm2_min: 4.166,
+          lower_1sigma: 95.7,
+          upper_1sigma: 116.3,
+          anomaly_z: -6.19,
+          anomaly_severity: 'alert',
+        },
+      ]);
     });
 
     it('includes from and to query params', async () => {
