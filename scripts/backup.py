@@ -96,7 +96,12 @@ def run_backup(
 
     # 3. Backup via SQLite Online Backup API to a temp uncompressed file,
     #    then stream-gzip into the final .db.gz destination.
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_f:
+    #    The temp file MUST live on the backup mount, not the default $TMPDIR:
+    #    on the Pi /tmp is a small (64 MB) tmpfs, so a multi-hundred-MB DB copy
+    #    there fails with SQLITE_FULL ("database or disk is full"). The mount has
+    #    the room and is the same filesystem as the final output (also spares the
+    #    SD card the write churn, per the Phase-1 tmpfs/SD-wear strategy).
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False, dir=str(mount)) as tmp_f:
         tmp_db = Path(tmp_f.name)
 
     try:
@@ -123,8 +128,9 @@ def run_backup(
         tmp_db.unlink(missing_ok=True)
 
     # 4. Verify integrity of the backup by gunzipping to a temp file and running
-    #    PRAGMA integrity_check against it.
-    with tempfile.NamedTemporaryFile(suffix=".check.db", delete=False) as chk_f:
+    #    PRAGMA integrity_check against it. Same constraint as the backup temp
+    #    above: write to the mount, not the 64 MB /tmp tmpfs.
+    with tempfile.NamedTemporaryFile(suffix=".check.db", delete=False, dir=str(mount)) as chk_f:
         check_db = Path(chk_f.name)
 
     try:
