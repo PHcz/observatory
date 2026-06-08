@@ -266,3 +266,31 @@ def test_prune_gz(tmp_path: Path) -> None:
     assert deleted >= 1, f"Expected at least 1 deletion, got {deleted}"
     assert not old_gz.exists(), f"Old .db.gz should have been pruned: {old_gz}"
     assert fresh_gz.exists(), f"Fresh .db.gz must NOT be pruned: {fresh_gz}"
+
+
+def test_prune_legacy_uncompressed_db(tmp_path: Path) -> None:
+    """_prune() must also retire legacy uncompressed observatory-*.db backups.
+
+    Pre-gzip backups are plain .db; the gzip-only glob never matched them so they
+    accumulated forever. _prune() now handles both formats — and must NOT mistake
+    a '.db.gz' for a '.db' (the .db glob matches both).
+    """
+    mount = tmp_path / "mnt"
+    mount.mkdir()
+
+    today = date(2026, 6, 8)
+    old_date = today - timedelta(days=15)  # beyond retention
+    fresh_date = today - timedelta(days=3)  # within retention
+
+    old_db = mount / f"observatory-{old_date.isoformat()}.db"  # legacy uncompressed
+    old_ok = mount / f"observatory-{old_date.isoformat()}.ok"
+    fresh_db = mount / f"observatory-{fresh_date.isoformat()}.db"  # legacy, within retention
+    fresh_gz = mount / f"observatory-{fresh_date.isoformat()}.db.gz"  # must survive the .db pass
+    for f in [old_db, old_ok, fresh_db, fresh_gz]:
+        f.touch()
+
+    deleted = backup_mod._prune(mount, retention_days=10, today=today)
+    assert deleted >= 1, f"Expected at least 1 deletion, got {deleted}"
+    assert not old_db.exists(), f"Old legacy .db should have been pruned: {old_db}"
+    assert fresh_db.exists(), f"Fresh legacy .db must NOT be pruned: {fresh_db}"
+    assert fresh_gz.exists(), f"Fresh .db.gz must NOT be pruned by the .db pass: {fresh_gz}"

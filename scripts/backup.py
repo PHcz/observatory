@@ -5,7 +5,8 @@ Uses sqlite3.Connection.backup() — WAL-coherent snapshot, not a raw file copy.
 Fails fast (exit 1) if /mnt/backup is not actually mounted.
 Output is gzip-compressed: observatory-YYYY-MM-DD.db.gz.
 
-# Restore: gunzip -c /mnt/backup/observatory-YYYY-MM-DD.db.gz > /tmp/restore.db
+# Restore: gunzip -c /mnt/backup/observatory-YYYY-MM-DD.db.gz > /var/lib/observatory/restore.db
+#   (NOT /tmp — it is a small tmpfs on the Pi and cannot hold a full DB restore.)
 """
 
 from __future__ import annotations
@@ -43,30 +44,36 @@ def _all_tables(conn: sqlite3.Connection) -> list[str]:
 
 
 def _prune(mount: Path, retention_days: int, today: date) -> int:
-    """Delete .db.gz + .ok pairs older than retention_days. Returns count deleted.
+    """Delete backup files + their .ok sentinels older than retention_days.
 
-    Uses name.removesuffix('.db.gz') for date extraction — NOT f.stem which
-    would leave '.db' attached and break date.fromisoformat() (Pitfall 5).
+    Handles BOTH the current gzip format (observatory-YYYY-MM-DD.db.gz) and the
+    legacy uncompressed format (observatory-YYYY-MM-DD.db) left over from before
+    the gzip migration — otherwise the old uncompressed copies accumulate forever
+    (the gzip-only glob never matched them). Returns count deleted.
+
+    Date is extracted by stripping the known suffix — NOT f.stem, which leaves
+    '.db' attached on '.db.gz' and breaks date.fromisoformat() (Pitfall 5).
     """
     cutoff = today - timedelta(days=retention_days)
     deleted = 0
-    for f in sorted(mount.glob("observatory-*.db.gz")):
-        name = f.name
-        if name.endswith(".ok"):
-            continue
-        if not name.endswith(".db.gz"):
-            continue
-        date_str = name[len("observatory-") : -len(".db.gz")]
-        try:
-            file_date = date.fromisoformat(date_str)
-        except ValueError:
-            continue
-        if file_date < cutoff:
-            f.unlink(missing_ok=True)
-            ok = mount / f"observatory-{date_str}.ok"
-            ok.unlink(missing_ok=True)
-            deleted += 1
-            log.info("backup.pruned", file=str(f))
+    # Longest suffix first so '.db.gz' files are claimed before the '.db' pass.
+    for suffix in (".db.gz", ".db"):
+        for f in sorted(mount.glob(f"observatory-*{suffix}")):
+            name = f.name
+            # A '.db.gz' file also matches the '.db' glob — skip it on that pass.
+            if suffix == ".db" and name.endswith(".db.gz"):
+                continue
+            date_str = name[len("observatory-") : -len(suffix)]
+            try:
+                file_date = date.fromisoformat(date_str)
+            except ValueError:
+                continue
+            if file_date < cutoff:
+                f.unlink(missing_ok=True)
+                ok = mount / f"observatory-{date_str}.ok"
+                ok.unlink(missing_ok=True)
+                deleted += 1
+                log.info("backup.pruned", file=str(f))
     return deleted
 
 
