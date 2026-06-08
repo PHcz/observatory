@@ -25,6 +25,8 @@ from observatory.config import Settings
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_0001 = REPO_ROOT / "migrations" / "0001_initial_schema.sql"
 SCHEMA_0002 = REPO_ROOT / "migrations" / "0002_poller_runs.sql"
+# Phase 3: UNIQUE(node_id, ts) index on weather — required for INSERT OR IGNORE dedup.
+SCHEMA_0003 = REPO_ROOT / "migrations" / "0003_weather_unique.sql"
 # Phase 8.5 UI-18: /api/earthquakes router selects is_local; api tmp_db must carry it.
 SCHEMA_0004 = REPO_ROOT / "migrations" / "0004_earthquakes_is_local.sql"
 # Phase 10 FCAST-02: /api/forecast router reads forecast_* tables; api tmp_db must carry them.
@@ -46,6 +48,7 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     conn = sqlite3.connect(str(db_path), isolation_level=None)
     conn.executescript(SCHEMA_0001.read_text())
     conn.executescript(SCHEMA_0002.read_text())
+    conn.executescript(SCHEMA_0003.read_text())
     conn.executescript(SCHEMA_0004.read_text())
     conn.executescript(SCHEMA_0005.read_text())
     conn.executescript(SCHEMA_0006.read_text())

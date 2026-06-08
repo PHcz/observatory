@@ -637,6 +637,75 @@ Not all "rechargeable AA" cells are equivalent for this duty cycle:
 
 ---
 
+## HTTP fallback destination (Phase 16 ENH-06)
+
+MQTT is the primary transport and nothing about MQTT changes. The HTTP fallback
+(`POST /ingest`) exists so the board can still deliver readings if Mosquitto is
+temporarily unavailable.
+
+### How it works
+
+The Pimoroni firmware supports a "Custom HTTP" destination alongside MQTT. When
+configured, it posts the same JSON envelope to a URL of your choice. The
+observatory API accepts this at `POST http://observatory.local:8000/ingest` (no
+`/api` prefix — it is a bare path like `/ws`).
+
+Any `2xx` response clears the board's local upload cache. The route returns
+`201 Created` on a new insert and also returns `201` on a deduplicated row
+(UNIQUE(node_id, ts) constraint), so the board always clears its cache.
+
+### Configuring the board for HTTP fallback
+
+In the Enviro provisioning captive portal (step A.3):
+
+1. Set **Destination** to **Custom HTTP** (instead of, or in addition to, MQTT).
+2. Set the **URL** to:
+   ```
+   http://<Pi-LAN-IP>:8000/ingest
+   ```
+   Use the Pi's LAN IP (e.g. `192.168.0.75`) rather than `observatory.local`;
+   the Pico W's mDNS stack is unreliable (same reason as MQTT broker host).
+3. Set **HTTP Basic Auth user** to the value of `OBSERVATORY_INGEST_BASIC_AUTH_USER`
+   (default: `enviro`).
+4. Set **HTTP Basic Auth password** to the value of
+   `OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD` from the Pi's
+   `/etc/observatory/observatory.env`.
+
+### Setting the password on the Pi
+
+Generate a strong random password and add it to the Pi's env file:
+
+```bash
+INGEST_PW="$(openssl rand -base64 24)"
+echo "OBSERVATORY_INGEST_BASIC_AUTH_USER=enviro" \
+  | sudo tee -a /etc/observatory/observatory.env
+echo "OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD=${INGEST_PW}" \
+  | sudo tee -a /etc/observatory/observatory.env
+sudo systemctl restart obs-api.service
+```
+
+Store the password somewhere safe (e.g. your password manager or
+`/etc/observatory/secrets.env`). **Never commit the real password to the
+repository.** The `.env.example` intentionally leaves this field empty.
+
+> **Fail-closed safety:** an empty `OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD`
+> blocks all ingest requests (returns 401) — a mis-configured Pi that never
+> set the password cannot be written to without authentication.
+
+### Verification
+
+```bash
+# Replace <Pi-LAN-IP> and <password> with your actual values.
+curl -s -o /dev/null -w "%{http_code}" \
+  -u "enviro:<password>" \
+  -X POST http://<Pi-LAN-IP>:8000/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"nickname":"observatory-weather","model":"Enviro Weather","uid":"test","timestamp":"2026-06-08T12:00:00Z","readings":{"temperature":18.5,"humidity":72.0,"pressure":1012.3,"luminance":245.0,"voltage":null}}'
+# Expected: 201
+```
+
+---
+
 ## References
 
 - Pimoroni Enviro firmware releases — <https://github.com/pimoroni/enviro/releases>

@@ -228,10 +228,12 @@ class Settings(BaseSettings):
 
     # --- /ingest HTTP fallback basic auth (Phase 16, ENH-06) ---
     # HTTP basic-auth credentials for the POST /ingest fallback endpoint.
-    # OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD must be set on the Pi; empty blocks all ingest.
-    ingest_basic_auth_user: str = Field(default="enviro")
+    # Set OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD on the Pi; empty blocks all ingest.
+    # Field names use the observatory_ prefix so they map from OBSERVATORY_INGEST_*
+    # env vars (pydantic-settings maps FIELD_NAME -> field_name with no added prefix).
+    observatory_ingest_basic_auth_user: str = Field(default="enviro")
     # Password lives only in Pi .env — never commit a real value.
-    ingest_basic_auth_password: str = Field(default="")
+    observatory_ingest_basic_auth_password: str = Field(default="")
 
 
 def _load() -> Settings:
