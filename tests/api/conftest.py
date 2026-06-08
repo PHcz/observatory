@@ -92,6 +92,12 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 
     monkeypatch.setattr(_ws_mod, "settings", s, raising=False)
 
+    # Rebind weather router — Phase 16 ENH-05 reads settings.home_timezone
+    # and settings.station_altitude_m for /api/weather/today + /api/weather/outlook.
+    import observatory.api.routers.weather as _weather_mod
+
+    monkeypatch.setattr(_weather_mod, "settings", s, raising=False)
+
     return db_path
 
 

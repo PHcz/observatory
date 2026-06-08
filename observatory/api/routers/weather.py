@@ -2,11 +2,16 @@
 
 Implemented by Plan 06-03. Provides bucketed weather readings from the local
 SQLite store with agg=auto|raw|minute|hour|day query support.
+
+Extended in Plan 16-03 with:
+  GET /api/weather/today   — today-so-far stats since local midnight
+  GET /api/weather/outlook — Zambretti forecast from MSLP + 3h tendency
 """
 
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -19,7 +24,16 @@ from observatory.api._serializers import (
     TimeSeriesResponse,
     resolve_agg,
 )
+from observatory.config import settings
 from observatory.db.connection import get_conn
+from observatory.weather.derived import (
+    ZAMBRETTI_FORECAST,
+    classify_tendency,
+    local_midnight_ts,
+    station_to_mslp,
+    today_so_far,
+    zambretti_z,
+)
 
 router = APIRouter()
 
@@ -105,3 +119,131 @@ def get_weather(
         agg=resolved,
         rows=rows,
     )
+
+
+@router.get("/weather/today")
+def get_weather_today() -> dict[str, Any]:
+    """Return today-so-far stats since local midnight.
+
+    Queries weather since the local midnight boundary (timezone-aware).
+    Returns high/low temp, pressure range, peak lux, and derived dewpoint range.
+    Empty DB or no rows since midnight returns 200 with all-null values.
+
+    Response keys:
+        high_c, low_c, pressure_high_hpa, pressure_low_hpa,
+        peak_lux, dewpoint_high_c, dewpoint_low_c, since_ts
+    """
+    midnight = local_midnight_ts(settings.home_timezone)
+
+    with get_conn() as conn:
+        # Use the most-recent node_id if available; fall back to empty-state.
+        row = conn.execute("SELECT node_id FROM weather ORDER BY ts DESC LIMIT 1").fetchone()
+        if row is None:
+            return {
+                "high_c": None,
+                "low_c": None,
+                "pressure_high_hpa": None,
+                "pressure_low_hpa": None,
+                "peak_lux": None,
+                "dewpoint_high_c": None,
+                "dewpoint_low_c": None,
+                "since_ts": None,
+            }
+        node_id = row["node_id"]
+        return today_so_far(conn, midnight, node_id)
+
+
+@router.get("/weather/outlook")
+def get_weather_outlook() -> dict[str, Any]:
+    """Return a Zambretti forecast computed from MSLP + 3h pressure tendency.
+
+    MSLP is computed using station_to_mslp(settings.station_altitude_m).
+    Tendency is derived from the pressure delta over the last 3 hours.
+
+    MSLP CONTRACT (per plan 16-03):
+        - mslp_hpa is ALWAYS returned whenever a latest reading exists.
+        - mslp_adjusted is FALSE when station_altitude_m == 0.0 (sea-level /
+          unset); the value is still returned (sea-level install sees its MSLP
+          which simply equals station pressure).
+        - mslp_adjusted is TRUE when station_altitude_m > 0 (real correction).
+        - When there is insufficient pressure history (<3h of data), verdict and
+          direction are null but mslp_hpa / mslp_adjusted are still returned if
+          a latest reading exists.
+
+    Response keys:
+        verdict, direction, based_on_hpa_per_3h, z_score, mslp_hpa, mslp_adjusted
+    """
+    now = int(time.time())
+    three_hours_ago = now - 3 * 3600
+
+    with get_conn() as conn:
+        # Latest reading for current pressure + temp (needed for MSLP).
+        latest_row = conn.execute(
+            """
+            SELECT pressure_hpa, temp_c
+            FROM weather
+            WHERE pressure_hpa IS NOT NULL
+            ORDER BY ts DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+        if latest_row is None:
+            # No data at all — full empty state.
+            return {
+                "verdict": None,
+                "direction": None,
+                "based_on_hpa_per_3h": None,
+                "z_score": None,
+                "mslp_hpa": None,
+                "mslp_adjusted": False,
+            }
+
+        latest_pressure = latest_row["pressure_hpa"]
+        latest_temp = latest_row["temp_c"] or 15.0  # fallback when temp is null
+
+        # Compute MSLP — always done when we have a pressure reading.
+        mslp = station_to_mslp(
+            latest_pressure,
+            settings.station_altitude_m,
+            latest_temp,
+        )
+        mslp_adjusted = settings.station_altitude_m > 0.0
+
+        # Pressure ~3h ago for tendency.
+        old_row = conn.execute(
+            """
+            SELECT pressure_hpa
+            FROM weather
+            WHERE ts <= ? AND pressure_hpa IS NOT NULL
+            ORDER BY ts DESC
+            LIMIT 1
+            """,
+            (three_hours_ago,),
+        ).fetchone()
+
+        if old_row is None:
+            # Insufficient history for tendency — return empty forecast
+            # but still include MSLP fields.
+            return {
+                "verdict": None,
+                "direction": None,
+                "based_on_hpa_per_3h": None,
+                "z_score": None,
+                "mslp_hpa": round(mslp, 1),
+                "mslp_adjusted": mslp_adjusted,
+            }
+
+        delta = latest_pressure - old_row["pressure_hpa"]
+        tendency = classify_tendency(delta)
+        z = zambretti_z(mslp, tendency)
+        verdict = ZAMBRETTI_FORECAST[z]
+
+        return {
+            "verdict": verdict,
+            "direction": tendency,
+            "based_on_hpa_per_3h": round(delta, 2),
+            "z_score": z,
+            "mslp_hpa": round(mslp, 1),
+            "mslp_adjusted": mslp_adjusted,
+        }
