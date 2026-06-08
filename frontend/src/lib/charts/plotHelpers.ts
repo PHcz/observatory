@@ -530,7 +530,10 @@ export function buildAdcHistogramPlot(
     marginLeft: 46,
     marginRight: 12,
     marginBottom: 28,
-    marginTop: 8,
+    // Headroom for the "MIP peak" label, which sits above the tallest (modal)
+    // bar. With the old 8px top margin the 11px label + dy overflowed the SVG
+    // top and was clipped (only the bottoms of the glyphs showed over the bar).
+    marginTop: 24,
     x: { label: 'ADC (0-1023)', tickFormat: (d: number) => `${d}` },
     y: { label: null, grid: true },
     marks: [
@@ -549,6 +552,7 @@ export function buildAdcHistogramPlot(
               y: 'count',
               text: () => 'MIP peak',
               dy: -8,
+              lineAnchor: 'bottom',
               fill: t.accent,
               fontSize: 11,
             }),
