@@ -1,4 +1,4 @@
-// Settings schema for Phase 8.5 UI-16 + UI-17.
+// Settings schema for Phase 8.5 UI-16 + UI-17; extended in Phase 16 (ENH-01/02/04/05).
 // localStorage key: observatory.settings.v1
 // Safe-merge: missing panel keys default to visible (true).
 
@@ -7,9 +7,14 @@ export type Theme = 'light' | 'dark' | 'auto';
 export type PanelKey =
   | 'headerPanel'
   | 'statsRow'
+  | 'todayStrip'
+  | 'zambrettiCard'
+  | 'weatherAlerts'
   | 'forecast'
   | 'airQuality'
   | 'muonChart'
+  | 'muonDiagnostics'
+  | 'muonGainDrift'
   | 'adcSpectrum'
   | 'barometric'
   | 'nmdbOverlay'
@@ -32,9 +37,14 @@ export interface Settings {
 export const ALL_PANELS: PanelKey[] = [
   'headerPanel',
   'statsRow',
+  'todayStrip',
+  'zambrettiCard',
+  'weatherAlerts',
   'forecast',
   'airQuality',
   'muonChart',
+  'muonDiagnostics',
+  'muonGainDrift',
   'adcSpectrum',
   'barometric',
   'nmdbOverlay',
@@ -50,9 +60,16 @@ export const ALL_PANELS: PanelKey[] = [
   'healthRow',
 ];
 
+// Phase 16 (ENH-01/02/04/05): muon diagnostic panels default OFF (advanced/verbose);
+// all other panels (including the three new weather panels) default ON.
+// This replaces the prior uniform Object.fromEntries(ALL_PANELS.map(...true)) approach.
+const PANEL_DEFAULTS_OFF: PanelKey[] = ['muonDiagnostics', 'muonGainDrift'];
+
 export const DEFAULTS: Settings = {
   theme: 'auto',
-  panels: Object.fromEntries(ALL_PANELS.map((k) => [k, true])) as Record<PanelKey, boolean>,
+  panels: Object.fromEntries(
+    ALL_PANELS.map((k) => [k, !PANEL_DEFAULTS_OFF.includes(k)])
+  ) as Record<PanelKey, boolean>,
 };
 
 export function parseSettings(raw: string | null): Settings {

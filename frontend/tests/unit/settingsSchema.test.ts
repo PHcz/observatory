@@ -6,24 +6,35 @@ describe('settingsSchema DEFAULTS', () => {
     expect(DEFAULTS.theme).toBe('auto');
   });
 
-  it('all panels default to visible (true)', () => {
-    expect(Object.values(DEFAULTS.panels).every((v) => v === true)).toBe(true);
+  it('most panels default to visible (true); muonDiagnostics + muonGainDrift default OFF', () => {
+    // Phase 16 (ENH-01/02): muon diagnostic panels are advanced/verbose — default off.
+    // All other panels (including the 3 new weather panels) default on.
+    expect(DEFAULTS.panels.muonDiagnostics).toBe(false);
+    expect(DEFAULTS.panels.muonGainDrift).toBe(false);
+    const onPanels = Object.entries(DEFAULTS.panels).filter(([k]) => k !== 'muonDiagnostics' && k !== 'muonGainDrift');
+    expect(onPanels.every(([, v]) => v === true)).toBe(true);
   });
 
-  it('exposes exactly 18 panel keys', () => {
-    expect(Object.keys(DEFAULTS.panels).length).toBe(18);
-    expect(ALL_PANELS.length).toBe(18);
+  it('exposes exactly 23 panel keys', () => {
+    expect(Object.keys(DEFAULTS.panels).length).toBe(23);
+    expect(ALL_PANELS.length).toBe(23);
   });
 
-  it('PanelKey enum has the locked members', () => {
-    // Phase 13 (MU2-05/06/07): the four new live-science panels are inserted
-    // immediately after `muonChart` and before `spaceWeather`.
+  it('PanelKey enum has the locked members in locked order', () => {
+    // Phase 13 (MU2-05/06/07): adcSpectrum/barometric/nmdbOverlay/forbush after muonChart.
+    // Phase 16 (ENH-01/02/04/05): todayStrip/zambrettiCard/weatherAlerts after statsRow;
+    //   muonDiagnostics/muonGainDrift after muonChart (before adcSpectrum group).
     const expected = [
       'headerPanel',
       'statsRow',
+      'todayStrip',
+      'zambrettiCard',
+      'weatherAlerts',
       'forecast',
       'airQuality',
       'muonChart',
+      'muonDiagnostics',
+      'muonGainDrift',
       'adcSpectrum',
       'barometric',
       'nmdbOverlay',
