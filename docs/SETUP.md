@@ -66,12 +66,14 @@ Deploy flow once the Pi is bootstrapped:
 5. Restart the API: `sudo systemctl restart obs-api.service`. (The alert engine + muon
    gain-drift run inside its `db_watcher` loop, so they pick up on restart.)
 
-**New config (`/etc/observatory/observatory.env`)** — see `.env.example` for the full set.
-Phase-16 keys are optional (sensible defaults): `OBSERVATORY_STATION_ALTITUDE_M` (accurate MSLP;
-0 = sea-level-adjusted label), `OBSERVATORY_EFFECTIVE_AREA_CM2` (muon flux), the
-`OBSERVATORY_ALERT_*` thresholds, the `OBSERVATORY_ALERT_NTFY_*` push settings (disabled by
-default), and `OBSERVATORY_INGEST_BASIC_AUTH_*` for the `POST /ingest` weather fallback. Secrets
-(ntfy token, ingest password) live only on the Pi — never commit them.
+**New config (`/etc/observatory/observatory.env`)** — see `.env.example` for the full set and
+exact key names. The Settings model uses **no env prefix**, so each env var is just the
+uppercased field name (e.g. `HOME_LAT`, `STATION_ALTITUDE_M`) — only the `observatory_*`-named
+fields take the `OBSERVATORY_` prefix. Phase-16 keys are optional (sensible defaults):
+`STATION_ALTITUDE_M` (accurate MSLP; 0 = sea-level-adjusted label), `EFFECTIVE_AREA_CM2` (muon
+flux), the `ALERT_*` thresholds, the `ALERT_NTFY_*` push settings (disabled by default), and
+`OBSERVATORY_INGEST_BASIC_AUTH_*` for the `POST /ingest` weather fallback. Secrets (ntfy token,
+ingest password) live only on the Pi — never commit them.
 
 For the outdoor weather node — flashing the Enviro Weather firmware and provisioning
 its wifi + MQTT settings — follow [../deploy/enviro/PROVISIONING.md](../deploy/enviro/PROVISIONING.md).

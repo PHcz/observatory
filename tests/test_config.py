@@ -2,10 +2,38 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 from observatory.config import Settings
+
+
+def test_env_example_keys_map_to_settings_fields() -> None:
+    """Every key in .env.example must be a real Settings field.
+
+    Regression guard: Settings uses NO env_prefix, so an env var must equal a
+    field name (case-insensitive). Phase-16 keys were wrongly templated with an
+    `OBSERVATORY_` prefix (e.g. OBSERVATORY_STATION_ALTITUDE_M) which
+    pydantic-settings silently ignores (extra="ignore") — so the documented keys
+    had no effect. Only fields whose NAME starts with `observatory_` take that
+    prefix in the env var.
+    """
+    env_example = Path(__file__).resolve().parent.parent / ".env.example"
+    fields = set(Settings.model_fields)
+    bad: list[str] = []
+    for raw in env_example.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key = line.split("=", 1)[0].strip()
+        if key.lower() not in fields:
+            bad.append(key)
+    assert not bad, (
+        "These .env.example keys do not match any Settings field "
+        f"(env has no prefix → env var == field name): {bad}"
+    )
 
 
 def test_loads_with_valid_env(valid_env: None) -> None:
