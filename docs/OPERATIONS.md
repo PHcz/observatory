@@ -227,3 +227,41 @@ sqlite3 /var/lib/observatory/observatory.db \
 
 For the full acceptance procedure (unplug/replug, simulated silence, BMP280 column check),
 run `bash scripts/verify-muon.sh`.
+
+## Threshold alerts & phone notifications (ntfy)
+
+The alert engine runs inside `obs-api` (evaluated on the DB-watcher tick, ~60 s). Two rules
+ship: **frost risk** (temp < `ALERT_FROST_TEMP_C`, default 2 °C, with dewpoint spread <
+`ALERT_FROST_DEWPOINT_SPREAD_C`, default 2 °C) and **rapid pressure fall** (3 h drop >
+`ALERT_PRESSURE_FALL_HPA_PER_3H`, default 1.6 hPa). A rule must hold for
+`ALERT_MIN_ACTIVE_MINUTES` (default 5) before it fires — anti-flap hysteresis.
+
+**Where alerts appear:**
+- **Dashboard** — the *Weather Alerts* panel (ACTIVE + RECENT-24 h) plus a coloured dot on the
+  pressure stat; updates live over the WebSocket `alert` channel.
+- **API** — `GET /api/alerts` → `{active, recent}`.
+- **Phone push** — via [ntfy](https://ntfy.sh), if enabled (below). Pushes on the *crossing*
+  only; resolution updates the dashboard but does not push.
+
+**Enabling phone push (ntfy).** Off by default. Set on the Pi `.env`
+(`/etc/observatory/observatory.env`) — note these keys take **no** `OBSERVATORY_` prefix (the
+Settings model uses no env prefix; the var name is just the field name):
+
+```bash
+sudo sed -i '/^ALERT_NTFY_ENABLED=/d;/^ALERT_NTFY_TOPIC=/d' /etc/observatory/observatory.env
+printf 'ALERT_NTFY_ENABLED=true\nALERT_NTFY_TOPIC=observatory-<random>\n' \
+  | sudo tee -a /etc/observatory/observatory.env >/dev/null   # pick a private, hard-to-guess topic
+sudo systemctl restart obs-api.service
+```
+
+Then subscribe a device to that topic — the ntfy app (iOS/Android) or just open
+`https://ntfy.sh/observatory-<random>` in a browser. Optional: `ALERT_NTFY_URL` (default
+`https://ntfy.sh`; point at a self-hosted server) and `ALERT_NTFY_TOKEN` (Bearer token for a
+reserved/authenticated topic).
+
+**Privacy:** a public `ntfy.sh` topic is protected only by the obscure name — anyone who learns
+it can read (or post to) it. Fine for frost/storm; for stronger privacy reserve the topic with a
+token or self-host ntfy. Keep the real topic/token in the Pi `.env` only — never commit them.
+
+The notifier is fire-and-forget: if ntfy is unreachable it logs a warning and never disrupts the
+dashboard or the `alerts` table.
