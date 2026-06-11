@@ -28,7 +28,10 @@ fi
 
 # Decompress to a temp file ON THE MOUNT (roomy; not the /tmp tmpfs).
 tmp="$(mktemp "$MOUNT/.verify-XXXXXX.db")"
-trap 'rm -f "$tmp"' EXIT
+# Clean up the temp db AND the sqlite sidecars: opening a WAL-mode backup with
+# sqlite3 creates "$tmp"-shm / "$tmp"-wal, which a bare `rm -f "$tmp"` would
+# leave orphaned on the mount (they accumulate, esp. if a run is interrupted).
+trap 'rm -f "$tmp" "$tmp"-shm "$tmp"-wal' EXIT
 
 gunzip -c "$newest" > "$tmp"
 

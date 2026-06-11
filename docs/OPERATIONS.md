@@ -83,27 +83,39 @@ The script is idempotent — you can re-run it safely.
 
 2. **Configure USB backup mount:**
 
-   Plug in a USB stick (formatted FAT32, label `OBS_BACKUP`):
+   Plug in a USB stick. Format it **ext4** (no 4 GB file-size limit — the daily backup
+   writes a temporary uncompressed DB copy to the stick before gzipping, which would
+   eventually exceed FAT32's 4 GB cap) and label it `OBS_BACKUP`. **This erases the stick —
+   make sure `/dev/sdX` is the USB device, not the SD card (`mmcblk0`):**
 
    ```bash
-   sudo blkid /dev/sda1
+   lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT     # identify the USB device (e.g. /dev/sda1)
+   sudo mkfs.ext4 -F -L OBS_BACKUP /dev/sda1      # if the stick has no partition, create one first
    ```
 
-   Take the UUID. Then:
+   Mount it by **label** (so future stick swaps need no fstab edit). The fstab line is:
 
-   ```bash
-   sudo nano /etc/fstab
+   ```
+   LABEL=OBS_BACKUP /mnt/backup ext4 defaults,nofail 0 2
    ```
 
-   Find the `# observatory-backup` comment block, uncomment the `UUID=...` line, and replace
-   `XXXX-XXXX` with the real UUID. Then:
+   Then mount and grant the service user write access (ext4 stores real ownership, so the
+   mount root is `root` until chowned):
 
    ```bash
-   sudo mount -a
-   findmnt /mnt/backup    # confirm it's mounted
+   sudo systemctl daemon-reload
+   sudo mount /mnt/backup
+   sudo chown observatory:observatory /mnt/backup     # so obs-backup (User=observatory) can write
+   findmnt /mnt/backup                                # confirm ext4 mounted
    sudo systemctl start obs-backup.timer obs-backup-verify.timer
    systemctl list-timers obs-backup.timer obs-backup-verify.timer
    ```
+
+   **Swapping the stick later:** stop the timers, `cp -a /mnt/backup/observatory-* ~/staging/`
+   to preserve history, `sudo umount /mnt/backup`, swap, `mkfs.ext4 -F -L OBS_BACKUP` the new
+   one (it mounts automatically by label), `chown` it, copy the staged files back, restart the
+   timers. The live DB on the SD card is the source of truth, so the stick can be reformatted
+   freely.
 
    **Backup format & retention:** the daily backup (`obs-backup.timer`, 03:00) writes a
    gzip-compressed `observatory-YYYY-MM-DD.db.gz` (+ a `.ok` sentinel) to `/mnt/backup`,
