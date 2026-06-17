@@ -60,6 +60,21 @@ DATA_TABLE: Final[dict[str, tuple[str, str | None]]] = {
     "aurora": ("aurora_status", None),
 }
 
+# Event-driven sources whose UPSTREAM data is genuinely sporadic: earthquakes
+# happen at irregular intervals (USGS M-threshold quakes average ~90 min apart,
+# BGS UK quakes are days apart), lightning only during storms (gaps of days),
+# and aurora status changes rarely. For these, "time since last EVENT" is the
+# WRONG freshness signal — a quiet quake-free hour or a storm-free week does not
+# mean the feed is broken. Their traffic-light dot must reflect POLLER HEALTH
+# (did we successfully poll on schedule?), anchored on the last successful poll
+# — exactly as forecast/air_quality/nmdb anchor on *_meta.fetched_at. Continuous
+# sources stay EVENT-anchored, where missing data genuinely is a fault: weather
+# and muon emit a reading every interval, and noaa writes a space_weather row on
+# every poll.
+POLL_ANCHORED_SOURCES: Final[frozenset[str]] = frozenset(
+    {"usgs", "emsc", "bgs", "blitzortung", "aurora"}
+)
+
 _RANK: Final[dict[str, int]] = {"healthy": 0, "stale": 1, "down": 2}
 
 
@@ -139,7 +154,13 @@ def cadence_warning(now: int, last_event_ts: int | None, source: str) -> bool:
 
     Returns False when last_event_ts is None (no events yet) or when the
     source is unknown to EXPECTED_INTERVAL_SEC.
+
+    Always False for POLL_ANCHORED_SOURCES: their upstream cadence is sporadic
+    (sec during a storm, days between), so "overdue event" is meaningless — poll
+    health is tracked by the freshness dot instead.
     """
+    if source in POLL_ANCHORED_SOURCES:
+        return False
     if last_event_ts is None:
         return False
     if source == "weather":

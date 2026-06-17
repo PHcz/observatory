@@ -42,6 +42,13 @@ def test_cadence_warning_unknown_source() -> None:
     assert cadence_warning(now=1000, last_event_ts=500, source="unknown") is False
 
 
+def test_cadence_warning_false_for_poll_anchored_even_when_overdue() -> None:
+    # Sporadic event feeds never raise cadence_warning: a quiet spell (here ~1 day
+    # since the last quake) is not "overdue" — poll health is tracked by the dot.
+    for src in ("usgs", "emsc", "bgs", "blitzortung", "aurora"):
+        assert cadence_warning(now=1_000_000, last_event_ts=1_000_000 - 86_400, source=src) is False
+
+
 def test_expected_interval_sec_keys() -> None:
     # Locks the known external-source keyset (weather handled dynamically).
     assert set(EXPECTED_INTERVAL_SEC.keys()) == {

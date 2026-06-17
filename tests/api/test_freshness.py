@@ -15,11 +15,26 @@ import pytest
 from observatory.api._freshness import (
     HEALTHY_MULT,
     INTERVALS_SEC,
+    POLL_ANCHORED_SOURCES,
     STALE_MULT,
     cross_check_poller,
     freshness,
     worst,
 )
+
+# ---- POLL_ANCHORED_SOURCES membership ----
+
+
+def test_poll_anchored_sources_are_the_sporadic_event_feeds() -> None:
+    assert POLL_ANCHORED_SOURCES == frozenset({"usgs", "emsc", "bgs", "blitzortung", "aurora"})
+
+
+def test_continuous_and_meta_sources_are_not_poll_anchored() -> None:
+    # weather/muon emit per-interval; noaa writes a row per poll;
+    # forecast/air_quality/nmdb already anchor on *_meta.fetched_at.
+    for s in ("weather", "muon", "noaa", "forecast", "air_quality", "nmdb"):
+        assert s not in POLL_ANCHORED_SOURCES
+
 
 # ---- freshness() basic boundaries ----
 

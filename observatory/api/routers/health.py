@@ -25,6 +25,7 @@ from observatory.api._freshness import (
     DATA_TABLE,
     HEALTHY_MULT,
     INTERVALS_SEC,
+    POLL_ANCHORED_SOURCES,
     Freshness,
     cadence_warning,
     cross_check_poller,
@@ -123,6 +124,24 @@ def _last_poll(conn: sqlite3.Connection, source: str) -> tuple[int | None, str |
     return int(row["ended_at"]), str(row["status"])
 
 
+def _last_successful_poll(conn: sqlite3.Connection, source: str) -> int | None:
+    """Return ended_at of the most recent SUCCESSFUL (or partial) poll for source.
+
+    Freshness anchor for POLL_ANCHORED_SOURCES — proof the feed is alive,
+    independent of whether a (sporadic) event happened to arrive. ``partial``
+    counts as alive (e.g. NOAA-style 1-of-N) consistent with cross_check_poller.
+    """
+    row = conn.execute(
+        "SELECT ended_at FROM poller_runs "
+        "WHERE source=? AND status IN ('success', 'partial') "
+        "ORDER BY ended_at DESC LIMIT 1",
+        (source,),
+    ).fetchone()
+    if not row or row["ended_at"] is None:
+        return None
+    return int(row["ended_at"])
+
+
 def _pi_block() -> dict[str, Any]:
     """Return the pi.* block of the health response, tolerating vcgencmd failure."""
     try:
@@ -181,9 +200,18 @@ def health() -> dict[str, Any]:
             interval = INTERVALS_SEC[name]
             last = _max_ts(conn, table, src_filter)
             last_poll_ts, last_poll_status = _last_poll(conn, name)
-            age = (now - last) if last is not None else _NO_EVENT_AGE_SEC
-            event_f = freshness(age, interval)
-            f = cross_check_poller(event_f, last_poll_status, last_poll_ts, now, interval)
+            if name in POLL_ANCHORED_SOURCES:
+                # Sporadic upstream (quakes/lightning/aurora): anchor the dot on
+                # the last SUCCESSFUL poll, NOT MAX(ts) of events — a quiet spell
+                # is not a fault. last_event_ts is still reported (informational).
+                ok_poll = _last_successful_poll(conn, name)
+                anchor_age = (now - ok_poll) if ok_poll is not None else _NO_EVENT_AGE_SEC
+                base_f = freshness(anchor_age, interval)
+            else:
+                # Continuous source (noaa writes a row per poll): event age is right.
+                age = (now - last) if last is not None else _NO_EVENT_AGE_SEC
+                base_f = freshness(age, interval)
+            f = cross_check_poller(base_f, last_poll_status, last_poll_ts, now, interval)
             out["external"][name] = {
                 "last_event_ts": last,
                 "last_poll_ts": last_poll_ts,

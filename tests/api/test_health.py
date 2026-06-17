@@ -201,22 +201,27 @@ def test_earthquake_source_filter_independent_per_source(
     now = int(time.time())
     conn = sqlite3.connect(str(health_db), isolation_level=None)
     try:
-        # usgs healthy (now-60), emsc absent, bgs stale (3700 >= 2*1800 = 3600)
+        # Distinct events per source — verifies the earthquake source filter on
+        # last_event_ts. These are poll-anchored, so event age does NOT drive the
+        # dot: per-source POLL recency does.
         _insert_quake(conn, "usgs", now - 60, "u1")
-        _insert_quake(conn, "bgs", now - 3700, "b1")
-        # Recent successful polls for all three so silent-poller rule doesn't trip
-        for s in ("usgs", "emsc", "bgs"):
-            _insert_poller_run(conn, s, now - 30, "success")
+        _insert_quake(conn, "emsc", now - 90, "e1")
+        _insert_quake(conn, "bgs", now - 120, "b1")
+        _insert_poller_run(conn, "usgs", now - 30, "success")  # recent success → healthy
+        # emsc: NO poll row at all → no successful poll → down
+        _insert_poller_run(conn, "bgs", now - 4000, "success")  # 4000s: 2*1800<=4000<4*1800 → stale
     finally:
         conn.close()
 
     body = api_client.get("/api/health").json()
+    # Freshness is poll-anchored and independent per source:
     assert body["external"]["usgs"]["freshness"] == "healthy"
-    assert body["external"]["bgs"]["freshness"] == "stale"
-    # emsc has no events but has a recent successful poll → poller alive,
-    # event freshness is "down" (no events) — silent-poller rule does NOT
-    # promote (poll is recent), so freshness comes from event age = down.
     assert body["external"]["emsc"]["freshness"] == "down"
+    assert body["external"]["bgs"]["freshness"] == "stale"
+    # last_event_ts is still per-source (the source filter works):
+    assert body["external"]["usgs"]["last_event_ts"] == now - 60
+    assert body["external"]["emsc"]["last_event_ts"] == now - 90
+    assert body["external"]["bgs"]["last_event_ts"] == now - 120
 
 
 # ---- poller_runs cross-check ----
@@ -227,17 +232,99 @@ def test_transient_fail_overrides_healthy_event(
     health_db: Path,
     stub_thermal: Callable[..., None],
 ) -> None:
+    """A recent transient_fail forces down even when the poll-anchor is healthy."""
     now = int(time.time())
     conn = sqlite3.connect(str(health_db), isolation_level=None)
     try:
-        _insert_quake(conn, "usgs", now - 60, "u1")  # event would be healthy
-        _insert_poller_run(conn, "usgs", now - 30, "transient_fail")
+        _insert_quake(conn, "usgs", now - 60, "u1")
+        _insert_poller_run(conn, "usgs", now - 300, "success")  # poll-anchor healthy (300<600)
+        _insert_poller_run(conn, "usgs", now - 30, "transient_fail")  # latest poll failed
     finally:
         conn.close()
 
     body = api_client.get("/api/health").json()
     assert body["external"]["usgs"]["freshness"] == "down"
     assert body["external"]["usgs"]["last_poll_status"] == "transient_fail"
+
+
+# ---- poll-anchored event-driven sources (sporadic upstream) ----
+
+
+def test_poll_anchored_quiet_source_healthy_despite_old_event(
+    api_client: TestClient,
+    health_db: Path,
+    stub_thermal: Callable[..., None],
+) -> None:
+    """USGS with a long-stale last quake but a recent successful poll stays
+    HEALTHY — the dot reflects poller health, not quake recency (the fix)."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(health_db), isolation_level=None)
+    try:
+        _insert_quake(conn, "usgs", now - 100_000, "old")  # ~28h ago: 'down' if event-anchored
+        _insert_poller_run(conn, "usgs", now - 30, "success")
+    finally:
+        conn.close()
+
+    body = api_client.get("/api/health").json()
+    assert body["external"]["usgs"]["freshness"] == "healthy"
+    assert body["external"]["usgs"]["cadence_warning"] is False
+
+
+def test_poll_anchored_lightning_quiet_stays_healthy(
+    api_client: TestClient,
+    health_db: Path,
+    stub_thermal: Callable[..., None],
+) -> None:
+    """Blitzortung with no strikes at all (storm-free) but a recent successful
+    poll stays HEALTHY."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(health_db), isolation_level=None)
+    try:
+        _insert_poller_run(conn, "blitzortung", now - 20, "success")  # no lightning rows
+    finally:
+        conn.close()
+
+    body = api_client.get("/api/health").json()
+    assert body["external"]["blitzortung"]["freshness"] == "healthy"
+
+
+def test_poll_anchored_no_successful_poll_is_down(
+    api_client: TestClient,
+    health_db: Path,
+    stub_thermal: Callable[..., None],
+) -> None:
+    """USGS with a fresh quake but NO successful poll → DOWN. Poller health, not
+    event presence, drives the dot."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(health_db), isolation_level=None)
+    try:
+        _insert_quake(conn, "usgs", now - 10, "fresh")  # fresh event, but...
+        # ...no poller_runs rows at all → the poller was never proven alive
+    finally:
+        conn.close()
+
+    body = api_client.get("/api/health").json()
+    assert body["external"]["usgs"]["freshness"] == "down"
+
+
+def test_noaa_remains_event_anchored(
+    api_client: TestClient,
+    health_db: Path,
+    stub_thermal: Callable[..., None],
+) -> None:
+    """NOAA is NOT poll-anchored: an old space_weather row with a recent
+    successful poll is still DOWN (NOAA writes a row per poll, so a stale event
+    despite a 'successful' poll genuinely indicates a problem)."""
+    now = int(time.time())
+    conn = sqlite3.connect(str(health_db), isolation_level=None)
+    try:
+        _insert_space_weather(conn, now - 100_000)  # very old
+        _insert_poller_run(conn, "noaa", now - 30, "success")
+    finally:
+        conn.close()
+
+    body = api_client.get("/api/health").json()
+    assert body["external"]["noaa"]["freshness"] == "down"
 
 
 def test_partial_status_treated_as_healthy(
