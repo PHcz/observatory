@@ -5,7 +5,7 @@ description = "Home observatory: Pi 4 + weather + muon + space weather + earthqu
 requires-python = ">=3.11,<3.12"
 dependencies = [
   "pydantic>=2.7",
-  "pydantic-settings>=2.3",
+  "pydantic-settings>=2.14.2",
   "yoyo-migrations>=9.0",
   "structlog>=24.1",
   "pyserial>=3.5",
