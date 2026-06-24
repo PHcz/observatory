@@ -74,7 +74,7 @@
       marginLeft: 40,
       marginRight: 8,
       marginBottom: 28,
-      marginTop: 8,
+      marginTop: 28, // align with the PMF chart's headroom (its y-label needs it)
       x: { label: 'Δt (s)' },
       y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
       marks: [
@@ -119,7 +119,9 @@
       marginLeft: 40,
       marginRight: 8,
       marginBottom: 28,
-      marginTop: 8,
+      // Headroom so the "probability" y-label clears the top tick
+      // (now at the top edge after the y-domain bracketing fix).
+      marginTop: 28,
       x: { label: 'counts / min' },
       y: {
         label: 'probability',

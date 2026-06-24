@@ -626,7 +626,9 @@ export function buildBarometricScatterPlot(
     marginLeft: 46,
     marginRight: 12,
     marginBottom: 28,
-    marginTop: 8,
+    // Headroom so the rotated y-axis label ("rate / min") clears the top tick,
+    // which now sits at the very top edge after the y-domain bracketing fix.
+    marginTop: 28,
     x: { label: 'pressure (hPa)' },
     y: {
       label: 'rate / min',
@@ -691,7 +693,9 @@ export function buildOverlayPlot(
     marginLeft: 46,
     marginRight: 12,
     marginBottom: 28,
-    marginTop: 8,
+    // Headroom so the rotated y-axis label ("% of baseline") clears the top tick,
+    // which now sits at the very top edge after the y-domain bracketing fix.
+    marginTop: 28,
     x: {
       type: 'time',
       domain: [start, end],

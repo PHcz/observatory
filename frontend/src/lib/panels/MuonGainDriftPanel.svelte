@@ -48,7 +48,9 @@
       marginLeft: 60,
       marginRight: 12,
       marginBottom: 28,
-      marginTop: 8,
+      // Headroom so the "MIP peak (ADC units)" y-label clears the top tick
+      // (now at the top edge after the y-domain bracketing fix).
+      marginTop: 28,
       x: {
         type: 'time',
         label: null,
