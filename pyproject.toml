@@ -5,7 +5,7 @@ description = "Home observatory: Pi 4 + weather + muon + space weather + earthqu
 requires-python = ">=3.11,<3.12"
 dependencies = [
   "pydantic>=2.7",
-  "pydantic-settings>=2.3",
+  "pydantic-settings>=2.14.2",  # GHSA: NestedSecretsSettingsSource symlink read (Dependabot, 2026-06)
   "yoyo-migrations>=9.0",
   "structlog>=24.1",
   "pyserial>=3.5",
@@ -13,7 +13,7 @@ dependencies = [
   "httpx>=0.27",
   "defusedxml>=0.7",
   "fastapi>=0.133,<0.140",  # >=0.133 drops upper bound on starlette so we can pin >=1.0.1 below
-  "starlette>=1.0.1",  # explicit floor to clear PYSEC-2026-161 + CVE-2025-62727 (08-11 SEC-06 audit)
+  "starlette>=1.3.1",  # floor clears PYSEC-2026-161 + CVE-2025-62727 (08-11 audit) + form() DoS / hostname-poison (Dependabot, 2026-06)
   "uvicorn[standard]>=0.32,<0.40",
   "websockets>=14,<17",
   "astral>=3.0",
@@ -122,3 +122,9 @@ exclude_dirs = ["tests", "frontend", ".venv"]
 # B607: partial executable path — fine, PATH is controlled by systemd EnvironmentFile on the Pi
 # (B405/B314 NOT skipped — addressed properly via defusedxml in observatory.pollers.bgs)
 skips = ["B101", "B311", "B404", "B603", "B607"]
+
+[tool.uv]
+# Security floor for a transitive dep (msgpack has no direct importer here).
+# Clears the high-severity OOB-read advisory (Dependabot, 2026-06); keeps it from
+# regressing on a future `uv lock`.
+constraint-dependencies = ["msgpack>=1.2.1"]
