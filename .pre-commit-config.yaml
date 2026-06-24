@@ -88,6 +88,10 @@ repos:
     hooks:
       - id: pip-audit
         stages: [pre-push]
+        # pip-audit audits its own isolated env; pin its transitive msgpack
+        # (via cachecontrol) to the fixed version so the TOOL's deps don't trip
+        # the gate — GHSA-6v7p-g79w-8964 (msgpack <1.2.1), not an app dependency.
+        additional_dependencies: ["msgpack>=1.2.1"]
 
   - repo: local
     hooks:
