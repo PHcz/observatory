@@ -320,3 +320,24 @@ journalctl -u obs-vuln-check.service -n 20 --no-pager
 The PAT must be a **fine-grained** token scoped to `PHcz/observatory` with **Dependabot alerts:
 Read-only**. With no token set the check is a silent no-op (exit 0), so the timer is safe to
 enable before the token is in place. Keep the PAT in the Pi `.env` only — never commit it.
+
+## Daily Enviro heartbeat (Telegram)
+
+The stale-Enviro alert only speaks up on a *problem*, so a silent day is ambiguous — healthy, or
+is the monitor itself dead? `obs-enviro-heartbeat.timer` removes the ambiguity: once a day (08:00
+local) it sends **one Telegram message regardless of status**:
+
+- `✅ Enviro health: online` — last-reading age, 24 h reading count, latest temp/RH/pressure
+- `⚠️ Enviro health: STALE` — when the newest reading is older than `ALERT_ENVIRO_STALE_SEC`
+
+Receiving it confirms both that the board is reporting and that the monitoring pipeline is alive.
+It reuses the `ALERT_TELEGRAM_*` channel — no new config. Enable + test:
+
+```bash
+sudo systemctl enable --now obs-enviro-heartbeat.timer
+sudo systemctl start obs-enviro-heartbeat.service   # fire one now
+journalctl -u obs-enviro-heartbeat.service -n 10 --no-pager
+```
+
+Change the time by editing `OnCalendar=` in `/etc/systemd/system/obs-enviro-heartbeat.timer` then
+`sudo systemctl daemon-reload`.

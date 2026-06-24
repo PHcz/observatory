@@ -1,0 +1,17 @@
+[Unit]
+Description=Observatory daily Enviro health heartbeat (-> Telegram)
+After=network-online.target obs-api.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=observatory
+Group=observatory
+EnvironmentFile=/etc/observatory/observatory.env
+ExecStart=/opt/observatory/.venv/bin/python -m observatory.ops.enviro_heartbeat
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=obs-enviro-heartbeat
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

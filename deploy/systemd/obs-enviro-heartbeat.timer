@@ -1,0 +1,12 @@
+[Unit]
+Description=Observatory daily Enviro heartbeat schedule (08:00 local time)
+Requires=obs-enviro-heartbeat.service
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=obs-enviro-heartbeat.service
+
+[Install]
+WantedBy=timers.target
