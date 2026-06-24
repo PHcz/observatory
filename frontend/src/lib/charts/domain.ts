@@ -20,8 +20,11 @@ export function paddedYDomain(values: number[]): [number, number] | null {
  * then places the lowest tick at the smallest round value ≥ domain.min, which
  * can land ABOVE the data minimum (e.g. data min 13 → lowest tick 15; dewpoint
  * min 12 → lowest tick 20). By snapping the floor to a nice step strictly below
- * the min and returning the ticks ourselves, the bottom of the axis always sits
- * under the data. Returns null on empty input (caller falls back to auto-domain).
+ * the min (and the ceiling strictly above the max) and returning the ticks
+ * ourselves, the axis always brackets the data: a labelled gridline sits both
+ * under the lowest point and over the highest, so a line/dot/spike never reaches
+ * the top or bottom edge unlabelled. Returns null on empty input (caller falls
+ * back to auto-domain).
  */
 export function niceFloorDomain(
   values: number[],
@@ -44,7 +47,7 @@ export function niceFloorDomain(
   let lo = Math.floor(dataMin / step) * step;
   if (lo >= dataMin) lo -= step;
   let hi = Math.ceil(dataMax / step) * step;
-  if (hi < dataMax) hi += step;
+  if (hi <= dataMax) hi += step;
 
   // Round to the step's natural precision to strip floating-point noise.
   const decimals = Math.max(0, -Math.floor(Math.log10(step)));

@@ -2,7 +2,16 @@
   import { onMount, onDestroy } from 'svelte';
   import * as Plot from '@observablehq/plot';
   import { muonDiagnosticsStore } from '$lib/stores/muonDiagnostics';
+  import { niceFloorDomain } from '$lib/charts/domain';
   import ChartHeader from '$lib/atoms/ChartHeader.svelte';
+
+  // 0-anchored y config (bars start at 0) with a labelled tick strictly above
+  // the tallest bar / overlay point, so neither touches the top edge.
+  function zeroBasedYScale(values: number[]) {
+    const ns = niceFloorDomain(values, 4);
+    if (!ns) return null;
+    return { domain: [0, ns.domain[1]] as [number, number], ticks: ns.ticks.filter((v) => v >= 0) };
+  }
 
   let containerA: HTMLDivElement | undefined;
   let containerB: HTMLDivElement | undefined;
@@ -54,6 +63,11 @@
       });
     }
 
+    const yScale = zeroBasedYScale([
+      ...hist.map((b) => b.count),
+      ...expPoints.map((p) => p.expected),
+    ]);
+
     const plot = Plot.plot({
       width: containerA.clientWidth || 300,
       height: 160,
@@ -62,7 +76,7 @@
       marginBottom: 28,
       marginTop: 8,
       x: { label: 'Δt (s)' },
-      y: { label: null, grid: true },
+      y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
       marks: [
         Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
         Plot.rectY(hist, {
@@ -94,6 +108,11 @@
     const t = getTokens();
     const pmf = d.rate_pmf;
 
+    const yScale = zeroBasedYScale([
+      ...pmf.map((p) => p.observed_prob),
+      ...pmf.map((p) => p.poisson_prob),
+    ]);
+
     const plot = Plot.plot({
       width: containerB.clientWidth || 300,
       height: 160,
@@ -102,7 +121,11 @@
       marginBottom: 28,
       marginTop: 8,
       x: { label: 'counts / min' },
-      y: { label: 'probability', grid: true },
+      y: {
+        label: 'probability',
+        grid: true,
+        ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}),
+      },
       marks: [
         Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
         Plot.rectY(pmf, {

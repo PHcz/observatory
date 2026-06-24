@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import * as Plot from '@observablehq/plot';
   import { muonGainDriftStore } from '$lib/stores/muonGainDrift';
+  import { niceFloorDomain } from '$lib/charts/domain';
   import ChartHeader from '$lib/atoms/ChartHeader.svelte';
 
   let container: HTMLDivElement | undefined;
@@ -35,6 +36,12 @@
       date: new Date(w.week_start_ts * 1000),
     }));
 
+    // Bracket the weekly peaks + the baseline rule so drift never touches an edge.
+    const yScale = niceFloorDomain(
+      [...weeks.map((w) => w.mip_peak_adc), d.baseline_adc],
+      4,
+    );
+
     const plot = Plot.plot({
       width: container.clientWidth || 600,
       height: 160,
@@ -47,7 +54,11 @@
         label: null,
         tickFormat: (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
       },
-      y: { label: 'MIP peak (ADC units)', grid: true },
+      y: {
+        label: 'MIP peak (ADC units)',
+        grid: true,
+        ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}),
+      },
       marks: [
         Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
         // Dashed baseline reference line

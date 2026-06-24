@@ -46,6 +46,19 @@ describe('niceFloorDomain', () => {
     expect(r.ticks[0]).toBeLessThan(15);
   });
 
+  it('guarantees the highest tick is strictly ABOVE the data maximum', () => {
+    // overlay spike to ~107 must not touch the top tick (105 before the fix)
+    const r = niceFloorDomain([78, 95, 107], 5)!;
+    expect(r.ticks[r.ticks.length - 1]).toBeGreaterThan(107);
+    expect(r.domain[1]).toBeGreaterThan(107);
+  });
+
+  it('drops in an extra top tick when the data maximum sits on a boundary', () => {
+    // max 25 on a step-5 grid must NOT be the highest tick — bump to 30
+    const r = niceFloorDomain([10, 25], 3)!;
+    expect(r.ticks[r.ticks.length - 1]).toBeGreaterThan(25);
+  });
+
   it('handles negative values (winter temps)', () => {
     const r = niceFloorDomain([-3, 0, 7], 3)!;
     expect(r.ticks[0]).toBeLessThan(-3);

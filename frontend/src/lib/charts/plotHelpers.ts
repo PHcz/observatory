@@ -455,6 +455,16 @@ export function buildLightPlot(data: WeatherPoint[], width: number): SVGElement 
   const smoothed: LightPoint[] = valid.map((p, i) => ({ ts: p.ts, lux: Math.pow(10, smoothedLogYs[i]) }));
   const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
 
+  // Top decade strictly above the brightest reading so daylight (which can
+  // exceed 10k lux) never spills past the top tick. Keep a 4-decade minimum
+  // (1..10k) so a dim day still shows the familiar scale.
+  const maxLux = valid.length > 0 ? Math.max(...valid.map((p) => p.lux)) : 1;
+  let topExp = Math.max(4, Math.ceil(Math.log10(maxLux)));
+  if (Math.pow(10, topExp) <= maxLux) topExp += 1; // strictly above a boundary reading
+  const topDecade = Math.pow(10, topExp);
+  const luxTicks: number[] = [];
+  for (let d = 1; d <= topDecade; d *= 10) luxTicks.push(d);
+
   return Plot.plot({
     width,
     height: 180,
@@ -466,8 +476,8 @@ export function buildLightPlot(data: WeatherPoint[], width: number): SVGElement 
     y: {
       type: 'log',
       grid: true,
-      domain: [1, 10000],
-      ticks: [1, 10, 100, 1000, 10000],
+      domain: [1, topDecade],
+      ticks: luxTicks,
       tickFormat: (d: number) => (d >= 1000 ? `${d / 1000}k` : `${d}`),
       label: null,
     },
@@ -524,6 +534,16 @@ export function buildAdcHistogramPlot(
   }
   const modal = modalIdx >= 0 ? hist[modalIdx] : null;
 
+  // Bars are 0-anchored; keep that floor but guarantee a labelled tick strictly
+  // above the tallest bar so the modal bar + "MIP peak" label clear the top.
+  const ns = niceFloorDomain(
+    hist.map((b) => b.count),
+    4,
+  );
+  const yScale = ns
+    ? { domain: [0, ns.domain[1]] as [number, number], ticks: ns.ticks.filter((v) => v >= 0) }
+    : null;
+
   return Plot.plot({
     width,
     height: 180,
@@ -535,7 +555,7 @@ export function buildAdcHistogramPlot(
     // top and was clipped (only the bottoms of the glyphs showed over the bar).
     marginTop: 24,
     x: { label: 'ADC (0-1023)', tickFormat: (d: number) => `${d}` },
-    y: { label: null, grid: true },
+    y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       Plot.rectY(hist, {
@@ -593,6 +613,13 @@ export function buildBarometricScatterPlot(
     );
   }
 
+  // Bracket the scatter (and fit-line endpoints) so no dot sits on the top or
+  // bottom edge unlabelled.
+  const yScale = niceFloorDomain(
+    [...points.map((p) => p.rate_per_min), ...fitLine.map((p) => p.rate_per_min)],
+    4,
+  );
+
   return Plot.plot({
     width,
     height: 180,
@@ -601,7 +628,11 @@ export function buildBarometricScatterPlot(
     marginBottom: 28,
     marginTop: 8,
     x: { label: 'pressure (hPa)' },
-    y: { label: 'rate / min', grid: true },
+    y: {
+      label: 'rate / min',
+      grid: true,
+      ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}),
+    },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       Plot.dot(points, {
@@ -645,6 +676,15 @@ export function buildOverlayPlot(
   const nmdbValid = nmdb.filter((p) => p.pct_baseline != null);
   const lastLocal = localValid.length > 0 ? localValid[localValid.length - 1] : null;
 
+  // Bracket both series + the 100% reference so a Forbush dip (which can plunge
+  // well below 80%) and the noisy local spikes always sit inside a labelled tick.
+  const yValues = [
+    100,
+    ...localValid.map((p) => p.pct_baseline as number),
+    ...nmdbValid.map((p) => p.pct_baseline as number),
+  ];
+  const yScale = niceFloorDomain(yValues, 5);
+
   return Plot.plot({
     width,
     height: 240,
@@ -659,7 +699,11 @@ export function buildOverlayPlot(
       ticks: xDateTickValues(start.getTime(), end.getTime()),
       tickFormat: (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
     },
-    y: { label: '% of baseline', grid: true },
+    y: {
+      label: '% of baseline',
+      grid: true,
+      ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}),
+    },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       // 100% baseline reference rule.
