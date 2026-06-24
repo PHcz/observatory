@@ -12,7 +12,13 @@ import sqlite3
 import time
 from pathlib import Path
 
-from observatory.weather.alerts.rules import AlertResult, FrostRule, PressureFallRule
+from observatory.weather.alerts.rules import (
+    AlertResult,
+    FrostRule,
+    PressureFallRule,
+    StaleEnviroRule,
+    _format_age,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_0001 = REPO_ROOT / "migrations" / "0001_initial_schema.sql"
@@ -129,3 +135,54 @@ class TestPressureFallRule:
         rule = PressureFallRule()
         result = rule.evaluate(conn)
         assert result.triggered is False
+
+
+class TestStaleEnviroRule:
+    def test_stale_when_last_reading_older_than_threshold(self) -> None:
+        """Default threshold 3600 s; a reading 2 h old → triggered."""
+        conn = _make_db()
+        now = int(time.time())
+        _insert_weather(conn, now - 2 * 3600, temp_c=15.0, humidity_pct=70.0, pressure_hpa=1013.0)
+        conn.commit()
+        result = StaleEnviroRule().evaluate(conn)
+        assert result.rule == "enviro_stale"
+        assert result.triggered is True
+        assert "No reading from Enviro" in result.detail
+
+    def test_fresh_reading_not_triggered(self) -> None:
+        """A reading 30 s old → well within threshold → not triggered."""
+        conn = _make_db()
+        now = int(time.time())
+        _insert_weather(conn, now - 30, temp_c=15.0, humidity_pct=70.0, pressure_hpa=1013.0)
+        conn.commit()
+        assert StaleEnviroRule().evaluate(conn).triggered is False
+
+    def test_empty_db_not_triggered(self) -> None:
+        """No reading ever → nothing to be stale against → not triggered (no boot noise)."""
+        conn = _make_db()
+        assert StaleEnviroRule().evaluate(conn).triggered is False
+
+    def test_threshold_is_config_driven(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """A 10-min-old reading is stale once the threshold is tightened to 5 min."""
+        import observatory.config as _config_mod
+
+        monkeypatch.setattr(_config_mod.settings, "alert_enviro_stale_sec", 300)
+        conn = _make_db()
+        now = int(time.time())
+        _insert_weather(conn, now - 600, temp_c=15.0, humidity_pct=70.0, pressure_hpa=1013.0)
+        conn.commit()
+        assert StaleEnviroRule().evaluate(conn).triggered is True
+
+
+class TestFormatAge:
+    def test_seconds(self) -> None:
+        assert _format_age(45) == "45 s"
+
+    def test_minutes(self) -> None:
+        assert _format_age(45 * 60) == "45 m"
+
+    def test_hours_and_minutes(self) -> None:
+        assert _format_age(18 * 3600 + 20 * 60) == "18 h 20 m"
+
+    def test_whole_hours(self) -> None:
+        assert _format_age(3 * 3600) == "3 h"

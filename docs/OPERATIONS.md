@@ -242,18 +242,21 @@ run `bash scripts/verify-muon.sh`.
 
 ## Threshold alerts & phone notifications (ntfy)
 
-The alert engine runs inside `obs-api` (evaluated on the DB-watcher tick, ~60 s). Two rules
+The alert engine runs inside `obs-api` (evaluated on the DB-watcher tick, ~60 s). Three rules
 ship: **frost risk** (temp < `ALERT_FROST_TEMP_C`, default 2 °C, with dewpoint spread <
-`ALERT_FROST_DEWPOINT_SPREAD_C`, default 2 °C) and **rapid pressure fall** (3 h drop >
-`ALERT_PRESSURE_FALL_HPA_PER_3H`, default 1.6 hPa). A rule must hold for
-`ALERT_MIN_ACTIVE_MINUTES` (default 5) before it fires — anti-flap hysteresis.
+`ALERT_FROST_DEWPOINT_SPREAD_C`, default 2 °C), **rapid pressure fall** (3 h drop >
+`ALERT_PRESSURE_FALL_HPA_PER_3H`, default 1.6 hPa), and **Enviro offline** (newest weather
+reading older than `ALERT_ENVIRO_STALE_SEC`, default 3600 s = 1 h). The first two must hold for
+`ALERT_MIN_ACTIVE_MINUTES` (default 5) before firing — anti-flap hysteresis; the offline rule is
+time-based and fires as soon as the gap exceeds the threshold.
 
 **Where alerts appear:**
 - **Dashboard** — the *Weather Alerts* panel (ACTIVE + RECENT-24 h) plus a coloured dot on the
   pressure stat; updates live over the WebSocket `alert` channel.
 - **API** — `GET /api/alerts` → `{active, recent}`.
-- **Phone push** — via [ntfy](https://ntfy.sh), if enabled (below). Pushes on the *crossing*
-  only; resolution updates the dashboard but does not push.
+- **Phone push** — via [ntfy](https://ntfy.sh) and/or [Telegram](https://telegram.org), if
+  enabled (below). Pushes on the *crossing* **and** on resolution (e.g. "Enviro Online" after a
+  battery swap). Each channel is independent and fire-and-forget.
 
 **Enabling phone push (ntfy).** Off by default. Set on the Pi `.env`
 (`/etc/observatory/observatory.env`) — note these keys take **no** `OBSERVATORY_` prefix (the
@@ -277,3 +280,43 @@ token or self-host ntfy. Keep the real topic/token in the Pi `.env` only — nev
 
 The notifier is fire-and-forget: if ntfy is unreachable it logs a warning and never disrupts the
 dashboard or the `alerts` table.
+
+**Enabling phone push (Telegram).** A second, independent channel — useful as a private,
+authenticated alternative to a public ntfy topic. Off by default.
+
+1. In Telegram, message **@BotFather** → `/newbot`, follow the prompts, copy the bot token.
+2. Send your new bot any message (e.g. `hi`) so it has a chat to reply to.
+3. Read your numeric chat id: open `https://api.telegram.org/bot<token>/getUpdates` and find
+   `message.chat.id`.
+4. Set on the Pi `.env` (no `OBSERVATORY_` prefix — the var name is the field name):
+
+```bash
+printf 'ALERT_TELEGRAM_ENABLED=true\nALERT_TELEGRAM_BOT_TOKEN=<token>\nALERT_TELEGRAM_CHAT_ID=<chat_id>\n' \
+  | sudo tee -a /etc/observatory/observatory.env >/dev/null
+sudo systemctl restart obs-api.service
+```
+
+Both channels can run at once; either can be enabled alone. Keep the token/chat id in the Pi
+`.env` only — never commit them.
+
+## Daily Dependabot vulnerability check (Telegram)
+
+`obs-vuln-check.timer` runs `python -m observatory.ops.vuln_check` once a day (09:30 local),
+queries the GitHub Dependabot **alerts** API for the repo, and — if any alert is *open* — sends a
+Telegram message listing them worst-first. A clean run is silent. Outbound-only (no inbound
+exposure), same sanctioned-egress justification as the pollers.
+
+Set on the Pi `.env` (reuses the `ALERT_TELEGRAM_*` channel above for delivery):
+
+```bash
+printf 'VULN_CHECK_GITHUB_TOKEN=<fine_grained_pat>\nVULN_CHECK_REPO=PHcz/observatory\n' \
+  | sudo tee -a /etc/observatory/observatory.env >/dev/null
+sudo systemctl enable --now obs-vuln-check.timer
+systemctl list-timers obs-vuln-check.timer
+sudo systemctl start obs-vuln-check.service   # run once now to test
+journalctl -u obs-vuln-check.service -n 20 --no-pager
+```
+
+The PAT must be a **fine-grained** token scoped to `PHcz/observatory` with **Dependabot alerts:
+Read-only**. With no token set the check is a silent no-op (exit 0), so the timer is safe to
+enable before the token is in place. Keep the PAT in the Pi `.env` only — never commit it.

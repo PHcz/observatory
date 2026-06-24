@@ -226,6 +226,26 @@ class Settings(BaseSettings):
     # Optional Bearer token for authenticated ntfy topics. Set on Pi only — never commit.
     alert_ntfy_token: str = Field(default="")
 
+    # --- Telegram integration (2nd alert channel) — outbound-only, off by default ---
+    # Same sanctioned-outbound justification as ntfy: no inbound exposure, no tunnel.
+    # Enable on the Pi with ALERT_TELEGRAM_ENABLED=true (field name maps directly to
+    # the env var — there is NO env_prefix on this Settings model).
+    alert_telegram_enabled: bool = Field(default=False)
+    # Bot token from @BotFather and the destination chat id. Pi .env only — never commit.
+    alert_telegram_bot_token: str = Field(default="")
+    alert_telegram_chat_id: str = Field(default="")
+
+    # --- Stale-Enviro alert (outdoor weather node offline) ---
+    # Fires when the newest weather reading is older than this many seconds.
+    # Default 3600 (1 h): the Enviro publishes every ~5 min, so an hour of silence
+    # means a dead battery / wifi loss, not normal jitter.
+    alert_enviro_stale_sec: int = Field(default=3600, ge=300, le=86400)
+
+    # --- Daily Dependabot vuln check → Telegram (ops; runs on the Pi via timer) ---
+    # Fine-grained PAT scoped to the repo with "Dependabot alerts: read". Pi .env only.
+    vuln_check_github_token: str = Field(default="")
+    vuln_check_repo: str = Field(default="PHcz/observatory")
+
     # --- /ingest HTTP fallback basic auth (Phase 16, ENH-06) ---
     # HTTP basic-auth credentials for the POST /ingest fallback endpoint.
     # Set OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD on the Pi; empty blocks all ingest.

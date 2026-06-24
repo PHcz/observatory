@@ -53,3 +53,46 @@ async def notify_ntfy(
             await client.post(url, content=message.encode(), headers=headers)
     except Exception as exc:
         log.warning("ntfy.push_failed", error=str(exc))
+
+
+async def notify_telegram(title: str, message: str) -> None:
+    """Fire-and-forget Telegram push (second sanctioned outbound channel).
+
+    Returns immediately when alert_telegram_enabled is False or the bot token /
+    chat id are unset. Plain text (no parse_mode) so message punctuation never
+    breaks Telegram's Markdown parser. Swallows ALL exceptions.
+
+    Args:
+        title:   First line of the message (bold-free; kept plain for safety).
+        message: Body text.
+    """
+    if not settings.alert_telegram_enabled:
+        return
+    if not (settings.alert_telegram_bot_token and settings.alert_telegram_chat_id):
+        log.warning("telegram.not_configured")
+        return
+
+    import httpx
+
+    url = f"https://api.telegram.org/bot{settings.alert_telegram_bot_token}/sendMessage"
+    payload = {
+        "chat_id": settings.alert_telegram_chat_id,
+        "text": f"{title}\n{message}",
+        "disable_web_page_preview": True,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(url, json=payload)
+    except Exception as exc:
+        log.warning("telegram.push_failed", error=str(exc))
+
+
+async def notify_all(title: str, message: str, priority: int = 4) -> None:
+    """Fan a notification out to every enabled channel; never raises.
+
+    Each channel is independently gated and self-contained (swallows its own
+    errors), so one channel being down or disabled never affects the other.
+    """
+    await notify_ntfy(title, message, priority)
+    await notify_telegram(title, message)

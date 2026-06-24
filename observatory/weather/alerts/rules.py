@@ -156,5 +156,57 @@ class PressureFallRule:
         )
 
 
-# ACTIVE_RULES — append new rules here. Stale-source / low-battery are DEFERRED.
-ACTIVE_RULES: list[AlertRule] = [FrostRule(), PressureFallRule()]
+def _format_age(seconds: int) -> str:
+    """Compact human duration: '18 h 20 m', '45 m', '90 s'."""
+    if seconds < 60:
+        return f"{seconds} s"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes} m"
+    hours, mins = divmod(minutes, 60)
+    return f"{hours} h {mins} m" if mins else f"{hours} h"
+
+
+class StaleEnviroRule:
+    """Outdoor Enviro weather node offline rule.
+
+    Triggered when the newest weather reading is older than
+    settings.alert_enviro_stale_sec (default 3600 s = 1 h). The Enviro publishes
+    every ~5 min, so an hour of silence means a dead battery or wifi loss — the
+    exact failure that swallowed ~18 h of data on the 2026-06-23 battery outage.
+
+    Empty table (fresh install, board never reported) is NOT triggered: there is
+    no baseline to be "stale" against, and alarming on first boot is noise.
+
+    Time-based, not data-arrival-based: evaluate_rules() runs every ~60 s in the
+    db_watcher loop regardless of new rows, so this fires even while data is
+    absent. Recovery (data resumes → age under threshold) resolves it.
+    """
+
+    rule = "enviro_stale"
+
+    def evaluate(self, conn: sqlite3.Connection) -> AlertResult:
+        import time
+
+        threshold = _config_mod.settings.alert_enviro_stale_sec
+        row = conn.execute("SELECT ts FROM weather ORDER BY ts DESC LIMIT 1").fetchone()
+
+        if row is None or row[0] is None:
+            # No reading ever — nothing to be stale against.
+            return AlertResult(
+                rule=self.rule, severity="alert", detail="No weather data yet", triggered=False
+            )
+
+        last_ts = int(row[0])
+        age = int(time.time()) - last_ts
+        triggered = age > threshold
+
+        last_local = time.strftime("%Y-%m-%d %H:%M", time.localtime(last_ts))
+        detail = f"No reading from Enviro for {_format_age(age)} (last: {last_local})"
+        return AlertResult(rule=self.rule, severity="alert", detail=detail, triggered=triggered)
+
+
+# ACTIVE_RULES — append new rules here.
+# StaleEnviroRule added 2026-06-24 by explicit request (battery-outage alerting),
+# overriding the original Phase-16 deferral of stale-source rules.
+ACTIVE_RULES: list[AlertRule] = [FrostRule(), PressureFallRule(), StaleEnviroRule()]

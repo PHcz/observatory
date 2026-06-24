@@ -50,11 +50,21 @@ _background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
 
 
 def _rule_title(rule_name: str) -> str:
-    """Human-readable ntfy title for a rule name."""
+    """Human-readable push title for a rule name."""
     return {
         "frost_risk": "Frost Risk",
         "rapid_pressure_fall": "Rapid Pressure Fall",
+        "enviro_stale": "Enviro Offline",
     }.get(rule_name, rule_name.replace("_", " ").title())
+
+
+def _recovery_message(rule_name: str) -> tuple[str, str]:
+    """(title, body) for the recovery push sent when a rule resolves."""
+    return {
+        "enviro_stale": ("Enviro Online", "Outdoor weather node is reporting again."),
+        "frost_risk": ("Frost Cleared", "Temperature back above the frost threshold."),
+        "rapid_pressure_fall": ("Pressure Steady", "Rapid pressure fall has eased."),
+    }.get(rule_name, (f"{_rule_title(rule_name)} Cleared", "Condition resolved."))
 
 
 def _schedule_async(coro: Any) -> None:
@@ -138,10 +148,10 @@ def evaluate_rules(conn: sqlite3.Connection) -> None:
             # below. For simplicity, we also push on first insert to avoid
             # missing short-lived frost events that resolve before the next tick.
             # This is an explicit design choice: see plan note on hysteresis.
-            from observatory.weather.alerts.notifier import notify_ntfy
+            from observatory.weather.alerts.notifier import notify_all
 
             _schedule_async(
-                notify_ntfy(
+                notify_all(
                     title=_rule_title(rule_name),
                     message=result.detail,
                     priority=4,
@@ -179,5 +189,11 @@ def evaluate_rules(conn: sqlite3.Connection) -> None:
             from observatory.api.routers.ws import fanout_event
 
             _schedule_async(fanout_event(resolved_envelope))
+
+            # Recovery push (both channels) — e.g. "Enviro Online" after a battery swap.
+            from observatory.weather.alerts.notifier import notify_all
+
+            rec_title, rec_body = _recovery_message(rule_name)
+            _schedule_async(notify_all(title=rec_title, message=rec_body, priority=3))
 
         # else: still-clear — no action.

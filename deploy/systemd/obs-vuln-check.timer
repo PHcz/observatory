@@ -1,0 +1,12 @@
+[Unit]
+Description=Observatory daily Dependabot vuln check schedule (09:30 local time)
+Requires=obs-vuln-check.service
+
+[Timer]
+OnCalendar=*-*-* 09:30:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=obs-vuln-check.service
+
+[Install]
+WantedBy=timers.target
