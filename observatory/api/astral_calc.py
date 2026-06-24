@@ -100,7 +100,9 @@ def get_astronomy(
     moonrise_ts: int | None = None
     moonset_ts: int | None = None
     try:
-        moonrise_ts = int(astral_moon.moonrise(loc.observer, today).timestamp())
+        _mr = astral_moon.moonrise(loc.observer, today)
+        if _mr is not None:
+            moonrise_ts = int(_mr.timestamp())
     except ValueError:
         pass
     except Exception:
@@ -112,7 +114,9 @@ def get_astronomy(
             exc_info=True,
         )
     try:
-        moonset_ts = int(astral_moon.moonset(loc.observer, today).timestamp())
+        _ms = astral_moon.moonset(loc.observer, today)
+        if _ms is not None:
+            moonset_ts = int(_ms.timestamp())
     except ValueError:
         pass
     except Exception:
