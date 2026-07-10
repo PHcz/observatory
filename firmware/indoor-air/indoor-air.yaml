@@ -49,19 +49,19 @@ i2c:
   frequency: 50kHz
 
 sensor:
-  # Onboard BME280 → temperature / humidity / pressure
+  # Onboard BME280 → PRESSURE only. Its temperature/humidity read several °C warm
+  # because the sensor is soldered next to the always-on ESP32 (self-heating), so
+  # temp + humidity are taken from the SCD-41 instead (it sits on the remote cable,
+  # away from the board's heat). The SCD-41 also has no barometer, hence pressure
+  # stays on the BME280.
   - platform: bme280_i2c
     address: 0x77
     update_interval: 60s
-    temperature:
-      name: "Temperature"
-    humidity:
-      name: "Humidity"
     pressure:
       name: "Pressure"
       id: indoor_pressure
 
-  # SCD-41 → CO2 (its own temp/humidity hidden; we use the BME280's)
+  # SCD-41 → CO2 + temperature + humidity (remote sensor = cleaner temp/RH).
   - platform: scd4x
     address: 0x62
     update_interval: 60s
@@ -69,8 +69,6 @@ sensor:
     co2:
       name: "CO2"
     temperature:
-      name: "Temperature (SCD41)"
-      internal: true
+      name: "Temperature"
     humidity:
-      name: "Humidity (SCD41)"
-      internal: true
+      name: "Humidity"

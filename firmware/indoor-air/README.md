@@ -36,6 +36,6 @@ sudo systemctl reload mosquitto
 
 ## Notes
 - 2.4 GHz wifi only (ESP32 limitation).
-- Onboard BME280 temperature reads a few °C warm (board self-heat) — add a
-  `filters: - offset: -N` under the temperature sensor once you know the real
-  room temp, or switch to the SCD-41's own temperature.
+- Temperature + humidity come from the **SCD-41** (on the remote cable, away
+  from the ESP32's heat); the onboard BME280 supplies **pressure** only. This
+  sidesteps the board self-heating that made the BME280's temperature read warm.
