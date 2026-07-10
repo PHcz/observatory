@@ -1,0 +1,76 @@
+# Observatory — Indoor Air node
+# Adafruit ESP32-S2 Feather (onboard BME280) + Adafruit SCD-41
+# → CO2 / temperature / humidity / pressure to the Pi's MQTT broker under indoor/<room>
+
+substitutions:
+  room: "living-room"          # ← change + reflash if you want a different room label
+
+esphome:
+  name: "indoor-${room}"
+  friendly_name: "Indoor Air ${room}"
+
+esp32:
+  board: adafruit_feather_esp32s2
+  variant: esp32s2
+  framework:
+    type: arduino
+
+logger:
+
+wifi:
+  ssid: !secret wifi_ssid          # 2.4 GHz SSID (ESP32 is 2.4 GHz-only)
+  password: !secret wifi_password
+
+ota:
+  - platform: esphome
+    password: !secret ota_password  # future updates over wifi, no USB needed
+
+mqtt:
+  broker: 192.168.0.75              # observatory Pi (reserved IP)
+  port: 1883
+  username: !secret mqtt_user
+  password: !secret mqtt_password
+  topic_prefix: "indoor/${room}"
+  discovery: false
+
+# Adafruit S2 Feather: GPIO7 gates power to the STEMMA QT port AND the onboard
+# BME280 — must be HIGH or the i2c scan finds nothing.
+switch:
+  - platform: gpio
+    pin: GPIO7
+    id: i2c_power
+    restore_mode: ALWAYS_ON
+    internal: true
+
+i2c:
+  sda: GPIO3                        # ESP32-S2 Feather STEMMA QT / I2C pins
+  scl: GPIO4
+  scan: true                        # boot log lists found addresses (expect 0x62 + 0x77)
+  frequency: 50kHz
+
+sensor:
+  # Onboard BME280 → temperature / humidity / pressure
+  - platform: bme280_i2c
+    address: 0x77
+    update_interval: 60s
+    temperature:
+      name: "Temperature"
+    humidity:
+      name: "Humidity"
+    pressure:
+      name: "Pressure"
+      id: indoor_pressure
+
+  # SCD-41 → CO2 (its own temp/humidity hidden; we use the BME280's)
+  - platform: scd4x
+    address: 0x62
+    update_interval: 60s
+    ambient_pressure_compensation_source: indoor_pressure
+    co2:
+      name: "CO2"
+    temperature:
+      name: "Temperature (SCD41)"
+      internal: true
+    humidity:
+      name: "Humidity (SCD41)"
+      internal: true

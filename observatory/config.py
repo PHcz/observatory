@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     weather_subscriber_backoff_initial_sec: float = Field(default=1.0, ge=0.1, le=30.0)
     weather_subscriber_backoff_max_sec: float = Field(default=30.0, ge=1.0, le=600.0)
 
+    # --- Indoor air node(s) (Phase 14) ---
+    # ESPHome node publishes indoor/<room>/sensor/<metric>/state; the subscriber
+    # (runs in obs-api's lifespan) coalesces a cycle's metrics into one row.
+    indoor_mqtt_topic_filter: str = Field(default="indoor/#")
+    # Debounce window (s) to group a cycle's per-sensor messages into one row.
+    # The SCD-41 (CO2) and the onboard BME280 publish their groups ~4 s apart
+    # each ~60 s cycle (independent ESPHome update loops), so this must exceed
+    # that inter-sensor gap (8 s = 4 s observed + margin) yet stay well under the
+    # 60 s cadence. Otherwise the two groups flush as separate half-empty rows.
+    indoor_flush_debounce_sec: float = Field(default=8.0, ge=0.1, le=60.0)
+
     # --- Weather node cadence-drift early warning (Phase 8 / UI-20) ---
     # Expected upload interval for the outdoor Enviro Weather node, in seconds.
     # Production default = 1500s (25 min, matches Pimoroni firmware default cadence).

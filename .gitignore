@@ -66,3 +66,8 @@ STATUS.local.md
 
 # Local Claude Code tooling config (preview launcher, local permissions) — not for the public repo
 .claude/
+
+# ESPHome indoor-air node — real secrets + build artifacts stay local
+firmware/indoor-air/secrets.yaml
+firmware/indoor-air/.esphome/
+firmware/**/.esphome/
