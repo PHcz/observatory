@@ -107,6 +107,7 @@ export interface HealthResponse {
   local: {
     weather: SourceHealth;
     muon:    SourceHealth;
+    indoor?: SourceHealth;   // present only when an indoor node has published
   };
   external: {
     usgs:        SourceHealth;

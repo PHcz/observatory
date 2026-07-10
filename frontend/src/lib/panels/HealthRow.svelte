@@ -18,6 +18,7 @@
   const SOURCES: SourceEntry[] = [
     { key: 'weather',     group: 'local',    label: 'Weather node' },
     { key: 'muon',        group: 'local',    label: 'Muon detector' },
+    { key: 'indoor',      group: 'local',    label: 'Indoor node' },
     { key: 'usgs',        group: 'external', label: 'USGS' },
     { key: 'emsc',        group: 'external', label: 'EMSC' },
     { key: 'bgs',         group: 'external', label: 'BGS' },

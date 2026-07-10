@@ -37,10 +37,10 @@ describe('HealthRow', () => {
     wsStatus.set('connected');
   });
 
-  it('renders 12 health entries', () => {
+  it('renders 13 health entries', () => {
     const { container } = render(HealthRow);
     const entries = container.querySelectorAll('.health-entry');
-    expect(entries).toHaveLength(12);
+    expect(entries).toHaveLength(13);
   });
 
   it('renders at least one green status dot', () => {

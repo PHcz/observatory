@@ -22,7 +22,8 @@
   import WeatherAlertsPanel from '$lib/panels/WeatherAlertsPanel.svelte';
   import ForecastPanel from '$lib/panels/ForecastPanel.svelte';
   import AirQualityPanel from '$lib/panels/AirQualityPanel.svelte';
-  import IndoorPanel from '$lib/panels/IndoorPanel.svelte';
+  import IndoorStatsRow from '$lib/panels/IndoorStatsRow.svelte';
+  import IndoorCharts from '$lib/panels/IndoorCharts.svelte';
   import MuonChart from '$lib/panels/MuonChart.svelte';
   import MuonDiagnosticsPanel from '$lib/panels/MuonDiagnosticsPanel.svelte';
   import MuonGainDriftPanel from '$lib/panels/MuonGainDriftPanel.svelte';
@@ -92,12 +93,12 @@
   <CadenceWarningBanner />
   {#if $settingsStore.panels.headerPanel}<HeaderPanel />{/if}
   {#if $settingsStore.panels.statsRow}<StatsRow />{/if}
+  {#if $settingsStore.panels.indoorAir}<IndoorStatsRow />{/if}
   {#if $settingsStore.panels.todayStrip}<TodayStrip />{/if}
   {#if $settingsStore.panels.zambrettiCard}<ZambrettiCard />{/if}
   {#if $settingsStore.panels.weatherAlerts}<WeatherAlertsPanel />{/if}
   {#if $settingsStore.panels.forecast}<ForecastPanel />{/if}
   {#if $settingsStore.panels.airQuality}<AirQualityPanel />{/if}
-  {#if $settingsStore.panels.indoorAir}<IndoorPanel />{/if}
   {#if $settingsStore.panels.muonChart}<MuonChart />{/if}
   {#if $settingsStore.panels.muonDiagnostics}<MuonDiagnosticsPanel />{/if}
   {#if $settingsStore.panels.muonGainDrift}<MuonGainDriftPanel />{/if}
@@ -119,6 +120,7 @@
   {#if $settingsStore.panels.pressureChart}<PressureChart />{/if}
   {#if $settingsStore.panels.humidityChart}<HumidityChart />{/if}
   {#if $settingsStore.panels.lightChart}<LightChart />{/if}
+  {#if $settingsStore.panels.indoorAir}<IndoorCharts />{/if}
   {#if $settingsStore.panels.healthRow}<HealthRow />{/if}
 
   <footer class="dashboard-footer">

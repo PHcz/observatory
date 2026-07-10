@@ -41,6 +41,8 @@ INTERVALS_SEC: Final[dict[str, int]] = {
     "air_quality": 3600,
     # nmdb polls hourly; HEALTHY_MULT(2)*3600 == 7200s healthy window.
     "nmdb": 3600,
+    # indoor air node publishes every ~60s; 120s interval → healthy < 4min, down >= 8min.
+    "indoor": 120,
 }
 
 # Map source name -> (data table, optional source-column filter for earthquakes).
@@ -58,6 +60,7 @@ DATA_TABLE: Final[dict[str, tuple[str, str | None]]] = {
     "noaa": ("space_weather", None),
     "blitzortung": ("lightning_strikes", None),
     "aurora": ("aurora_status", None),
+    "indoor": ("indoor_air", None),
 }
 
 # Event-driven sources whose UPSTREAM data is genuinely sporadic: earthquakes

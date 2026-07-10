@@ -40,7 +40,7 @@ from observatory.pi.thermal import derive_status as derive_pi_status
 log = structlog.get_logger(__name__)
 router = APIRouter()
 
-LOCAL_SOURCES: tuple[str, ...] = ("weather", "muon")
+LOCAL_SOURCES: tuple[str, ...] = ("weather", "muon", "indoor")
 EXTERNAL_SOURCES: tuple[str, ...] = ("usgs", "emsc", "bgs", "noaa", "blitzortung", "aurora")
 
 # Whitelist of table names allowed in the f-string SQL below — guards against
@@ -179,6 +179,10 @@ def health() -> dict[str, Any]:
             table, src_filter = DATA_TABLE[name]
             interval = INTERVALS_SEC[name]
             last = _max_ts(conn, table, src_filter)
+            # Indoor is optional hardware — omit it entirely (don't drag `worst`
+            # to "down") on deployments/tests where no node has ever published.
+            if name == "indoor" and last is None:
+                continue
             age = (now - last) if last is not None else _NO_EVENT_AGE_SEC
             f = freshness(age, interval)
             entry: dict[str, Any] = {
