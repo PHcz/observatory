@@ -19,6 +19,37 @@ them as ranges, not quotes.
 
 Supplier contact for the PicoMuon: `picomuon@ukraa.com` (UKRAA's public sales address).
 
+## Indoor air node (optional)
+
+A small mains-powered indoor node that reports CO₂, temperature, humidity, and
+pressure. Runs **[ESPHome](https://esphome.io)** (not Pimoroni firmware) and
+publishes to the same MQTT broker as the weather node. No soldering — the two
+boards join with a STEMMA QT cable.
+
+| Item | Supplier | Approx price | Notes |
+|---|---|---|---|
+| Adafruit ESP32-S2 Feather (with onboard BME280) | [Pimoroni](https://shop.pimoroni.com/) | ~£24 | The specific board chosen because it was the ESP32-S2 Feather variant in stock with the BME280 already fitted. The onboard BME280 supplies **pressure**; temp/humidity come from the SCD-41 instead (see notes). 2.4 GHz wifi only. STEMMA QT / Qw/ST port. |
+| Adafruit SCD-41 CO₂ sensor breakout | [Pimoroni](https://shop.pimoroni.com/) / [The Pi Hut](https://thepihut.com/) | ~£45 | True photoacoustic NDIR CO₂ sensor, plus temp + humidity. Supplies CO₂ **and** the node's temp/humidity. STEMMA QT. Often out of stock at Pimoroni — The Pi Hut is the fallback. |
+| STEMMA QT / 4-pin JST-SH cable, 200 mm | [Pimoroni](https://shop.pimoroni.com/) / [The Pi Hut](https://thepihut.com/) | ~£1 | Joins the Feather to the SCD-41. The 200 mm length lets the SCD-41 sit away from the Feather's self-heat. |
+| USB-C charger + cable (any 5V) | any | ~£5 (often owned) | Mains power — no battery, no deep sleep. Any 5V USB-C charger works, including a spare phone/iPhone charger. |
+| Small vented enclosure | 3D print / any | ~£5–15 | **Must be vented** — CO₂ and gas sensors need airflow; never seal them in a box. A loosely-louvred or open-backed indoor case is fine. |
+
+**Rough cost: ~£95–110** for the node (boards + cable + case; charger usually
+already owned).
+
+**Notes:**
+
+- **2.4 GHz wifi only.** The ESP32-S2 has no 5 GHz radio — the node must join a
+  2.4 GHz SSID (same constraint as the Enviro Weather).
+- **Temp/humidity come from the SCD-41, not the onboard BME280.** The SCD-41
+  sits on the far end of the 200 mm cable, away from the ESP32's self-heat, so
+  its temperature reads cleaner than the board-mounted BME280. The BME280 is
+  used only for **pressure** (the SCD-41 has no barometer).
+- **Vented enclosure, always.** A sealed box traps a stale CO₂ pocket and makes
+  the reading meaningless. Airflow is the point.
+- **Mains USB.** No battery and no deep sleep — it publishes continuously
+  (~60 s cycle), so keep it near a socket.
+
 ## Alternatives
 
 ### Stevenson screen
@@ -61,6 +92,7 @@ Two honest brackets (the muon detector dominates the full-kit total):
   Weather (~£30) + Stevenson screen (~£20) + batteries & charger (~£15) + sundries.
   Add ~£35–60 if you need to buy a Pi.
 - **Full build incl. muon detector: ~£450–480.** The ~£360 PicoMuon is the bulk of it.
+- **Optional indoor CO₂ node: +~£95–110** on top of either bracket.
 
 Effort: roughly **6–8 weekends** end-to-end — Pi setup, weather-node provisioning, muon
 setup, external API pollers, and the SvelteKit dashboard. None of it requires soldering.

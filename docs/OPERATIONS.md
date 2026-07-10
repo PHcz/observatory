@@ -240,6 +240,98 @@ sqlite3 /var/lib/observatory/observatory.db \
 For the full acceptance procedure (unplug/replug, simulated silence, BMP280 column check),
 run `bash scripts/verify-muon.sh`.
 
+## Indoor air node (ESPHome)
+
+The optional indoor node (Adafruit ESP32-S2 Feather + SCD-41, mains-USB powered)
+runs **ESPHome** and publishes CO₂ / temperature / humidity / pressure to the
+Pi's Mosquitto broker under `indoor/<room>/sensor/<metric>/state`. A subscriber
+(`observatory.indoor.subscriber`) runs **inside `obs-api`'s lifespan** — alongside
+the weather subscriber, on the same broker connection — and coalesces each cycle's
+per-sensor messages into a single `indoor_air` row (an 8 s debounce, since the
+SCD-41 and BME280 groups publish ~4 s apart). It is multi-node, keyed by
+`node_id` (the room), and dedups on `UNIQUE(node_id, ts)`. No extra systemd unit
+to start — it lives and dies with `obs-api`.
+
+The full firmware runbook is in
+[../firmware/indoor-air/README.md](../firmware/indoor-air/README.md); the essentials:
+
+**Flashing (ESPHome).** First flash over **USB**, then updates go over wifi (OTA):
+
+```bash
+uv tool install esphome                 # once
+cd firmware/indoor-air
+cp secrets.yaml.example secrets.yaml    # then edit it (real secrets.yaml is gitignored)
+esphome compile indoor-air.yaml
+# put the S2 in download mode: hold BOOT, tap RESET, release BOOT
+esphome upload indoor-air.yaml --device /dev/cu.usbmodemXXXX
+# thereafter, OTA over wifi:
+esphome run indoor-air.yaml
+```
+
+The ESP32-S2's **first** flash needs manual download mode (hold BOOT, tap RESET,
+release BOOT) because it has no auto-reset-to-bootloader. After that, OTA needs no USB.
+
+**Broker side (on the Pi, one-time).** Create the `indoor-node` MQTT user and an
+`indoor/#` ACL, then reload Mosquitto:
+
+```bash
+sudo mosquitto_passwd -b /etc/mosquitto/passwords indoor-node '<mqtt_password>'
+# append to /etc/mosquitto/acl:
+#   user indoor-node
+#   topic readwrite indoor/#
+#   user obs-api-subscriber
+#   topic read indoor/#
+sudo systemctl reload mosquitto
+```
+
+**Migration.** The node's storage lives in `0010_indoor_air.sql` (`indoor_air` +
+`indoor_events`). `obs-api` does **not** auto-apply migrations — run
+`apply_migrations()` before restarting on upgrade, the same as every other
+migration (see [SETUP.md](SETUP.md) step 4).
+
+**Config (`/etc/observatory/observatory.env`, no prefix).** Defaults are fine;
+override only to tune:
+
+- `INDOOR_MQTT_TOPIC_FILTER` (default `indoor/#`) — the topic the subscriber joins.
+- `INDOOR_FLUSH_DEBOUNCE_SEC` (default `8`) — coalescing window per node per cycle.
+
+**CO₂ alert.** A red-band CO₂ reading (> `ALERT_CO2_RED_PPM`, default 1200 ppm —
+the dashboard's red band) pushes Telegram + ntfy, but **only during waking hours**
+`[ALERT_CO2_ALERT_START_HOUR, ALERT_CO2_ALERT_END_HOUR)` local (default 06:00–22:00)
+so an overnight stuffy bedroom doesn't ping you asleep. Crossing-only (no recovery
+message), and it fires only when an indoor node is actually publishing. It reuses the
+same alert engine and push channels as the frost/pressure rules (below):
+
+```bash
+printf 'ALERT_CO2_RED_PPM=1200\nALERT_CO2_ALERT_START_HOUR=6\nALERT_CO2_ALERT_END_HOUR=22\n' \
+  | sudo tee -a /etc/observatory/observatory.env >/dev/null
+sudo systemctl restart obs-api.service
+```
+
+**Verifying ingest.** Latest reading per node:
+
+```bash
+sqlite3 /var/lib/observatory/observatory.db \
+    "SELECT node_id, datetime(ts,'unixepoch'), co2_ppm, temp_c, humidity_pct, pressure_hpa \
+     FROM indoor_air WHERE id IN (SELECT MAX(id) FROM indoor_air GROUP BY node_id);"
+```
+
+The subscriber logs `indoor_mqtt_subscribed` on connect and `indoor_row_written`
+per flush — tail with `journalctl -u obs-api -f | grep indoor`.
+
+**Troubleshooting:**
+
+- **No readings at all** — confirm the node joined a **2.4 GHz** SSID (the ESP32-S2
+  has no 5 GHz radio), and that the `indoor-node` broker user + `indoor/#` ACL exist
+  (`mosquitto_sub -t 'indoor/#' -v` on the Pi should show the per-sensor topics).
+- **"Sensor not found" / all metrics NaN** — the STEMMA QT port and both sensors are
+  powered by the S2 Feather's **GPIO7** (I²C power). The ESPHome config toggles it on
+  at boot; if the SCD-41/BME280 don't enumerate, check that pin and the STEMMA QT cable
+  seating.
+- **Rows missing pressure but have CO₂/temp/humidity** — the onboard BME280 (pressure
+  source) isn't enumerating; the SCD-41 (CO₂/temp/humidity) is on a separate address, so
+  a BME280 fault leaves only pressure NULL.
+
 ## Threshold alerts & phone notifications (ntfy)
 
 The alert engine runs inside `obs-api` (evaluated on the DB-watcher tick, ~60 s). Three rules

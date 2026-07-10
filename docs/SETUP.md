@@ -58,7 +58,7 @@ Deploy flow once the Pi is bootstrapped:
    `deploy/` to `/opt/observatory/` (as root, e.g. `rsync --rsync-path="sudo rsync"`), then
    `sudo chown -R observatory:observatory` the synced dirs.
 4. **Apply new migrations BEFORE restarting** — obs-api does NOT auto-apply. On any upgrade
-   that adds one (e.g. `0008_alerts`, `0009_muon_weekly_summary`):
+   that adds one (e.g. `0008_alerts`, `0009_muon_weekly_summary`, `0010_indoor_air`):
    ```bash
    sudo -u observatory /opt/observatory/.venv/bin/python -c \
      "from observatory.db.migrations import apply_migrations; print(apply_migrations('/var/lib/observatory/observatory.db'))"
@@ -77,3 +77,23 @@ ingest password) live only on the Pi — never commit them.
 
 For the outdoor weather node — flashing the Enviro Weather firmware and provisioning
 its wifi + MQTT settings — follow [../deploy/enviro/PROVISIONING.md](../deploy/enviro/PROVISIONING.md).
+
+## Optional: indoor air node
+
+To add the indoor CO₂ node (ESP32-S2 Feather + SCD-41, ESPHome), fold these into the
+flow above:
+
+1. **Flash the firmware** with ESPHome — first flash over USB (the S2 needs manual
+   download mode: hold BOOT, tap RESET, release BOOT), then OTA over wifi thereafter.
+   Config lives in [../firmware/indoor-air/](../firmware/indoor-air/) (`indoor-air.yaml`
+   + `secrets.yaml.example`; copy to a gitignored `secrets.yaml` and fill it in).
+2. **Add the broker user** on the Pi — an `indoor-node` MQTT user plus an `indoor/#`
+   ACL, then `sudo systemctl reload mosquitto`.
+3. **Apply migration `0010_indoor_air`** with `apply_migrations()` (step 4 above)
+   before restarting.
+4. **Restart `obs-api`** — the indoor subscriber runs inside its lifespan, so it picks
+   up on restart; no separate service to start.
+
+Full steps (flashing, broker ACL, config keys, CO₂ alert, troubleshooting) are in
+[OPERATIONS.md](OPERATIONS.md#indoor-air-node-esphome) and
+[../firmware/indoor-air/README.md](../firmware/indoor-air/README.md).

@@ -173,7 +173,7 @@ CREATE INDEX idx_aurora_ts ON aurora_status(ts);
 ```
 
 **Migrations beyond the v1 schema** (yoyo, in `migrations/`; obs-api does NOT auto-apply — run `apply_migrations()` before restarting on upgrade):
-`0005` forecast (`forecast_hourly`/`forecast_daily`/`forecast_meta`), `0006` `air_quality`+`air_quality_meta`, `0007` `nmdb_counts`+`nmdb_meta`, `0008` `alerts` (threshold-alert log), `0009` `muon_weekly_summary` (weekly MIP-peak gain-drift). Derived weather metrics (Zambretti / MSLP / feels-like / today-so-far) are computed **read-time** — no tables.
+`0005` forecast (`forecast_hourly`/`forecast_daily`/`forecast_meta`), `0006` `air_quality`+`air_quality_meta`, `0007` `nmdb_counts`+`nmdb_meta`, `0008` `alerts` (threshold-alert log), `0009` `muon_weekly_summary` (weekly MIP-peak gain-drift), `0010` `indoor_air`+`indoor_events` (indoor CO₂ node, multi-node keyed). Derived weather metrics (Zambretti / MSLP / feels-like / today-so-far) are computed **read-time** — no tables.
 
 Back the database up daily to a USB stick (`obs-backup.timer`): gzip-compressed `observatory-YYYY-MM-DD.db.gz`, 10-day retention, with a separate **weekly** integrity check (`obs-backup-verify.timer`). Restore: `gunzip -c /mnt/backup/observatory-YYYY-MM-DD.db.gz > /var/lib/observatory/restore.db` (not `/tmp` — it is a small tmpfs).
 
@@ -194,9 +194,11 @@ GET  /api/muon/gain-drift       -> weekly MIP-peak ADC series (detector-health d
 GET  /api/muon/analysis         -> live ADC spectrum + barometric fit (rolling 7-day)
 GET  /api/forecast              -> Open-Meteo hourly + 7-day + forecast-vs-actual
 GET  /api/air-quality           -> AQI / pollutants / pollen / UV
+GET  /api/indoor/current        -> latest indoor reading per node (CO₂/temp/humidity/pressure) + age
+GET  /api/indoor/history?hours&node -> indoor time series (CO₂/temp/humidity/pressure)
 GET  /api/nmdb                  -> NMDB (Oulu) neutron-monitor %-baseline series
 GET  /api/forbush               -> Forbush-decrease indicator status
-GET  /api/alerts                -> active + recent (24h) threshold alerts (frost / pressure-fall)
+GET  /api/alerts                -> active + recent (24h) threshold alerts (frost / pressure-fall / enviro-stale / indoor-CO₂)
 GET  /api/earthquakes?from&to&min_mag -> recent earthquake list
 GET  /api/space-weather/current -> latest Kp, solar wind, flare class
 GET  /api/space-weather?from&to -> time series
@@ -222,11 +224,12 @@ Top to bottom:
 
 1. **Header** — current outside temp as the hero number, local time / sunrise / moon phase aside
 2. **Stats row** — pressure, humidity, muons/min, light (lux)
-3. **Muon flux chart** — 24h, pressure-corrected, with current-value marker
-4. **Space weather** — solar flare class, solar wind, Kp index (9-cell bar)
-5. **Earthquakes + Lightning** — side by side; earthquakes as a list with magnitude pills, lightning as counts + sparkline
-6. **Aurora** — single-line status with coloured dot
-7. **Temperature today** — supplementary 24h chart
+3. **Indoor stats row** — CO₂ (traffic-light band: green <800 / amber <1200 / red >1200) + temp / humidity / pressure, from the indoor node (toggleable). Indoor CO₂/temp/humidity/pressure charts live in the graphs section; the node also shows in the System Health row.
+4. **Muon flux chart** — 24h, pressure-corrected, with current-value marker
+5. **Space weather** — solar flare class, solar wind, Kp index (9-cell bar)
+6. **Earthquakes + Lightning** — side by side; earthquakes as a list with magnitude pills, lightning as counts + sparkline
+7. **Aurora** — single-line status with coloured dot
+8. **Temperature today** — supplementary 24h chart
 
 See `observatory_dashboard.html` for the worked sketch.
 
