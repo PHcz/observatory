@@ -12,16 +12,21 @@ import sqlite3
 import time
 from pathlib import Path
 
+import observatory.config as _cfg
+import observatory.weather.alerts.rules as _rules_mod
 from observatory.weather.alerts.rules import (
     AlertResult,
     FrostRule,
+    IndoorCo2Rule,
     PressureFallRule,
     StaleEnviroRule,
     _format_age,
+    _within_alert_window,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_0001 = REPO_ROOT / "migrations" / "0001_initial_schema.sql"
+MIGRATION_0010 = REPO_ROOT / "migrations" / "0010_indoor_air.sql"
 
 
 def _make_db() -> sqlite3.Connection:
@@ -186,3 +191,70 @@ class TestFormatAge:
 
     def test_whole_hours(self) -> None:
         assert _format_age(3 * 3600) == "3 h"
+
+
+class TestWithinAlertWindow:
+    def test_in_window(self) -> None:
+        assert _within_alert_window(12, 6, 22) is True
+
+    def test_before_start_excluded(self) -> None:
+        assert _within_alert_window(5, 6, 22) is False
+
+    def test_end_hour_excluded(self) -> None:
+        assert _within_alert_window(22, 6, 22) is False  # [start, end)
+
+    def test_start_hour_included(self) -> None:
+        assert _within_alert_window(6, 6, 22) is True
+
+    def test_midnight_crossing_window(self) -> None:
+        # e.g. a 22:00-06:00 window
+        assert _within_alert_window(23, 22, 6) is True
+        assert _within_alert_window(3, 22, 6) is True
+        assert _within_alert_window(12, 22, 6) is False
+
+
+class TestIndoorCo2Rule:
+    def _db(self) -> sqlite3.Connection:
+        conn = _make_db()  # weather table from 0001
+        conn.executescript(MIGRATION_0010.read_text())  # + indoor_air
+        return conn
+
+    def _insert(self, conn: sqlite3.Connection, co2: int, node: str = "living-room") -> None:
+        conn.execute(
+            "INSERT INTO indoor_air (node_id, ts, co2_ppm) VALUES (?, ?, ?)",
+            (node, int(time.time()), co2),
+        )
+        conn.commit()
+
+    def test_triggered_when_red_in_window(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(_rules_mod, "_current_hour", lambda: 12)  # midday
+        conn = self._db()
+        self._insert(conn, 1300)
+        r = IndoorCo2Rule().evaluate(conn)
+        assert r.rule == "indoor_co2_high"
+        assert r.triggered is True
+        assert "1300" in r.detail
+
+    def test_not_triggered_below_threshold(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(_rules_mod, "_current_hour", lambda: 12)
+        conn = self._db()
+        self._insert(conn, 900)
+        assert IndoorCo2Rule().evaluate(conn).triggered is False
+
+    def test_not_triggered_outside_window_even_if_red(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(_rules_mod, "_current_hour", lambda: 3)  # 3am — quiet hours
+        conn = self._db()
+        self._insert(conn, 1500)
+        assert IndoorCo2Rule().evaluate(conn).triggered is False
+
+    def test_empty_not_triggered(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(_rules_mod, "_current_hour", lambda: 12)
+        conn = self._db()
+        assert IndoorCo2Rule().evaluate(conn).triggered is False
+
+    def test_threshold_is_config_driven(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        monkeypatch.setattr(_rules_mod, "_current_hour", lambda: 12)
+        monkeypatch.setattr(_cfg.settings, "alert_co2_red_ppm", 1000)
+        conn = self._db()
+        self._insert(conn, 1100)  # above the tightened 1000 threshold
+        assert IndoorCo2Rule().evaluate(conn).triggered is True

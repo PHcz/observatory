@@ -206,7 +206,61 @@ class StaleEnviroRule:
         return AlertResult(rule=self.rule, severity="alert", detail=detail, triggered=triggered)
 
 
+def _current_hour() -> int:
+    """Local wall-clock hour 0-23 (indirected so tests can monkeypatch it)."""
+    import time
+
+    return int(time.localtime().tm_hour)
+
+
+def _within_alert_window(hour: int, start: int, end: int) -> bool:
+    """True if `hour` is in [start, end). Handles windows that cross midnight."""
+    if start <= end:
+        return start <= hour < end
+    return hour >= start or hour < end  # e.g. 22..6
+
+
+class IndoorCo2Rule:
+    """Indoor CO2 red-band alert (Phase 15).
+
+    Triggered when the latest indoor CO2 reading exceeds
+    settings.alert_co2_red_ppm (default 1200, the dashboard's red band) AND the
+    local hour is within [alert_co2_alert_start_hour, alert_co2_alert_end_hour)
+    (default 06:00-22:00) — so a stuffy bedroom overnight doesn't ping you while
+    asleep. Not triggered (silently) outside the window or with no indoor data.
+    Recovery push is suppressed for this rule (see engine._NO_RECOVERY_NOTIFY).
+    """
+
+    rule = "indoor_co2_high"
+
+    def evaluate(self, conn: sqlite3.Connection) -> AlertResult:
+        s = _config_mod.settings
+        row = conn.execute(
+            "SELECT co2_ppm, node_id FROM indoor_air "
+            "WHERE co2_ppm IS NOT NULL ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+        if row is None or row[0] is None:
+            return AlertResult(
+                rule=self.rule, severity="alert", detail="No indoor CO2 data", triggered=False
+            )
+
+        co2 = int(row[0])
+        node = row[1]
+        in_window = _within_alert_window(
+            _current_hour(), s.alert_co2_alert_start_hour, s.alert_co2_alert_end_hour
+        )
+        triggered = in_window and co2 > s.alert_co2_red_ppm
+        detail = f"CO₂ {co2} ppm in {node} — ventilate the room"
+        return AlertResult(rule=self.rule, severity="alert", detail=detail, triggered=triggered)
+
+
 # ACTIVE_RULES — append new rules here.
 # StaleEnviroRule added 2026-06-24 by explicit request (battery-outage alerting),
 # overriding the original Phase-16 deferral of stale-source rules.
-ACTIVE_RULES: list[AlertRule] = [FrostRule(), PressureFallRule(), StaleEnviroRule()]
+# IndoorCo2Rule added 2026-07-10 (indoor CO2 red-band alert, waking hours only).
+ACTIVE_RULES: list[AlertRule] = [
+    FrostRule(),
+    PressureFallRule(),
+    StaleEnviroRule(),
+    IndoorCo2Rule(),
+]

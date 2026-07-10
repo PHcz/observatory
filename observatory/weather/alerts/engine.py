@@ -49,12 +49,18 @@ _first_seen_ts: dict[str, int | None] = {}
 _background_tasks: set[asyncio.Task] = set()  # type: ignore[type-arg]
 
 
+# Crossing-only alerts: no recovery push (e.g. the CO2 alert's time-window close
+# would otherwise emit a misleading "cleared" at 22:00 while CO2 is still high).
+_NO_RECOVERY_NOTIFY: frozenset[str] = frozenset({"indoor_co2_high"})
+
+
 def _rule_title(rule_name: str) -> str:
     """Human-readable push title for a rule name."""
     return {
         "frost_risk": "Frost Risk",
         "rapid_pressure_fall": "Rapid Pressure Fall",
         "enviro_stale": "Enviro Offline",
+        "indoor_co2_high": "Indoor CO₂ High",
     }.get(rule_name, rule_name.replace("_", " ").title())
 
 
@@ -191,9 +197,11 @@ def evaluate_rules(conn: sqlite3.Connection) -> None:
             _schedule_async(fanout_event(resolved_envelope))
 
             # Recovery push (both channels) — e.g. "Enviro Online" after a battery swap.
-            from observatory.weather.alerts.notifier import notify_all
+            # Suppressed for crossing-only rules (e.g. indoor CO2's window-close resolve).
+            if rule_name not in _NO_RECOVERY_NOTIFY:
+                from observatory.weather.alerts.notifier import notify_all
 
-            rec_title, rec_body = _recovery_message(rule_name)
-            _schedule_async(notify_all(title=rec_title, message=rec_body, priority=3))
+                rec_title, rec_body = _recovery_message(rule_name)
+                _schedule_async(notify_all(title=rec_title, message=rec_body, priority=3))
 
         # else: still-clear — no action.

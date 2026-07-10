@@ -228,6 +228,15 @@ class Settings(BaseSettings):
     # Hysteresis: minimum minutes a condition must be active before an ntfy push is sent.
     alert_min_active_minutes: int = Field(default=5)
 
+    # --- Indoor CO2 red-band alert (Phase 15) ---
+    # Push (Telegram/ntfy) when indoor CO2 exceeds this — matches the dashboard's
+    # red band — but only during waking hours [start_hour, end_hour) local time,
+    # so a stuffy bedroom overnight doesn't ping you asleep. Crossing-only (no
+    # recovery push). Fires only when an indoor node is publishing.
+    alert_co2_red_ppm: int = Field(default=1200, ge=400, le=5000)
+    alert_co2_alert_start_hour: int = Field(default=6, ge=0, le=23)
+    alert_co2_alert_end_hour: int = Field(default=22, ge=1, le=24)
+
     # --- ntfy integration (Phase 16, ENH-04) — the one sanctioned outbound exception ---
     # ntfy is a self-hostable push notification service. Default: disabled.
     # Set OBSERVATORY_ALERT_NTFY_ENABLED=true on the Pi .env to enable.
