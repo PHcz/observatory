@@ -127,4 +127,9 @@ skips = ["B101", "B311", "B404", "B603", "B607"]
 # Security floor for a transitive dep (msgpack has no direct importer here).
 # Clears the high-severity OOB-read advisory (Dependabot, 2026-06); keeps it from
 # regressing on a future `uv lock`.
-constraint-dependencies = ["msgpack>=1.2.1"]
+constraint-dependencies = [
+  "msgpack>=1.2.1",
+  # pip is transitive via pip-api (pip-audit); floor clears GHSA-wf93-45jw-7689
+  # (path traversal in entry-point names, pip < 26.1.2 — Dependabot #16, 2026-07).
+  "pip>=26.1.2",
+]
