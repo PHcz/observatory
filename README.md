@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-![Observatory dashboard (light theme): hero outside-temperature, stats row, pressure-corrected muon flux chart, space weather, earthquakes and lightning, and aurora status](docs/images/dashboard-light.png)
+![Observatory dashboard (light theme): hero outside temperature, outdoor stats (pressure, humidity, muons, light), indoor air stats (CO₂ with a traffic-light verdict, temperature, humidity, pressure), today-so-far, Zambretti outlook, threshold alerts, and local forecast](docs/images/dashboard-light.png)
 
 This repository is a **build-your-own guide**: everything you need to assemble and run your own copy. It's an actively-maintained personal build running at home — fork it, adapt it, build your own observatory.
 
@@ -106,7 +106,7 @@ Full clean-machine build and deploy instructions — Pi provisioning, weather-no
 
 The dashboard ships with both a light and a dark theme (switchable from `/settings`).
 
-![Light theme — the full dashboard: hero temperature, stats row, muon flux, space weather, earthquakes, lightning, and aurora](docs/images/dashboard-light.png)
+![Light theme — the dashboard: hero temperature, outdoor and indoor-air (CO₂) stats, today-so-far, near-term outlook, threshold alerts, and local forecast](docs/images/dashboard-light.png)
 
 ![Dark theme — the same dashboard rendered in dark mode](docs/images/dashboard-dark.png)
 
