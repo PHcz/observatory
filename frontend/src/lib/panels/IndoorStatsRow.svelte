@@ -2,7 +2,7 @@
   import { indoorStore } from '$lib/stores/indoor';
   import { healthStore } from '$lib/stores/health';
   import { deriveStaleness } from '$lib/utils/staleness';
-  import { dewPointC } from '$lib/utils/dewpoint';
+  import { dewPointC, dewComfort } from '$lib/utils/dewpoint';
   import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
 
   $: node = $indoorStore.current?.nodes?.[0] ?? null;
@@ -29,6 +29,10 @@
     node?.temp_c != null && node?.humidity_pct != null
       ? `${dewPointC(node.temp_c, node.humidity_pct)}°C`
       : '—';
+  $: dewComfortStr =
+    node?.temp_c != null && node?.humidity_pct != null
+      ? dewComfort(dewPointC(node.temp_c, node.humidity_pct))
+      : null;
 </script>
 
 <section
@@ -57,6 +61,7 @@
     <div class="stat-label">Humidity</div>
     <div class="stat-value">{#if humStr !== null}{humStr}<span class="stat-unit">%</span>{:else}—{/if}</div>
     <div class="stat-meta">relative · dew point {dewStr}</div>
+    {#if dewComfortStr}<div class="stat-subnote comfort">{dewComfortStr}</div>{/if}
   </div>
 
   <div class="stat">
@@ -125,6 +130,11 @@
     font-weight: 500;
     margin-top: 4px;
     line-height: 1.4;
+  }
+  /* Dew-comfort guide — muted, matches the outdoor humidity subnote. */
+  .stat-subnote.comfort {
+    color: var(--text-muted);
+    font-weight: 400;
   }
   /* CO2 traffic-light bands (value + verdict). */
   .band-good {

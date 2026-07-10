@@ -301,12 +301,16 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
   });
 }
 
+// CO2 band-boundary colours (semantic, fixed across themes — mirror the panel).
+const CO2_AMBER = '#c2913b';
+const CO2_RED = '#c0563f';
+
 /**
- * Indoor CO2 (ppm) over the 24h window. Single line + current-value marker,
- * y-axis bracketed via niceFloorDomain (never spills past the extreme ticks).
- * Dashed reference rules at 800 / 1200 ppm (the good→moderate→poor boundaries)
- * appear only when the data range crosses them, so they add context without
- * clutter on a well-ventilated day.
+ * Indoor CO2 (ppm) over the 24h window. Dual-layer (faint raw + LOESS-smoothed,
+ * mirroring the temperature/pressure charts) so the trend reads clearly while
+ * real spikes stay visible underneath, plus a current-value marker. Coloured
+ * dashed band boundaries at 800 (amber) and 1200 (red) ppm show only when the
+ * data range crosses them. y-axis bracketed via niceFloorDomain.
  */
 export function buildIndoorCo2Plot(data: IndoorPoint[], width: number): SVGElement | HTMLElement {
   const now = Date.now();
@@ -315,9 +319,14 @@ export function buildIndoorCo2Plot(data: IndoorPoint[], width: number): SVGEleme
   const t = tokens();
 
   const valid = data.filter((p) => p.co2_ppm != null);
-  const ys = valid.map((p) => p.co2_ppm as number);
-  const last = valid.length > 0 ? valid[valid.length - 1] : null;
-  const yScale = niceFloorDomain(ys, 4);
+  const rawYs = valid.map((p) => p.co2_ppm as number);
+  const smoothedYs = loess(rawYs, 0.15);
+  const smoothed: { ts: number; co2_ppm: number }[] = valid.map((p, i) => ({
+    ts: p.ts,
+    co2_ppm: smoothedYs[i],
+  }));
+  const last = smoothed.length > 0 ? smoothed[smoothed.length - 1] : null;
+  const yScale = niceFloorDomain([...rawYs, ...smoothedYs], 4);
 
   return Plot.plot({
     width,
@@ -330,11 +339,21 @@ export function buildIndoorCo2Plot(data: IndoorPoint[], width: number): SVGEleme
     y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
-      // CO2 band boundaries (visible only when in range).
-      Plot.ruleY([800, 1200], { stroke: t.grid, strokeWidth: 1, strokeDasharray: '3 3' }),
+      // CO2 band boundaries — coloured so they stand out from the gridlines.
+      Plot.ruleY([800], { stroke: CO2_AMBER, strokeWidth: 1, strokeDasharray: '4 3', strokeOpacity: 0.65 }),
+      Plot.ruleY([1200], { stroke: CO2_RED, strokeWidth: 1, strokeDasharray: '4 3', strokeOpacity: 0.65 }),
+      // Raw line behind, faint.
       Plot.line(valid, {
         x: (d: IndoorPoint) => new Date(d.ts * 1000),
         y: (d: IndoorPoint) => d.co2_ppm as number,
+        stroke: t.raw,
+        strokeWidth: 0.5,
+        strokeOpacity: 0.55,
+      }),
+      // Smoothed line on top.
+      Plot.line(smoothed, {
+        x: (d: { ts: number; co2_ppm: number }) => new Date(d.ts * 1000),
+        y: (d: { ts: number; co2_ppm: number }) => d.co2_ppm,
         stroke: t.data,
         strokeWidth: 2,
         strokeLinejoin: 'round',
@@ -343,8 +362,8 @@ export function buildIndoorCo2Plot(data: IndoorPoint[], width: number): SVGEleme
       ...(last
         ? [
             Plot.dot([last], {
-              x: (d: IndoorPoint) => new Date(d.ts * 1000),
-              y: (d: IndoorPoint) => d.co2_ppm as number,
+              x: (d: { ts: number; co2_ppm: number }) => new Date(d.ts * 1000),
+              y: (d: { ts: number; co2_ppm: number }) => d.co2_ppm,
               fill: t.marker,
               r: 5,
             }),
@@ -370,12 +389,21 @@ export function buildPressurePlot(data: WeatherPoint[], width: number): SVGEleme
   return Plot.plot({
     width,
     height: 180,
-    marginLeft: 46,
+    // Pressure sits near ~1017; with a narrow indoor range the ticks carry
+    // decimals ("1017.15"), which need more room than the 46px other charts use.
+    marginLeft: 58,
     marginRight: 12,
     marginBottom: 28,
     marginTop: 8,
     x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
-    y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
+    y: {
+      label: null,
+      grid: true,
+      // No thousands separator — "1017.15" not "1,017.15" (the comma read as a
+      // clipped label and is unconventional for pressure anyway).
+      tickFormat: (d: number) => d.toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 2 }),
+      ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}),
+    },
     marks: [
       Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
       Plot.line(valid, {
