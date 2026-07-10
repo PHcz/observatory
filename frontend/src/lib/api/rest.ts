@@ -12,6 +12,8 @@ import type {
   AlertsResponse,
   WeatherTodayResponse,
   WeatherOutlookResponse,
+  IndoorCurrentResponse,
+  IndoorHistoryResponse,
 } from '$lib/types';
 
 async function getJson<T>(url: string): Promise<T> {
@@ -108,4 +110,15 @@ export async function fetchWeatherToday(): Promise<WeatherTodayResponse> {
 
 export async function fetchWeatherOutlook(): Promise<WeatherOutlookResponse> {
   return getJson<WeatherOutlookResponse>('/api/weather/outlook');
+}
+
+// Phase 15 — indoor air node(s).
+
+export async function fetchIndoorCurrent(): Promise<IndoorCurrentResponse> {
+  return getJson<IndoorCurrentResponse>('/api/indoor/current');
+}
+
+export async function fetchIndoorHistory(hours = 24, node?: string): Promise<IndoorHistoryResponse> {
+  const q = node ? `?hours=${hours}&node=${encodeURIComponent(node)}` : `?hours=${hours}`;
+  return getJson<IndoorHistoryResponse>(`/api/indoor/history${q}`);
 }

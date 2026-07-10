@@ -6,6 +6,7 @@ import type {
   BarometricFitResult,
   NmdbSeriesPoint,
   NmdbLocalPoint,
+  IndoorPoint,
 } from '$lib/types';
 import { loess } from '$lib/charts/loess';
 import { niceFloorDomain } from '$lib/charts/domain';
@@ -291,6 +292,59 @@ export function buildTempPlot(data: WeatherPoint[], width: number): SVGElement |
             Plot.dot([last], {
               x: (d: WeatherPoint) => new Date(d.ts * 1000),
               y: (d: WeatherPoint) => d.temp_c as number,
+              fill: t.marker,
+              r: 5,
+            }),
+          ]
+        : []),
+    ],
+  });
+}
+
+/**
+ * Indoor CO2 (ppm) over the 24h window. Single line + current-value marker,
+ * y-axis bracketed via niceFloorDomain (never spills past the extreme ticks).
+ * Dashed reference rules at 800 / 1200 ppm (the good→moderate→poor boundaries)
+ * appear only when the data range crosses them, so they add context without
+ * clutter on a well-ventilated day.
+ */
+export function buildIndoorCo2Plot(data: IndoorPoint[], width: number): SVGElement | HTMLElement {
+  const now = Date.now();
+  const start = new Date(now - WINDOW_SEC * 1000);
+  const end = new Date(now);
+  const t = tokens();
+
+  const valid = data.filter((p) => p.co2_ppm != null);
+  const ys = valid.map((p) => p.co2_ppm as number);
+  const last = valid.length > 0 ? valid[valid.length - 1] : null;
+  const yScale = niceFloorDomain(ys, 4);
+
+  return Plot.plot({
+    width,
+    height: 180,
+    marginLeft: 46,
+    marginRight: 12,
+    marginBottom: 28,
+    marginTop: 8,
+    x: { type: 'time', domain: [start, end], ticks: xTimeTickValues(start.getTime(), end.getTime()) },
+    y: { label: null, grid: true, ...(yScale ? { domain: yScale.domain, ticks: yScale.ticks } : {}) },
+    marks: [
+      Plot.gridY({ stroke: t.grid, strokeWidth: 1 }),
+      // CO2 band boundaries (visible only when in range).
+      Plot.ruleY([800, 1200], { stroke: t.grid, strokeWidth: 1, strokeDasharray: '3 3' }),
+      Plot.line(valid, {
+        x: (d: IndoorPoint) => new Date(d.ts * 1000),
+        y: (d: IndoorPoint) => d.co2_ppm as number,
+        stroke: t.data,
+        strokeWidth: 2,
+        strokeLinejoin: 'round',
+        strokeLinecap: 'round',
+      }),
+      ...(last
+        ? [
+            Plot.dot([last], {
+              x: (d: IndoorPoint) => new Date(d.ts * 1000),
+              y: (d: IndoorPoint) => d.co2_ppm as number,
               fill: t.marker,
               r: 5,
             }),

@@ -39,6 +39,7 @@ SCHEMA_0007 = REPO_ROOT / "migrations" / "0007_nmdb.sql"
 SCHEMA_0008 = REPO_ROOT / "migrations" / "0008_alerts.sql"
 # Phase 16 ENH-01: muon_weekly_summary table.
 SCHEMA_0009 = REPO_ROOT / "migrations" / "0009_muon_weekly_summary.sql"
+SCHEMA_0010 = REPO_ROOT / "migrations" / "0010_indoor_air.sql"
 
 
 @pytest.fixture(autouse=True)
@@ -55,6 +56,7 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     conn.executescript(SCHEMA_0007.read_text())
     conn.executescript(SCHEMA_0008.read_text())
     conn.executescript(SCHEMA_0009.read_text())
+    conn.executescript(SCHEMA_0010.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
     conn.close()
 

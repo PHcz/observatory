@@ -200,6 +200,35 @@ export interface AirQualityResponse {
   fetched_at: number | null;
 }
 
+// Phase 15 — indoor air node(s).
+export interface IndoorNode {
+  node_id: string;
+  ts: number;
+  temp_c: number | null;
+  humidity_pct: number | null;
+  pressure_hpa: number | null;
+  co2_ppm: number | null;
+  age_sec: number;
+}
+export interface IndoorCurrentResponse {
+  nodes: IndoorNode[];
+  ts: number;
+}
+export interface IndoorPoint {
+  ts: number;
+  co2_ppm: number | null;
+  temp_c: number | null;
+  humidity_pct: number | null;
+  pressure_hpa: number | null;
+}
+export interface IndoorHistoryResponse {
+  from: number;
+  to: number;
+  hours: number;
+  node: string | null;
+  rows: (IndoorPoint & { node_id: string })[];
+}
+
 // Phase 13 (MU2-05/06/07) — live muon science response types.
 
 export interface AdcHistogramBin {

@@ -12,6 +12,7 @@ export type PanelKey =
   | 'weatherAlerts'
   | 'forecast'
   | 'airQuality'
+  | 'indoorAir'
   | 'muonChart'
   | 'muonDiagnostics'
   | 'muonGainDrift'
@@ -42,6 +43,7 @@ export const ALL_PANELS: PanelKey[] = [
   'weatherAlerts',
   'forecast',
   'airQuality',
+  'indoorAir',
   'muonChart',
   'muonDiagnostics',
   'muonGainDrift',

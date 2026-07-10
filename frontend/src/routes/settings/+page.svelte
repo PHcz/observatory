@@ -14,6 +14,7 @@
     { key: 'weatherAlerts', label: 'Weather alerts (frost & pressure-fall rules)' },
     { key: 'forecast', label: 'Local forecast' },
     { key: 'airQuality', label: 'Air quality' },
+    { key: 'indoorAir', label: 'Indoor air (CO₂)' },
     { key: 'muonChart', label: 'Muon flux chart' },
     { key: 'muonDiagnostics', label: 'Muon diagnostics (inter-arrival + rate distribution)' },
     { key: 'muonGainDrift', label: 'Muon gain-drift (weekly MIP-peak tracking)' },

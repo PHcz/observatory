@@ -28,6 +28,7 @@ from observatory.api.routers import events as events_router
 from observatory.api.routers import forbush as forbush_router
 from observatory.api.routers import forecast as forecast_router
 from observatory.api.routers import health as health_router
+from observatory.api.routers import indoor as indoor_router
 from observatory.api.routers import ingest as ingest_router
 from observatory.api.routers import lightning as lightning_router
 from observatory.api.routers import muon as muon_router
@@ -117,6 +118,7 @@ app.include_router(events_router.router, prefix="/api", tags=["events"])
 app.include_router(stats_router.router, prefix="/api", tags=["stats"])
 app.include_router(forecast_router.router, prefix="/api", tags=["forecast"])
 app.include_router(air_quality_router.router, prefix="/api", tags=["air_quality"])
+app.include_router(indoor_router.router, prefix="/api", tags=["indoor"])
 app.include_router(nmdb_router.router, prefix="/api", tags=["nmdb"])
 app.include_router(forbush_router.router, prefix="/api", tags=["forbush"])
 app.include_router(alerts_router.router, prefix="/api", tags=["alerts"])

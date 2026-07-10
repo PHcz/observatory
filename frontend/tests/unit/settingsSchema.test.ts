@@ -15,9 +15,9 @@ describe('settingsSchema DEFAULTS', () => {
     expect(onPanels.every(([, v]) => v === true)).toBe(true);
   });
 
-  it('exposes exactly 23 panel keys', () => {
-    expect(Object.keys(DEFAULTS.panels).length).toBe(23);
-    expect(ALL_PANELS.length).toBe(23);
+  it('exposes exactly 24 panel keys', () => {
+    expect(Object.keys(DEFAULTS.panels).length).toBe(24);
+    expect(ALL_PANELS.length).toBe(24);
   });
 
   it('PanelKey enum has the locked members in locked order', () => {
@@ -32,6 +32,7 @@ describe('settingsSchema DEFAULTS', () => {
       'weatherAlerts',
       'forecast',
       'airQuality',
+      'indoorAir',
       'muonChart',
       'muonDiagnostics',
       'muonGainDrift',

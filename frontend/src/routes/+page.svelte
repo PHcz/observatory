@@ -4,6 +4,7 @@
   import { initHealthPolling } from '$lib/stores/health';
   import { initForecastPolling } from '$lib/stores/forecast';
   import { initAirQualityPolling } from '$lib/stores/airQuality';
+  import { initIndoorPolling } from '$lib/stores/indoor';
   import { initAlertsPolling } from '$lib/stores/alerts';
   import { initWeatherDerivedPolling } from '$lib/stores/weatherDerived';
   import { initMuonAnalysisPolling } from '$lib/stores/muonAnalysis';
@@ -21,6 +22,7 @@
   import WeatherAlertsPanel from '$lib/panels/WeatherAlertsPanel.svelte';
   import ForecastPanel from '$lib/panels/ForecastPanel.svelte';
   import AirQualityPanel from '$lib/panels/AirQualityPanel.svelte';
+  import IndoorPanel from '$lib/panels/IndoorPanel.svelte';
   import MuonChart from '$lib/panels/MuonChart.svelte';
   import MuonDiagnosticsPanel from '$lib/panels/MuonDiagnosticsPanel.svelte';
   import MuonGainDriftPanel from '$lib/panels/MuonGainDriftPanel.svelte';
@@ -42,6 +44,7 @@
   let cleanupHealth: (() => void) | undefined;
   let cleanupForecast: (() => void) | undefined;
   let cleanupAirQuality: (() => void) | undefined;
+  let cleanupIndoor: (() => void) | undefined;
   let cleanupMuonAnalysis: (() => void) | undefined;
   let cleanupMuonDiagnostics: (() => void) | undefined;
   let cleanupMuonGainDrift: (() => void) | undefined;
@@ -55,6 +58,7 @@
     cleanupHealth = initHealthPolling();
     cleanupForecast = initForecastPolling();
     cleanupAirQuality = initAirQualityPolling();
+    cleanupIndoor = initIndoorPolling();
     cleanupMuonAnalysis = initMuonAnalysisPolling();
     cleanupMuonDiagnostics = initMuonDiagnosticsPolling();
     cleanupMuonGainDrift = initMuonGainDriftPolling();
@@ -69,6 +73,7 @@
     cleanupHealth?.();
     cleanupForecast?.();
     cleanupAirQuality?.();
+    cleanupIndoor?.();
     cleanupMuonAnalysis?.();
     cleanupMuonDiagnostics?.();
     cleanupMuonGainDrift?.();
@@ -92,6 +97,7 @@
   {#if $settingsStore.panels.weatherAlerts}<WeatherAlertsPanel />{/if}
   {#if $settingsStore.panels.forecast}<ForecastPanel />{/if}
   {#if $settingsStore.panels.airQuality}<AirQualityPanel />{/if}
+  {#if $settingsStore.panels.indoorAir}<IndoorPanel />{/if}
   {#if $settingsStore.panels.muonChart}<MuonChart />{/if}
   {#if $settingsStore.panels.muonDiagnostics}<MuonDiagnosticsPanel />{/if}
   {#if $settingsStore.panels.muonGainDrift}<MuonGainDriftPanel />{/if}
