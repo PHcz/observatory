@@ -44,21 +44,30 @@ export function reorderable(node: HTMLElement, params: Params) {
     }
   }
 
-  function onPointerUp(e: PointerEvent) {
-    if (fromIndex < 0) return;
-    let target = targetIndexFor(e.clientY);
-    // Removing the dragged row before re-inserting shifts later targets down by one.
-    if (target > fromIndex) target -= 1;
+  function cleanup() {
     clearMarks();
     dragRow?.classList.remove('reorder-dragging');
-    const from = fromIndex;
     fromIndex = -1;
     dragRow = null;
     overRow = null;
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
-    window.removeEventListener('pointercancel', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerCancel);
+  }
+
+  function onPointerUp(e: PointerEvent) {
+    if (fromIndex < 0) return;
+    let target = targetIndexFor(e.clientY);
+    // Removing the dragged row before re-inserting shifts later targets down by one.
+    if (target > fromIndex) target -= 1;
+    const from = fromIndex;
+    cleanup();
     if (target !== from && target >= 0) onReorder(from, target);
+  }
+
+  function onPointerCancel() {
+    if (fromIndex < 0) return;
+    cleanup();
   }
 
   function onPointerDown(e: PointerEvent) {
@@ -73,7 +82,7 @@ export function reorderable(node: HTMLElement, params: Params) {
     row.classList.add('reorder-dragging');
     window.addEventListener('pointermove', onPointerMove, { passive: false });
     window.addEventListener('pointerup', onPointerUp);
-    window.addEventListener('pointercancel', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
   }
 
   node.addEventListener('pointerdown', onPointerDown);
@@ -86,7 +95,7 @@ export function reorderable(node: HTMLElement, params: Params) {
       node.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('pointercancel', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
     },
   };
 }

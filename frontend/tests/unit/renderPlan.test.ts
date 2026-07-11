@@ -73,4 +73,11 @@ describe('buildRenderPlan', () => {
       { kind: 'panel', key: 'headerPanel' },
     ]);
   });
+
+  it('fuses earthquakes+lightning when only a hidden panel separates them', () => {
+    const panels = allVisible();
+    panels.aurora = false;
+    const plan = buildRenderPlan(['earthquakes', 'aurora', 'lightning'] as PanelKey[], panels);
+    expect(plan).toEqual([{ kind: 'twocol', keys: ['earthquakes', 'lightning'] }]);
+  });
 });

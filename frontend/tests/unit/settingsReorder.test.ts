@@ -3,7 +3,7 @@ import { render, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import SettingsPage from '../../src/routes/settings/+page.svelte';
 import { settingsStore } from '$lib/stores/settings';
-import { ALL_PANELS } from '$lib/utils/settingsSchema';
+import { ALL_PANELS, DEFAULT_ORDER } from '$lib/utils/settingsSchema';
 
 describe('settings reorder wiring', () => {
   beforeEach(() => settingsStore.resetToDefaults());
@@ -18,5 +18,16 @@ describe('settings reorder wiring', () => {
     expect(after[0]).toBe(before[1]);
     expect(after[1]).toBe(before[0]);
     expect(new Set(after)).toEqual(new Set(ALL_PANELS));
+  });
+
+  it('reset restores the default order after the order has been mutated', async () => {
+    const { getByText } = render(SettingsPage);
+    settingsStore.update((s) => ({ ...s, order: [...s.order].reverse() }));
+    expect(get(settingsStore).order).not.toEqual(DEFAULT_ORDER);
+
+    const resetLink = getByText(/reset/i);
+    await fireEvent.click(resetLink);
+
+    expect(get(settingsStore).order).toEqual(DEFAULT_ORDER);
   });
 });
