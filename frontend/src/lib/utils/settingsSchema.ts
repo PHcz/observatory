@@ -33,6 +33,7 @@ export type PanelKey =
 export interface Settings {
   theme: Theme;
   panels: Record<PanelKey, boolean>;
+  order: PanelKey[];
 }
 
 export const ALL_PANELS: PanelKey[] = [
@@ -72,7 +73,31 @@ export const DEFAULTS: Settings = {
   panels: Object.fromEntries(
     ALL_PANELS.map((k) => [k, !PANEL_DEFAULTS_OFF.includes(k)])
   ) as Record<PanelKey, boolean>,
+  order: [...ALL_PANELS],
 };
+
+// Safe-merge a stored order into a full permutation of `canonical`:
+// keep valid stored keys in their stored order (de-duped), drop unknown keys,
+// then append any canonical keys the stored order was missing. Guarantees the
+// result is always a complete permutation — the same missing-key philosophy as
+// the panels safe-merge above.
+export function mergeOrder(stored: unknown, canonical: PanelKey[]): PanelKey[] {
+  const valid = new Set<string>(canonical);
+  const seen = new Set<PanelKey>();
+  const result: PanelKey[] = [];
+  if (Array.isArray(stored)) {
+    for (const k of stored) {
+      if (typeof k === 'string' && valid.has(k) && !seen.has(k as PanelKey)) {
+        result.push(k as PanelKey);
+        seen.add(k as PanelKey);
+      }
+    }
+  }
+  for (const k of canonical) {
+    if (!seen.has(k)) result.push(k);
+  }
+  return result;
+}
 
 export function parseSettings(raw: string | null): Settings {
   if (!raw) return structuredClone(DEFAULTS);
@@ -90,7 +115,8 @@ export function parseSettings(raw: string | null): Settings {
         // Missing keys keep DEFAULTS (= visible) — safe-merge rule.
       }
     }
-    return { theme, panels };
+    const order = mergeOrder((parsed as { order?: unknown })?.order, ALL_PANELS);
+    return { theme, panels, order };
   } catch {
     return structuredClone(DEFAULTS);
   }

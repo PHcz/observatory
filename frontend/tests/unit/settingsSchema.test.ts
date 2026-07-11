@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULTS, parseSettings, ALL_PANELS } from '$lib/utils/settingsSchema';
+import { DEFAULTS, parseSettings, ALL_PANELS, mergeOrder } from '$lib/utils/settingsSchema';
 
 describe('settingsSchema DEFAULTS', () => {
   it('theme defaults to auto', () => {
@@ -81,5 +81,60 @@ describe('parseSettings', () => {
     const result = parseSettings('{"theme":"light"}');
     expect(result.theme).toBe('light');
     expect(result.panels).toEqual(DEFAULTS.panels);
+  });
+});
+
+describe('mergeOrder', () => {
+  it('returns canonical order when stored is not an array', () => {
+    expect(mergeOrder(undefined, ALL_PANELS)).toEqual(ALL_PANELS);
+    expect(mergeOrder(null, ALL_PANELS)).toEqual(ALL_PANELS);
+    expect(mergeOrder('nope', ALL_PANELS)).toEqual(ALL_PANELS);
+  });
+
+  it('preserves a valid full permutation', () => {
+    const reversed = [...ALL_PANELS].reverse();
+    expect(mergeOrder(reversed, ALL_PANELS)).toEqual(reversed);
+  });
+
+  it('drops unknown keys', () => {
+    const stored = ['lightning', 'bogusPanel', 'headerPanel'];
+    const result = mergeOrder(stored, ALL_PANELS);
+    expect(result).not.toContain('bogusPanel');
+    expect(result[0]).toBe('lightning');
+    expect(result[1]).toBe('headerPanel');
+  });
+
+  it('appends missing canonical keys in canonical order', () => {
+    const stored = ['lightning', 'headerPanel'];
+    const result = mergeOrder(stored, ALL_PANELS);
+    expect(result).toHaveLength(ALL_PANELS.length);
+    expect(new Set(result)).toEqual(new Set(ALL_PANELS));
+    expect(result[0]).toBe('lightning');
+    expect(result[1]).toBe('headerPanel');
+    // remaining are canonical order minus the two already-placed
+    expect(result.slice(2)).toEqual(ALL_PANELS.filter((k) => k !== 'lightning' && k !== 'headerPanel'));
+  });
+
+  it('collapses duplicates', () => {
+    const stored = ['lightning', 'lightning', 'headerPanel'];
+    const result = mergeOrder(stored, ALL_PANELS);
+    expect(result.filter((k) => k === 'lightning')).toHaveLength(1);
+    expect(new Set(result)).toEqual(new Set(ALL_PANELS));
+  });
+});
+
+describe('parseSettings order', () => {
+  it('defaults order to ALL_PANELS when absent', () => {
+    expect(parseSettings('{"theme":"dark"}').order).toEqual(ALL_PANELS);
+  });
+
+  it('safe-merges a stored partial order', () => {
+    const result = parseSettings('{"order":["lightning","headerPanel"]}');
+    expect(result.order[0]).toBe('lightning');
+    expect(new Set(result.order)).toEqual(new Set(ALL_PANELS));
+  });
+
+  it('DEFAULTS.order equals ALL_PANELS', () => {
+    expect(DEFAULTS.order).toEqual(ALL_PANELS);
   });
 });
