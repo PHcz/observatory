@@ -63,6 +63,17 @@ export const ALL_PANELS: PanelKey[] = [
   'healthRow',
 ];
 
+// Default DASHBOARD order — same set as ALL_PANELS (the settings toggle order),
+// but the indoor block sits right below the outdoor stats row (statsRow), its
+// original prominent placement, rather than in the toggle list's position.
+// Derived from ALL_PANELS so it stays a full permutation as panels are added.
+export const DEFAULT_ORDER: PanelKey[] = (() => {
+  const rest: PanelKey[] = ALL_PANELS.filter((k) => k !== 'indoorAir');
+  const afterStats = rest.indexOf('statsRow') + 1;
+  rest.splice(afterStats, 0, 'indoorAir');
+  return rest;
+})();
+
 // Phase 16 (ENH-01/02/04/05): muon diagnostic panels default OFF (advanced/verbose);
 // all other panels (including the three new weather panels) default ON.
 // This replaces the prior uniform Object.fromEntries(ALL_PANELS.map(...true)) approach.
@@ -73,7 +84,7 @@ export const DEFAULTS: Settings = {
   panels: Object.fromEntries(
     ALL_PANELS.map((k) => [k, !PANEL_DEFAULTS_OFF.includes(k)])
   ) as Record<PanelKey, boolean>,
-  order: [...ALL_PANELS],
+  order: [...DEFAULT_ORDER],
 };
 
 // Safe-merge a stored order into a full permutation of `canonical`:
@@ -115,7 +126,7 @@ export function parseSettings(raw: string | null): Settings {
         // Missing keys keep DEFAULTS (= visible) — safe-merge rule.
       }
     }
-    const order = mergeOrder((parsed as { order?: unknown })?.order, ALL_PANELS);
+    const order = mergeOrder((parsed as { order?: unknown })?.order, DEFAULT_ORDER);
     return { theme, panels, order };
   } catch {
     return structuredClone(DEFAULTS);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULTS, parseSettings, ALL_PANELS, mergeOrder } from '$lib/utils/settingsSchema';
+import { DEFAULTS, parseSettings, ALL_PANELS, DEFAULT_ORDER, mergeOrder } from '$lib/utils/settingsSchema';
 
 describe('settingsSchema DEFAULTS', () => {
   it('theme defaults to auto', () => {
@@ -124,8 +124,8 @@ describe('mergeOrder', () => {
 });
 
 describe('parseSettings order', () => {
-  it('defaults order to ALL_PANELS when absent', () => {
-    expect(parseSettings('{"theme":"dark"}').order).toEqual(ALL_PANELS);
+  it('defaults order to DEFAULT_ORDER when absent', () => {
+    expect(parseSettings('{"theme":"dark"}').order).toEqual(DEFAULT_ORDER);
   });
 
   it('safe-merges a stored partial order', () => {
@@ -134,7 +134,11 @@ describe('parseSettings order', () => {
     expect(new Set(result.order)).toEqual(new Set(ALL_PANELS));
   });
 
-  it('DEFAULTS.order equals ALL_PANELS', () => {
-    expect(DEFAULTS.order).toEqual(ALL_PANELS);
+  it('DEFAULTS.order equals DEFAULT_ORDER', () => {
+    expect(DEFAULTS.order).toEqual(DEFAULT_ORDER);
+    expect(DEFAULTS.order[1]).toBe('statsRow');
+    expect(DEFAULTS.order[2]).toBe('indoorAir');
+    expect(new Set(DEFAULT_ORDER)).toEqual(new Set(ALL_PANELS));
+    expect(DEFAULT_ORDER.length).toBe(ALL_PANELS.length);
   });
 });
