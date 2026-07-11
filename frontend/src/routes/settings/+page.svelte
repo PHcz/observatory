@@ -5,6 +5,7 @@
   import ThemeSegmentedControl from '$lib/components/ThemeSegmentedControl.svelte';
   import PanelReorderRow from '$lib/components/PanelReorderRow.svelte';
   import { moveItem } from '$lib/utils/renderPlan';
+  import { reorderable } from '$lib/actions/reorderable';
 
   // UI-SPEC §"Toggle order" — exact row labels (list order now driven by settingsStore.order)
   const PANEL_LABELS: Record<PanelKey, string> = {
@@ -79,7 +80,7 @@
 
   <section class="settings-section" aria-labelledby="panels-eyebrow">
     <div id="panels-eyebrow" class="eyebrow">PANELS</div>
-    <div class="toggle-stack">
+    <div class="toggle-stack" use:reorderable={{ onReorder: reorder }}>
       {#each $settingsStore.order as key, i (key)}
         <PanelReorderRow
           panelKey={key}
@@ -151,6 +152,15 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  .toggle-stack :global(.reorder-dragging) {
+    opacity: 0.5;
+  }
+  .toggle-stack :global(.reorder-over-before) {
+    box-shadow: inset 0 2px 0 0 var(--accent);
+  }
+  .toggle-stack :global(.reorder-over-after) {
+    box-shadow: inset 0 -2px 0 0 var(--accent);
   }
   .reset-link {
     font-size: 13px;
