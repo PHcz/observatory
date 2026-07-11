@@ -422,6 +422,11 @@ local) it sends **one Telegram message regardless of status**:
 - `✅ Enviro health: online` — last-reading age, 24 h reading count, latest temp/RH/pressure
 - `⚠️ Enviro health: STALE` — when the newest reading is older than `ALERT_ENVIRO_STALE_SEC`
 
+If an **indoor air node** is present, an indoor block (one per room) is appended in the same shape —
+online/STALE, last-reading age, 24 h count, and the latest CO₂ (with a fresh/stuffy/ventilate
+verdict) plus temp/RH/pressure. A room is flagged STALE after 15 min of silence (the node publishes
+~every 60 s). With no indoor node the block is omitted, so an outdoor-only build is unchanged.
+
 Receiving it confirms both that the board is reporting and that the monitoring pipeline is alive.
 It reuses the `ALERT_TELEGRAM_*` channel — no new config. Enable + test:
 

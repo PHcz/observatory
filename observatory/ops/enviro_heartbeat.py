@@ -8,6 +8,11 @@ day is indistinguishable from a dead monitor. This always sends:
     ✅ online  — last reading recent, with the latest values + 24 h count
     ⚠️ STALE   — last reading older than ALERT_ENVIRO_STALE_SEC
 
+When an indoor air node is present, an indoor block (one per room) is appended in
+the same shape — online/STALE, last-reading age, 24 h count, and the latest CO2
+(with a fresh/stuffy/ventilate verdict) + temp/humidity/pressure. Absent an
+indoor node the block is omitted entirely, so outdoor-only builds are unchanged.
+
 Runs on the Pi via obs-enviro-heartbeat.timer. Outbound-only (Telegram), same
 sanctioned-egress justification as the pollers and threshold alerts.
 
@@ -82,12 +87,93 @@ def build_message(stats: dict[str, Any], now: int, stale_threshold: int) -> str:
     return "\n".join(lines)
 
 
+# Indoor node publishes ~every 60 s; 15 min of silence = offline for the heartbeat.
+_INDOOR_STALE_SEC = 900
+
+
+def _co2_band(co2: int) -> str:
+    """Dashboard CO2 traffic-light verdict."""
+    if co2 < 800:
+        return "Fresh"
+    if co2 < 1200:
+        return "Stuffy"
+    return "Ventilate"
+
+
+def gather_indoor_stats(conn: sqlite3.Connection, now: int) -> list[dict[str, Any]]:
+    """Latest indoor_air row per node + each node's 24 h reading count."""
+    rows = conn.execute(
+        "SELECT node_id, ts, temp_c, humidity_pct, pressure_hpa, co2_ppm "
+        "FROM indoor_air WHERE id IN (SELECT MAX(id) FROM indoor_air GROUP BY node_id) "
+        "ORDER BY node_id"
+    ).fetchall()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        count_24h = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM indoor_air WHERE node_id = ? AND ts >= ?",
+                (r["node_id"], now - 86400),
+            ).fetchone()[0]
+        )
+        out.append(
+            {
+                "node_id": r["node_id"],
+                "last_ts": int(r["ts"]),
+                "co2_ppm": r["co2_ppm"],
+                "temp_c": r["temp_c"],
+                "humidity_pct": r["humidity_pct"],
+                "pressure_hpa": r["pressure_hpa"],
+                "count_24h": count_24h,
+            }
+        )
+    return out
+
+
+def build_indoor_message(
+    nodes: list[dict[str, Any]], now: int, stale_sec: int = _INDOOR_STALE_SEC
+) -> str | None:
+    """Indoor section(s) mirroring the outdoor block; None when no indoor node."""
+    if not nodes:
+        return None
+    sections: list[str] = []
+    for n in nodes:
+        last_ts = int(n["last_ts"])
+        age = now - last_ts
+        last_local = time.strftime("%H:%M", time.localtime(last_ts))
+        stale = age > stale_sec
+        room = str(n["node_id"]).replace("-", " ")
+        head = f"⚠️ Indoor · {room}: STALE" if stale else f"✅ Indoor · {room}: online"
+        lines = [
+            head,
+            f"Last reading: {_format_age(age)} ago ({last_local})",
+            f"Readings in 24 h: {n['count_24h']}",
+        ]
+        parts: list[str] = []
+        co2 = n.get("co2_ppm")
+        if co2 is not None:
+            parts.append(f"CO₂ {int(co2)} ppm ({_co2_band(int(co2))})")
+        temp = n.get("temp_c")
+        hum = n.get("humidity_pct")
+        pres = n.get("pressure_hpa")
+        if temp is not None:
+            parts.append(f"{temp:.1f}°C")
+        if hum is not None:
+            parts.append(f"{hum:.0f}% RH")
+        if pres is not None:
+            parts.append(f"{pres:.0f} hPa")
+        if parts:
+            lines.append("Now: " + ", ".join(parts))
+        sections.append("\n".join(lines))
+    return "\n\n".join(sections)
+
+
 async def _amain() -> int:
     now = int(time.time())
     try:
         conn = get_conn()
         try:
             stats = gather_stats(conn, now)
+            indoor_nodes = gather_indoor_stats(conn, now)
         finally:
             conn.close()
     except Exception as exc:
@@ -99,8 +185,16 @@ async def _amain() -> int:
         return 1
 
     message = build_message(stats, now, settings.alert_enviro_stale_sec)
+    indoor = build_indoor_message(indoor_nodes, now)
+    if indoor is not None:
+        message = f"{message}\n\n{indoor}"
     await notify_telegram(title="Observatory daily check", message=message)
-    log.info("enviro_heartbeat.sent", count_24h=stats["count_24h"], stale=stats.get("last_ts"))
+    log.info(
+        "enviro_heartbeat.sent",
+        count_24h=stats["count_24h"],
+        stale=stats.get("last_ts"),
+        indoor_nodes=len(indoor_nodes),
+    )
     return 0
 
 
