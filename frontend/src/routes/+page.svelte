@@ -15,31 +15,10 @@
   import { settingsStore } from '$lib/stores/settings';
   import Container from '$lib/Container.svelte';
   import CadenceWarningBanner from '$lib/components/CadenceWarningBanner.svelte';
-  import HeaderPanel from '$lib/panels/HeaderPanel.svelte';
-  import StatsRow from '$lib/panels/StatsRow.svelte';
-  import TodayStrip from '$lib/panels/TodayStrip.svelte';
-  import ZambrettiCard from '$lib/panels/ZambrettiCard.svelte';
-  import WeatherAlertsPanel from '$lib/panels/WeatherAlertsPanel.svelte';
-  import ForecastPanel from '$lib/panels/ForecastPanel.svelte';
-  import AirQualityPanel from '$lib/panels/AirQualityPanel.svelte';
+  import { PANEL_COMPONENTS } from '$lib/panels/registry';
+  import { buildRenderPlan } from '$lib/utils/renderPlan';
   import IndoorStatsRow from '$lib/panels/IndoorStatsRow.svelte';
   import IndoorCharts from '$lib/panels/IndoorCharts.svelte';
-  import MuonChart from '$lib/panels/MuonChart.svelte';
-  import MuonDiagnosticsPanel from '$lib/panels/MuonDiagnosticsPanel.svelte';
-  import MuonGainDriftPanel from '$lib/panels/MuonGainDriftPanel.svelte';
-  import AdcSpectrumPanel from '$lib/panels/AdcSpectrumPanel.svelte';
-  import BarometricPanel from '$lib/panels/BarometricPanel.svelte';
-  import NmdbOverlayPanel from '$lib/panels/NmdbOverlayPanel.svelte';
-  import ForbushPanel from '$lib/panels/ForbushPanel.svelte';
-  import SpaceWeatherPanel from '$lib/panels/SpaceWeatherPanel.svelte';
-  import EarthquakeList from '$lib/panels/EarthquakeList.svelte';
-  import LightningPanel from '$lib/panels/LightningPanel.svelte';
-  import AuroraPanel from '$lib/panels/AuroraPanel.svelte';
-  import TemperatureChart from '$lib/panels/TemperatureChart.svelte';
-  import PressureChart from '$lib/panels/PressureChart.svelte';
-  import HumidityChart from '$lib/panels/HumidityChart.svelte';
-  import LightChart from '$lib/panels/LightChart.svelte';
-  import HealthRow from '$lib/panels/HealthRow.svelte';
 
   let cleanupWs: (() => void) | undefined;
   let cleanupHealth: (() => void) | undefined;
@@ -83,6 +62,8 @@
     cleanupAlerts?.();
     cleanupWeatherDerived?.();
   });
+
+  $: plan = buildRenderPlan($settingsStore.order, $settingsStore.panels);
 </script>
 
 <svelte:head>
@@ -91,37 +72,22 @@
 
 <Container>
   <CadenceWarningBanner />
-  {#if $settingsStore.panels.headerPanel}<HeaderPanel />{/if}
-  {#if $settingsStore.panels.statsRow}<StatsRow />{/if}
-  {#if $settingsStore.panels.indoorAir}<IndoorStatsRow />{/if}
-  {#if $settingsStore.panels.todayStrip}<TodayStrip />{/if}
-  {#if $settingsStore.panels.zambrettiCard}<ZambrettiCard />{/if}
-  {#if $settingsStore.panels.weatherAlerts}<WeatherAlertsPanel />{/if}
-  {#if $settingsStore.panels.forecast}<ForecastPanel />{/if}
-  {#if $settingsStore.panels.airQuality}<AirQualityPanel />{/if}
-  {#if $settingsStore.panels.muonChart}<MuonChart />{/if}
-  {#if $settingsStore.panels.muonDiagnostics}<MuonDiagnosticsPanel />{/if}
-  {#if $settingsStore.panels.muonGainDrift}<MuonGainDriftPanel />{/if}
-  {#if $settingsStore.panels.adcSpectrum}<AdcSpectrumPanel />{/if}
-  {#if $settingsStore.panels.barometric}<BarometricPanel />{/if}
-  {#if $settingsStore.panels.nmdbOverlay}<NmdbOverlayPanel />{/if}
-  {#if $settingsStore.panels.forbush}<ForbushPanel />{/if}
-  {#if $settingsStore.panels.spaceWeather}<SpaceWeatherPanel />{/if}
-
-  {#if $settingsStore.panels.earthquakes || $settingsStore.panels.lightning}
-    <div class="two-col">
-      {#if $settingsStore.panels.earthquakes}<EarthquakeList />{/if}
-      {#if $settingsStore.panels.lightning}<LightningPanel />{/if}
-    </div>
-  {/if}
-
-  {#if $settingsStore.panels.aurora}<AuroraPanel />{/if}
-  {#if $settingsStore.panels.temperatureChart}<TemperatureChart />{/if}
-  {#if $settingsStore.panels.pressureChart}<PressureChart />{/if}
-  {#if $settingsStore.panels.humidityChart}<HumidityChart />{/if}
-  {#if $settingsStore.panels.lightChart}<LightChart />{/if}
-  {#if $settingsStore.panels.indoorAir}<IndoorCharts />{/if}
-  {#if $settingsStore.panels.healthRow}<HealthRow />{/if}
+  {#each plan as item (item.kind === 'twocol' ? `twocol:${item.keys.join('+')}` : item.kind === 'indoor' ? 'indoor' : `panel:${item.key}`)}
+    {#if item.kind === 'indoor'}
+      <IndoorStatsRow />
+      <IndoorCharts />
+    {:else if item.kind === 'twocol'}
+      <div class="two-col">
+        {#each item.keys as k (k)}
+          {@const TwoColComp = PANEL_COMPONENTS[k]}
+          {#if TwoColComp}<svelte:component this={TwoColComp} />{/if}
+        {/each}
+      </div>
+    {:else}
+      {@const PanelComp = PANEL_COMPONENTS[item.key]}
+      {#if PanelComp}<svelte:component this={PanelComp} />{/if}
+    {/if}
+  {/each}
 
   <footer class="dashboard-footer">
     <a href="/settings" class="settings-link" data-sveltekit-reload>Settings</a>
