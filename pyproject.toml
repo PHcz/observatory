@@ -132,4 +132,9 @@ constraint-dependencies = [
   # pip is transitive via pip-api (pip-audit); floor clears GHSA-wf93-45jw-7689
   # (path traversal in entry-point names, pip < 26.1.2 — Dependabot #16, 2026-07).
   "pip>=26.1.2",
+  # Pillow is transitive via matplotlib (analysis extra, picomuon CLI only — not
+  # deployed to the Pi). 12.3.0 is a coordinated security release clearing 13
+  # HIGH/MEDIUM advisories against < 12.3.0 (heap OOB writes, decompression-bomb
+  # bypasses, OS command injection, DoS — Dependabot, 2026-07).
+  "pillow>=12.3.0",
 ]
