@@ -33,6 +33,7 @@
 	},
 	"overrides": {
 		"cookie": "^0.7.0",
-		"undici": "^7.28.0"
+		"undici": "^7.28.0",
+		"postcss": "^8.5.18"
 	}
 }
