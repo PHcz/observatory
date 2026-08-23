@@ -137,4 +137,10 @@ constraint-dependencies = [
   # HIGH/MEDIUM advisories against < 12.3.0 (heap OOB writes, decompression-bomb
   # bypasses, OS command injection, DoS — Dependabot, 2026-07).
   "pillow>=12.3.0",
+  # sqlparse is transitive via yoyo-migrations (statement splitting in migration
+  # files). 0.6.0 clears 3 HIGH ReDoS/CPU-DoS advisories + 1 MEDIUM backslash
+  # escape issue against <=0.5.6.dev0 (Dependabot, 2026-08). yoyo declares
+  # `sqlparse` with no upper bound, so the 0.5->0.6 major bump resolves cleanly;
+  # migration apply is verified against a real DB copy before deploy.
+  "sqlparse>=0.6.0",
 ]
