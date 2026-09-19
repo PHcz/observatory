@@ -144,4 +144,11 @@ constraint-dependencies = [
   # `sqlparse` with no upper bound, so the 0.5->0.6 major bump resolves cleanly;
   # migration apply is verified against a real DB copy before deploy.
   "sqlparse>=0.6.0",
+  # anyio is transitive via starlette (obs-api), httpx (external pollers) and
+  # watchfiles. 4.14.2 clears GHSA-82r6-8w77-94w6 (CRITICAL — TLSStream IDNA
+  # 2003 host-name encoding enables TLS certificate spoofing; hits httpx's
+  # outbound HTTPS to the public APIs) and GHSA-5p39-cfhj-2xmp (MEDIUM —
+  # process-pool workers block indefinitely on undrained stderr). Dependabot
+  # #46/#47, 2026-09.
+  "anyio>=4.14.2",
 ]
