@@ -1,0 +1,51 @@
+# Dependabot configuration.
+#
+# NOTE ON ECOSYSTEMS: this project's Python deps are managed by uv (uv.lock),
+# so the ecosystem key is "uv" — NOT "pip". Dependabot *alerts* report uv.lock
+# findings under the "pip" ecosystem, which is misleading: using "pip" here
+# would silently produce no update PRs.
+#
+# This file configures *version* updates (routine bumps). Security fix PRs for
+# open alerts are governed separately by the repo's "Dependabot security
+# updates" setting.
+#
+# Security floors for transitive deps are pinned in pyproject.toml under
+# [tool.uv] constraint-dependencies, and in frontend/package.json under
+# "overrides" — Dependabot bumps the direct deps, those pins hold the floor.
+version: 2
+updates:
+  # --- Python backend (uv.lock at repo root) ---
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/London"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build(deps)"
+      prefix-development: "build(deps-dev)"
+    groups:
+      # One PR for routine minor/patch bumps; majors still arrive separately
+      # so they get individual review (e.g. the sqlparse 0.5 -> 0.6 bump).
+      python-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # --- SvelteKit frontend (frontend/package.json) ---
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/London"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build(deps)"
+      prefix-development: "build(deps-dev)"
+    groups:
+      frontend-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
