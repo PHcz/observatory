@@ -15,7 +15,7 @@ dependencies = [
   "fastapi>=0.141.1,<0.142",  # >=0.133 drops upper bound on starlette so we can pin >=1.0.1 below
   "starlette>=1.6.0",  # floor clears PYSEC-2026-161 + CVE-2025-62727 (08-11 audit) + form() DoS / hostname-poison (Dependabot, 2026-06)
   "uvicorn[standard]>=0.32,<0.40",
-  "websockets>=14,<17",
+  "websockets>=17.1,<18",
   "astral>=3.0",
   "aiomqtt>=2.5,<3.0",
 ]
