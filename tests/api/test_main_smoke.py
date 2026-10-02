@@ -34,8 +34,10 @@ def test_app_metadata() -> None:
 
 
 def test_health_route_is_mounted_under_api_prefix() -> None:
-    paths = {getattr(r, "path", None) for r in app.routes}
-    assert "/api/health" in paths
+    # Use the OpenAPI schema rather than scanning `app.routes`: since FastAPI
+    # 0.141 an included router appears as an `_IncludedRouter` whose `.path` is
+    # None, so the old scan found nothing even though every route serves fine.
+    assert "/api/health" in app.openapi().get("paths", {})
 
 
 def test_health_endpoint_returns_200(api_client: TestClient) -> None:
@@ -75,8 +77,15 @@ def test_docs_url_disabled_in_production() -> None:
 
 
 def test_all_expected_routes_present() -> None:
-    """All 10 router paths + /ws must be registered."""
-    paths = {getattr(r, "path", None) for r in app.routes}
+    """All 10 router paths + /ws must be registered.
+
+    Read from the OpenAPI schema, not `app.routes`: since FastAPI 0.141 an
+    included router is an `_IncludedRouter` with ``path=None``, so the old
+    set-of-paths scan reported every route as missing. Probing with GET is also
+    unsuitable — ``/api/*/current`` endpoints legitimately 404 on an empty
+    table, which is indistinguishable from an unrouted path.
+    """
+    paths = set(app.openapi().get("paths", {}))
     required = {
         "/api/health",
         "/api/current",
@@ -89,10 +98,13 @@ def test_all_expected_routes_present() -> None:
         "/api/aurora/current",
         "/api/events/recent",
         "/api/stats/today",
-        "/ws",
     }
     missing = required - paths
     assert not missing, f"Missing routes: {missing}"
+
+    # /ws is a WebSocket route and never appears in the OpenAPI schema.
+    with TestClient(app) as client, client.websocket_connect("/ws"):
+        pass
 
 
 def test_health_returns_200_via_lifespan_client() -> None:

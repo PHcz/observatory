@@ -37,7 +37,7 @@ def _fixture_dict() -> dict:
 
 def test_parses_columns_to_rows() -> None:
     data = _fixture_dict()
-    hourly, daily, meta = parse_forecast(_fixture_bytes())
+    hourly, daily, _meta = parse_forecast(_fixture_bytes())
     assert len(hourly) == len(data["hourly"]["time"])
     assert len(daily) == len(data["daily"]["time"])
     assert all(isinstance(h, ForecastHourly) for h in hourly)

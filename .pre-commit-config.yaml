@@ -34,7 +34,10 @@ repos:
         args: [--maxkb=500]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.10
+    # Keep in step with the ruff floor in pyproject.toml ([project.optional-dependencies]
+    # dev / [dependency-groups] dev). A skew means the hook and a local `ruff check`
+    # enforce different rules — v0.9.10 passed while ruff 0.16.7 flagged RUF059.
+    rev: v0.16.7
     hooks:
       - id: ruff
         args: [--fix]
