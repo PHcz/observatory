@@ -4,16 +4,16 @@ version = "0.1.0"
 description = "Home observatory: Pi 4 + weather + muon + space weather + earthquakes + aurora + dashboard"
 requires-python = ">=3.11,<3.12"
 dependencies = [
-  "pydantic>=2.7",
-  "pydantic-settings>=2.14.2",  # GHSA: NestedSecretsSettingsSource symlink read (Dependabot, 2026-06)
+  "pydantic>=2.13.5",
+  "pydantic-settings>=2.15.0",  # GHSA: NestedSecretsSettingsSource symlink read (Dependabot, 2026-06)
   "yoyo-migrations>=9.0",
   "structlog>=24.1",
   "pyserial>=3.5",
   "sdnotify>=0.3.2",
   "httpx>=0.27",
   "defusedxml>=0.7",
-  "fastapi>=0.133,<0.140",  # >=0.133 drops upper bound on starlette so we can pin >=1.0.1 below
-  "starlette>=1.3.1",  # floor clears PYSEC-2026-161 + CVE-2025-62727 (08-11 audit) + form() DoS / hostname-poison (Dependabot, 2026-06)
+  "fastapi>=0.141.1,<0.142",  # >=0.133 drops upper bound on starlette so we can pin >=1.0.1 below
+  "starlette>=1.6.0",  # floor clears PYSEC-2026-161 + CVE-2025-62727 (08-11 audit) + form() DoS / hostname-poison (Dependabot, 2026-06)
   "uvicorn[standard]>=0.32,<0.40",
   "websockets>=14,<17",
   "astral>=3.0",
@@ -22,21 +22,21 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.0",
-  "pytest-asyncio>=0.23",
-  "ruff>=0.9.0",
-  "mypy>=1.10",
+  "pytest>=9.1.1",
+  "pytest-asyncio>=1.4.0",
+  "ruff>=0.16.7",
+  "mypy>=2.3.1",
   "bandit[toml]>=1.8",
-  "pip-audit>=2.8",
-  "pre-commit>=4.0",
+  "pip-audit>=2.10.1",
+  "pre-commit>=4.6.2",
   "types-PyYAML",
   "testcontainers[mqtt]>=4.14,<5",
 ]
 analysis = [
-  "polars>=1.0",
+  "polars>=1.44.2",
   "scipy>=1.13",
-  "matplotlib>=3.8",
-  "typer>=0.12",
+  "matplotlib>=3.11.2",
+  "typer>=0.27.2",
 ]
 
 [project.scripts]
@@ -44,13 +44,13 @@ picomuon = "picomuon.cli:app"
 
 [dependency-groups]
 dev = [
-  "pytest>=8.0",
-  "pytest-asyncio>=0.23",
-  "ruff>=0.9.0",
-  "mypy>=1.10",
+  "pytest>=9.1.1",
+  "pytest-asyncio>=1.4.0",
+  "ruff>=0.16.7",
+  "mypy>=2.3.1",
   "bandit[toml]>=1.8",
-  "pip-audit>=2.8",
-  "pre-commit>=4.0",
+  "pip-audit>=2.10.1",
+  "pre-commit>=4.6.2",
   "types-PyYAML",
   "testcontainers[mqtt]>=4.14,<5",
 ]
