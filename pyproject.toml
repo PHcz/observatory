@@ -151,4 +151,11 @@ constraint-dependencies = [
   # process-pool workers block indefinitely on undrained stderr). Dependabot
   # #46/#47, 2026-09.
   "anyio>=4.14.2",
+  # urllib3 is transitive via testcontainers/requests/docker — dev-scope only
+  # (integration tests; never installed on the Pi). 2.8.0 clears PYSEC-2026-4175,
+  # -4176 and -4177 against < 2.8.0 (pip-audit pre-push gate, 2026-10).
+  "urllib3>=2.8.0",
+  # virtualenv is transitive via pre-commit — dev tooling only, never on the Pi.
+  # 21.7.12 clears PYSEC-2026-4014 (pip-audit pre-push gate, 2026-10).
+  "virtualenv>=21.7.12",
 ]

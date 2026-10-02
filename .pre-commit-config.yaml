@@ -97,7 +97,8 @@ repos:
         #   pip (the env's own pip)    — GHSA-wf93-45jw-7689 (<26.1.2),
         #                                PYSEC-2026-3721 (<26.2)
         #   setuptools (env build dep) — PYSEC-2026-3447 (<83.0.0)
-        additional_dependencies: ["msgpack>=1.2.1", "pip>=26.2", "setuptools>=83.0.0"]
+        #   urllib3 (via requests)     — PYSEC-2026-4175/4176/4177 (<2.8.0)
+        additional_dependencies: ["msgpack>=1.2.1", "pip>=26.2", "setuptools>=83.0.0", "urllib3>=2.8.0"]
 
   - repo: local
     hooks:
