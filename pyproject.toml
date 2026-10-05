@@ -30,7 +30,7 @@ dev = [
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.2",
   "types-PyYAML",
-  "testcontainers[mqtt]>=4.14,<5",
+  "testcontainers[mqtt]>=4.15.0,<5",
 ]
 analysis = [
   "polars>=1.44.2",
@@ -52,7 +52,7 @@ dev = [
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.2",
   "types-PyYAML",
-  "testcontainers[mqtt]>=4.14,<5",
+  "testcontainers[mqtt]>=4.15.0,<5",
 ]
 
 [build-system]
