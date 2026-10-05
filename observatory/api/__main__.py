@@ -10,10 +10,13 @@ SIGTERM/SIGINT: notifier sends ``STOPPING=1`` and we set
 ``server.should_exit=True`` so uvicorn drains in flight requests and runs the
 ASGI lifespan shutdown.
 
-The ``server.started`` flag is undocumented-but-stable across uvicorn 0.32 to
-0.39 (the pin range locked in Plan 05-00). If uvicorn changes the contract,
-the watcher will simply never send READY=1 and systemd will time out — failure
-mode is loud, not silent.
+The ``server.started`` and ``server.should_exit`` flags are undocumented. They
+are pinned by ``tests/api/test_uvicorn_contract.py``, which starts a real
+``uvicorn.Server`` on an ephemeral port and asserts ``started`` flips true and
+``should_exit`` ends ``serve()``. That test — not the version bound — is what
+keeps this safe across upgrades: if uvicorn changes the contract it fails in
+the suite, rather than on the Pi where the only symptom is systemd timing out
+because READY=1 never arrives.
 """
 
 from __future__ import annotations
