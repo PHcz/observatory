@@ -12,8 +12,8 @@ dependencies = [
   "sdnotify>=0.3.2",
   "httpx>=0.27",
   "defusedxml>=0.7",
-  "fastapi>=0.141.1,<0.142",  # >=0.133 drops upper bound on starlette so we can pin >=1.0.1 below
-  "starlette>=1.6.0",  # floor clears PYSEC-2026-161 + CVE-2025-62727 (08-11 audit) + form() DoS / hostname-poison (Dependabot, 2026-06)
+  "fastapi>=0.142.2,<0.143",  # >=0.133 drops upper bound on starlette so we can pin >=1.0.1 below
+  "starlette>=1.7.0",  # floor clears PYSEC-2026-161 + CVE-2025-62727 (08-11 audit) + form() DoS / hostname-poison (Dependabot, 2026-06)
   "uvicorn[standard]>=0.53,<0.55",
   "websockets>=17.1,<18",
   "astral>=3.0",
@@ -24,13 +24,13 @@ dependencies = [
 dev = [
   "pytest>=9.1.1",
   "pytest-asyncio>=1.4.0",
-  "ruff>=0.16.7",
-  "mypy>=2.3.1",
-  "bandit[toml]>=1.8",
+  "ruff>=0.16.10",
+  "mypy>=2.4.0",
+  "bandit[toml]>=1.9.4",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.2",
   "types-PyYAML",
-  "testcontainers[mqtt]>=4.14,<5",
+  "testcontainers[mqtt]>=4.15.0,<5",
 ]
 analysis = [
   "polars>=1.44.2",
@@ -46,13 +46,13 @@ picomuon = "picomuon.cli:app"
 dev = [
   "pytest>=9.1.1",
   "pytest-asyncio>=1.4.0",
-  "ruff>=0.16.7",
-  "mypy>=2.3.1",
-  "bandit[toml]>=1.8",
+  "ruff>=0.16.10",
+  "mypy>=2.4.0",
+  "bandit[toml]>=1.9.4",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.2",
   "types-PyYAML",
-  "testcontainers[mqtt]>=4.14,<5",
+  "testcontainers[mqtt]>=4.15.0,<5",
 ]
 
 [build-system]
