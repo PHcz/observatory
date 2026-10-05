@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import SpaceWeatherPanel from '$lib/panels/SpaceWeatherPanel.svelte';
-import { setSpaceWeather } from '$lib/stores/spaceWeather';
+import SpaceWeatherPanel from '#lib/panels/SpaceWeatherPanel.svelte';
+import { setSpaceWeather } from '#lib/stores/spaceWeather.js';
 
 describe('SpaceWeatherPanel', () => {
   it('does not show Forbush copy when kp_index=4', async () => {

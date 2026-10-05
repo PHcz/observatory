@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import HeaderPanel from '$lib/panels/HeaderPanel.svelte';
-import { weatherStore } from '$lib/stores/weather';
-import type { WeatherData } from '$lib/types';
+import HeaderPanel from '#lib/panels/HeaderPanel.svelte';
+import { weatherStore } from '#lib/stores/weather.js';
+import type { WeatherData } from '#lib/types.js';
 
 describe('HeaderPanel', () => {
   it('shows em-dash as hero placeholder when no data', () => {

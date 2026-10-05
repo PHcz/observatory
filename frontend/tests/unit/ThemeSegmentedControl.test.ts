@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import ThemeSegmentedControl from '$lib/components/ThemeSegmentedControl.svelte';
-import { settingsStore } from '$lib/stores/settings';
+import ThemeSegmentedControl from '#lib/components/ThemeSegmentedControl.svelte';
+import { settingsStore } from '#lib/stores/settings.js';
 
 describe('ThemeSegmentedControl (UI-17)', () => {
   beforeEach(() => {

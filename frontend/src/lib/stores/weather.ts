@@ -1,5 +1,5 @@
 import { derived, writable, type Readable, type Writable } from 'svelte/store';
-import type { WeatherData, WeatherPoint } from '$lib/types';
+import type { WeatherData, WeatherPoint } from '#lib/types.js';
 
 export interface WeatherState {
   current: WeatherData | null;

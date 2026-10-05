@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { WeatherTodayResponse, WeatherOutlookResponse } from '$lib/types';
-import { fetchWeatherToday, fetchWeatherOutlook } from '$lib/api/rest';
+import type { WeatherTodayResponse, WeatherOutlookResponse } from '#lib/types.js';
+import { fetchWeatherToday, fetchWeatherOutlook } from '#lib/api/rest.js';
 
 export interface WeatherDerivedState {
   today: WeatherTodayResponse | null;

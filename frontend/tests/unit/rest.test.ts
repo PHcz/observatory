@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { fetchMuonHistory, fetchWeatherHistory, fetchHealth } from '$lib/api/rest';
+import { fetchMuonHistory, fetchWeatherHistory, fetchHealth } from '#lib/api/rest.js';
 
 afterEach(() => {
   vi.restoreAllMocks();

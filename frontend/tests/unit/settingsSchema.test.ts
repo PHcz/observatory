@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULTS, parseSettings, ALL_PANELS, DEFAULT_ORDER, mergeOrder } from '$lib/utils/settingsSchema';
+import { DEFAULTS, parseSettings, ALL_PANELS, DEFAULT_ORDER, mergeOrder } from '#lib/utils/settingsSchema.js';
 
 describe('settingsSchema DEFAULTS', () => {
   it('theme defaults to auto', () => {

@@ -1,5 +1,5 @@
 import type { Component } from 'svelte';
-import type { PanelKey } from '$lib/utils/settingsSchema';
+import type { PanelKey } from '#lib/utils/settingsSchema.js';
 import HeaderPanel from './HeaderPanel.svelte';
 import StatsRow from './StatsRow.svelte';
 import TodayStrip from './TodayStrip.svelte';

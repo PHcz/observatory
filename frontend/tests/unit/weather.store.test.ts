@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { weatherStore, setWeather, seedWeatherHistory, maxLuxToday } from '$lib/stores/weather';
-import type { WeatherData, WeatherPoint } from '$lib/types';
+import { weatherStore, setWeather, seedWeatherHistory, maxLuxToday } from '#lib/stores/weather.js';
+import type { WeatherData, WeatherPoint } from '#lib/types.js';
 
 const makeReading = (ts: number, temp: number | null = 20): WeatherData => ({
   ts,

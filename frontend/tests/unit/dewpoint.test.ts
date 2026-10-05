@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dewPointC, dewComfort } from '$lib/utils/dewpoint';
+import { dewPointC, dewComfort } from '#lib/utils/dewpoint.js';
 
 describe('dewPointC', () => {
   it('computes ~9.3 for 20C/50%', () => {

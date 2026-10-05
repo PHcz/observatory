@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { settingsStore } from '$lib/stores/settings';
-  import '$lib/stores/theme'; // Activates module-scope themeStore subscription that applies <html data-theme>.
-  import type { PanelKey } from '$lib/utils/settingsSchema';
-  import ThemeSegmentedControl from '$lib/components/ThemeSegmentedControl.svelte';
-  import PanelReorderRow from '$lib/components/PanelReorderRow.svelte';
-  import { moveItem } from '$lib/utils/renderPlan';
-  import { reorderable } from '$lib/actions/reorderable';
+  import { settingsStore } from '#lib/stores/settings.js';
+  import '#lib/stores/theme.js'; // Activates module-scope themeStore subscription that applies <html data-theme>.
+  import type { PanelKey } from '#lib/utils/settingsSchema.js';
+  import ThemeSegmentedControl from '#lib/components/ThemeSegmentedControl.svelte';
+  import PanelReorderRow from '#lib/components/PanelReorderRow.svelte';
+  import { moveItem } from '#lib/utils/renderPlan.js';
+  import { reorderable } from '#lib/actions/reorderable.js';
 
   // UI-SPEC §"Toggle order" — exact row labels (list order now driven by settingsStore.order)
   const PANEL_LABELS: Record<PanelKey, string> = {

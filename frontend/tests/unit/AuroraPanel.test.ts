@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
-import { auroraStore } from '$lib/stores/aurora';
-import AuroraPanel from '$lib/panels/AuroraPanel.svelte';
+import { auroraStore } from '#lib/stores/aurora.js';
+import AuroraPanel from '#lib/panels/AuroraPanel.svelte';
 
 describe('AuroraPanel', () => {
   beforeEach(() => {

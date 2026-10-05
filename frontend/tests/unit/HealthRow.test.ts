@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import HealthRow from '$lib/panels/HealthRow.svelte';
-import { healthStore } from '$lib/stores/health';
-import { wsStatus } from '$lib/stores/ws';
-import type { SourceHealth } from '$lib/types';
+import HealthRow from '#lib/panels/HealthRow.svelte';
+import { healthStore } from '#lib/stores/health.js';
+import { wsStatus } from '#lib/stores/ws.js';
+import type { SourceHealth } from '#lib/types.js';
 
 const makeHealth = (freshness: 'healthy' | 'stale' | 'down' = 'healthy'): SourceHealth => ({
   last_event_ts: Math.floor(Date.now() / 1000) - 30,

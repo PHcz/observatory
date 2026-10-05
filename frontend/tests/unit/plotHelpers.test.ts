@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { buildMuonPlot, buildTempPlot, rollingAverage, withinSafetyMargin } from '$lib/charts/plotHelpers';
+import { buildMuonPlot, buildTempPlot, rollingAverage, withinSafetyMargin } from '#lib/charts/plotHelpers.js';
 // Phase 13 (MU2-05/06) — RED until Wave 5 (plan 13-05): these three build
 // functions do not exist yet, so this import fails RED exactly as intended.
 import {
   buildAdcHistogramPlot,
   buildBarometricScatterPlot,
   buildOverlayPlot,
-} from '$lib/charts/plotHelpers';
-import type { MuonPoint } from '$lib/types';
+} from '#lib/charts/plotHelpers.js';
+import type { MuonPoint } from '#lib/types.js';
 
 describe('plotHelpers', () => {
   it('buildMuonPlot returns a DOM node with empty data', () => {

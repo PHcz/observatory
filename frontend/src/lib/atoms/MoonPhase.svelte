@@ -2,7 +2,7 @@
   // Photoreal moon-phase disc: a real lunar photograph (NASA/LRO, public domain
   // — see static/CREDITS.txt) clipped to a circle, with the unlit region painted
   // over it using an astronomically-shaped terminator (see utils/moonGeometry).
-  import { moonShadowPath } from '$lib/utils/moonGeometry';
+  import { moonShadowPath } from '#lib/utils/moonGeometry.js';
 
   export let phase: number;            // normalised 0=new, 0.5=full
   export let illuminationPct: number;  // 0–100

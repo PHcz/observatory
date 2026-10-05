@@ -1,4 +1,4 @@
-import type { WeatherPoint } from '$lib/types';
+import type { WeatherPoint } from '#lib/types.js';
 
 export type Trend = 'rising' | 'steady' | 'falling';
 

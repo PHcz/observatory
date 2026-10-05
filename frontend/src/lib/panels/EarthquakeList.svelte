@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { earthquakeStore } from '$lib/stores/earthquakes';
-  import MagnitudePill from '$lib/atoms/MagnitudePill.svelte';
-  import SourceBadge from '$lib/atoms/SourceBadge.svelte';
-  import { formatAgeCaption, ageSeconds } from '$lib/utils/time';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
-  import type { StalenessLevel } from '$lib/utils/staleness';
+  import { earthquakeStore } from '#lib/stores/earthquakes.js';
+  import MagnitudePill from '#lib/atoms/MagnitudePill.svelte';
+  import SourceBadge from '#lib/atoms/SourceBadge.svelte';
+  import { formatAgeCaption, ageSeconds } from '#lib/utils/time.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness } from '#lib/utils/staleness.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
+  import type { StalenessLevel } from '#lib/utils/staleness.js';
 
   const MAX_ROWS = 10;
 

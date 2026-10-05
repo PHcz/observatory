@@ -1,5 +1,5 @@
 import { writable, type Writable } from 'svelte/store';
-import type { EarthquakeItem } from '$lib/types';
+import type { EarthquakeItem } from '#lib/types.js';
 
 export interface EarthquakeState {
   recent: EarthquakeItem[];

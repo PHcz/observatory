@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { condition } from '$lib/utils/weatherCodes';
+  import { condition } from '#lib/utils/weatherCodes.js';
 
   export let code: number | null = null;
 

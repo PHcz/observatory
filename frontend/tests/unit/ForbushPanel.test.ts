@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 // RED until Wave 5 (plan 13-05): the panel + forbush store do not exist yet.
-import ForbushPanel from '$lib/panels/ForbushPanel.svelte';
-import { setForbush } from '$lib/stores/forbush';
-import { settingsStore } from '$lib/stores/settings';
+import ForbushPanel from '#lib/panels/ForbushPanel.svelte';
+import { setForbush } from '#lib/stores/forbush.js';
+import { settingsStore } from '#lib/stores/settings.js';
 
 beforeEach(() => {
   settingsStore.resetToDefaults();

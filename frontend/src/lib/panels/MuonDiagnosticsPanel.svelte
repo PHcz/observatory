@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import * as Plot from '@observablehq/plot';
-  import { muonDiagnosticsStore } from '$lib/stores/muonDiagnostics';
-  import { niceFloorDomain } from '$lib/charts/domain';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
+  import { muonDiagnosticsStore } from '#lib/stores/muonDiagnostics.js';
+  import { niceFloorDomain } from '#lib/charts/domain.js';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
 
   // 0-anchored y config (bars start at 0) with a labelled tick strictly above
   // the tallest bar / overlay point, so neither touches the top edge.

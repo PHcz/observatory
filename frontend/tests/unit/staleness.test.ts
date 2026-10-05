@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_STALENESS_THRESHOLD_SEC, deriveStaleness } from '$lib/utils/staleness';
+import { DEFAULT_STALENESS_THRESHOLD_SEC, deriveStaleness } from '#lib/utils/staleness.js';
 
 describe('deriveStaleness', () => {
   it('returns fresh when age < threshold', () => {

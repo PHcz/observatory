@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { startReseed } from '$lib/utils/reseed';
+import { startReseed } from '#lib/utils/reseed.js';
 
 /**
  * Regression test for the muon/weather chart live-accumulation drift bug.

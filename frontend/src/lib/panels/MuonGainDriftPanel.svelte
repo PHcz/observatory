@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import * as Plot from '@observablehq/plot';
-  import { muonGainDriftStore } from '$lib/stores/muonGainDrift';
-  import { niceFloorDomain } from '$lib/charts/domain';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
+  import { muonGainDriftStore } from '#lib/stores/muonGainDrift.js';
+  import { niceFloorDomain } from '#lib/charts/domain.js';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;

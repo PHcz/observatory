@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { HealthResponse } from '$lib/types';
-import { fetchHealth } from '$lib/api/rest';
+import type { HealthResponse } from '#lib/types.js';
+import { fetchHealth } from '#lib/api/rest.js';
 
 export interface HealthState {
   data: HealthResponse | null;

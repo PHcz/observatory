@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
-import { muonStore, bufferMuonEvent, flushMuonBuffer, seedMuonHistory, setMuonSnapshot, _resetMuonRateWindow } from '$lib/stores/muon';
-import type { MuonEvent } from '$lib/types';
+import { muonStore, bufferMuonEvent, flushMuonBuffer, seedMuonHistory, setMuonSnapshot, _resetMuonRateWindow } from '#lib/stores/muon.js';
+import type { MuonEvent } from '#lib/types.js';
 
 describe('muon store buffer', () => {
   beforeEach(() => {

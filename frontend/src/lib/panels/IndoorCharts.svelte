@@ -1,15 +1,15 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { fetchIndoorHistory } from '$lib/api/rest';
+  import { fetchIndoorHistory } from '#lib/api/rest.js';
   import {
     buildIndoorCo2Plot,
     buildTempPlot,
     buildPressurePlot,
     buildHumidityDewpointPlot,
-  } from '$lib/charts/plotHelpers';
-  import type { IndoorPoint, WeatherPoint } from '$lib/types';
-  import { indoorStore } from '$lib/stores/indoor';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
+  } from '#lib/charts/plotHelpers.js';
+  import type { IndoorPoint, WeatherPoint } from '#lib/types.js';
+  import { indoorStore } from '#lib/stores/indoor.js';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
 
   let co2El: HTMLDivElement | undefined;
   let tempEl: HTMLDivElement | undefined;

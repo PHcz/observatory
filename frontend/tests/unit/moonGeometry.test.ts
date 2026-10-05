@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { illuminatedFraction, isWaxing, moonShadowPath } from '$lib/utils/moonGeometry';
+import { illuminatedFraction, isWaxing, moonShadowPath } from '#lib/utils/moonGeometry.js';
 
 describe('illuminatedFraction', () => {
   it('is 0 at new moon', () => {

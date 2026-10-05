@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
 
 describe('StalenessCaption visibility (UI-14)', () => {
   it('hides entirely when level=fresh', () => {

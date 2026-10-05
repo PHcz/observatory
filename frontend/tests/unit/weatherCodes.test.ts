@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // RED until Wave 3 (plan 10-04) creates this module — import fails by design.
-import { condition } from '$lib/utils/weatherCodes';
+import { condition } from '#lib/utils/weatherCodes.js';
 
 // Full WMO 4677 / Open-Meteo code list from 10-RESEARCH §WMO weather_code table.
 const WMO_CODES = [

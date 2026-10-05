@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { IndoorCurrentResponse } from '$lib/types';
-import { fetchIndoorCurrent } from '$lib/api/rest';
+import type { IndoorCurrentResponse } from '#lib/types.js';
+import { fetchIndoorCurrent } from '#lib/api/rest.js';
 
 export interface IndoorState {
   current: IndoorCurrentResponse | null;

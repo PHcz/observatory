@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tendency } from '$lib/utils/tendency';
-import type { WeatherPoint } from '$lib/types';
+import { tendency } from '#lib/utils/tendency.js';
+import type { WeatherPoint } from '#lib/types.js';
 
 const H = 3600;
 

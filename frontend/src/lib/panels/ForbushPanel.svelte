@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { forbushStore } from '$lib/stores/forbush';
-  import StatusDot from '$lib/atoms/StatusDot.svelte';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
-  import type { ForbushState } from '$lib/types';
+  import { forbushStore } from '#lib/stores/forbush.js';
+  import StatusDot from '#lib/atoms/StatusDot.svelte';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
+  import type { ForbushState } from '#lib/types.js';
 
   // Locked Forbush chip contract (13-UI-SPEC §Forbush chip states).
   const DOT: Record<ForbushState, 'green' | 'amber' | 'red'> = {

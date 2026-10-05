@@ -1,15 +1,15 @@
 import { writable, type Writable } from 'svelte/store';
-import type { SnapshotData, WeatherData, MuonEvent, EarthquakeItem, SpaceWeatherData, LightningSummary, AuroraData } from '$lib/types';
-import { nextBackoffMs, type BackoffConfig } from '$lib/api/reconnect';
-import { setWeather } from '$lib/stores/weather';
-import { bufferMuonEvent, setMuonSnapshot } from '$lib/stores/muon';
-import { setSpaceWeather } from '$lib/stores/spaceWeather';
-import { setLightning } from '$lib/stores/lightning';
-import { setAurora } from '$lib/stores/aurora';
-import { prependEarthquake, setEarthquakes } from '$lib/stores/earthquakes';
-import { setAstronomy } from '$lib/stores/astronomy';
-import { refetchAlerts } from '$lib/stores/alerts';
-import type { AstronomyData } from '$lib/types';
+import type { SnapshotData, WeatherData, MuonEvent, EarthquakeItem, SpaceWeatherData, LightningSummary, AuroraData } from '#lib/types.js';
+import { nextBackoffMs, type BackoffConfig } from '#lib/api/reconnect.js';
+import { setWeather } from '#lib/stores/weather.js';
+import { bufferMuonEvent, setMuonSnapshot } from '#lib/stores/muon.js';
+import { setSpaceWeather } from '#lib/stores/spaceWeather.js';
+import { setLightning } from '#lib/stores/lightning.js';
+import { setAurora } from '#lib/stores/aurora.js';
+import { prependEarthquake, setEarthquakes } from '#lib/stores/earthquakes.js';
+import { setAstronomy } from '#lib/stores/astronomy.js';
+import { refetchAlerts } from '#lib/stores/alerts.js';
+import type { AstronomyData } from '#lib/types.js';
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
 

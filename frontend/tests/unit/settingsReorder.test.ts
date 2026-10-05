@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import SettingsPage from '../../src/routes/settings/+page.svelte';
-import { settingsStore } from '$lib/stores/settings';
-import { ALL_PANELS, DEFAULT_ORDER } from '$lib/utils/settingsSchema';
+import { settingsStore } from '#lib/stores/settings.js';
+import { ALL_PANELS, DEFAULT_ORDER } from '#lib/utils/settingsSchema.js';
 
 describe('settings reorder wiring', () => {
   beforeEach(() => settingsStore.resetToDefaults());

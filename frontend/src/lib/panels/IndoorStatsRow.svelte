@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { indoorStore } from '$lib/stores/indoor';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
-  import { dewPointC, dewComfort } from '$lib/utils/dewpoint';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
+  import { indoorStore } from '#lib/stores/indoor.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness } from '#lib/utils/staleness.js';
+  import { dewPointC, dewComfort } from '#lib/utils/dewpoint.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
 
   $: node = $indoorStore.current?.nodes?.[0] ?? null;
   $: roomLabel = (node?.node_id ?? 'indoor').replace(/-/g, ' ');

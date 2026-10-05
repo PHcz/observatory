@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 // RED until Wave 5 (plan 13-05): the panel + muonAnalysis store do not exist yet.
-import BarometricPanel from '$lib/panels/BarometricPanel.svelte';
-import { setMuonAnalysis } from '$lib/stores/muonAnalysis';
-import { settingsStore } from '$lib/stores/settings';
+import BarometricPanel from '#lib/panels/BarometricPanel.svelte';
+import { setMuonAnalysis } from '#lib/stores/muonAnalysis.js';
+import { settingsStore } from '#lib/stores/settings.js';
 
 beforeEach(() => {
   settingsStore.resetToDefaults();

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { recentMeanRate } from '$lib/stores/muon';
-import type { MuonPoint } from '$lib/types';
+import { recentMeanRate } from '#lib/stores/muon.js';
+import type { MuonPoint } from '#lib/types.js';
 
 describe('recentMeanRate (StatsRow muon number — server-reconciled, no rolling-window undercount)', () => {
   const NOW = 1_000_000; // currentMinuteStart = floor(1_000_000/60)*60 = 999_960

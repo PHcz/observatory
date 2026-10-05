@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { healthStore } from '$lib/stores/health';
+  import { healthStore } from '#lib/stores/health.js';
 
   // NOTE: sessionStorage matches the operator-stated "does not survive reload" behavior from
   // 08-CONTEXT.md §UI-20 (which mis-named the API as localStorage). VALIDATION.md §Manual-Only

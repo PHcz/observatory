@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { paddedYDomain, niceFloorDomain } from '$lib/charts/domain';
+import { paddedYDomain, niceFloorDomain } from '#lib/charts/domain.js';
 
 describe('paddedYDomain', () => {
   it('returns null for empty array', () => {

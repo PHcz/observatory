@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import StatusDot from '$lib/atoms/StatusDot.svelte';
+import StatusDot from '#lib/atoms/StatusDot.svelte';
 
 describe('StatusDot', () => {
   it('renders with class status-green for status=green', () => {

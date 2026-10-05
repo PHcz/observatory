@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildHumidityDewpointPlot } from '$lib/charts/plotHelpers';
-import * as dewpointMod from '$lib/utils/dewpoint';
-import type { WeatherPoint } from '$lib/types';
+import { buildHumidityDewpointPlot } from '#lib/charts/plotHelpers.js';
+import * as dewpointMod from '#lib/utils/dewpoint.js';
+import type { WeatherPoint } from '#lib/types.js';
 
 describe('buildHumidityDewpointPlot', () => {
   it('is exported', () => {

@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { AlertRow } from '$lib/types';
-import { fetchAlerts } from '$lib/api/rest';
+import type { AlertRow } from '#lib/types.js';
+import { fetchAlerts } from '#lib/api/rest.js';
 
 export interface AlertsState {
   active: AlertRow[];

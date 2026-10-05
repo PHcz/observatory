@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { settingsStore } from '$lib/stores/settings';
-  import type { PanelKey } from '$lib/utils/settingsSchema';
+  import { settingsStore } from '#lib/stores/settings.js';
+  import type { PanelKey } from '#lib/utils/settingsSchema.js';
 
   export let panelKey: PanelKey;
   export let label: string;

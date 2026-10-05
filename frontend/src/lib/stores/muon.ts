@@ -1,6 +1,6 @@
 import { writable, derived, type Writable, type Readable } from 'svelte/store';
-import type { MuonData, MuonPoint, MuonEvent } from '$lib/types';
-import { stpCorrectedRate } from '$lib/utils/stp';
+import type { MuonData, MuonPoint, MuonEvent } from '#lib/types.js';
+import { stpCorrectedRate } from '#lib/utils/stp.js';
 
 export interface MuonState {
   current: MuonData | null;

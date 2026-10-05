@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { AirQualityResponse } from '$lib/types';
-import { fetchAirQuality } from '$lib/api/rest';
+import type { AirQualityResponse } from '#lib/types.js';
+import { fetchAirQuality } from '#lib/api/rest.js';
 
 export interface AirQualityState {
   data: AirQualityResponse | null;

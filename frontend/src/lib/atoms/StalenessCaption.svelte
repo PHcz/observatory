@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { formatAgeCaption } from '$lib/utils/time';
-  import type { StalenessLevel } from '$lib/utils/staleness';
+  import { formatAgeCaption } from '#lib/utils/time.js';
+  import type { StalenessLevel } from '#lib/utils/staleness.js';
 
   export let lastTs: number | null = null;
   /**

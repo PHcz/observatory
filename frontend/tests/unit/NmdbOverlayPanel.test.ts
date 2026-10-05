@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 // RED until Wave 5 (plan 13-05): the panel + nmdb store do not exist yet.
-import NmdbOverlayPanel from '$lib/panels/NmdbOverlayPanel.svelte';
-import { setNmdb } from '$lib/stores/nmdb';
-import { settingsStore } from '$lib/stores/settings';
+import NmdbOverlayPanel from '#lib/panels/NmdbOverlayPanel.svelte';
+import { setNmdb } from '#lib/stores/nmdb.js';
+import { settingsStore } from '#lib/stores/settings.js';
 
 beforeEach(() => {
   settingsStore.resetToDefaults();

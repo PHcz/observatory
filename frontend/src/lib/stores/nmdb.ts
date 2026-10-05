@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { NmdbResponse } from '$lib/types';
-import { fetchNmdb } from '$lib/api/rest';
+import type { NmdbResponse } from '#lib/types.js';
+import { fetchNmdb } from '#lib/api/rest.js';
 
 export interface NmdbState {
   data: NmdbResponse | null;

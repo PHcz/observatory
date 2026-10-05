@@ -1,16 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { weatherStore } from '$lib/stores/weather';
-  import { muonStore } from '$lib/stores/muon';
-  import { earthquakeStore } from '$lib/stores/earthquakes';
-  import { astronomyStore } from '$lib/stores/astronomy';
-  import { composeSubtitle } from '$lib/utils/narrative';
-  import { tsToLocalTime, ageSeconds } from '$lib/utils/time';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import MoonPhase from '$lib/atoms/MoonPhase.svelte';
-  import { feelsLikeC } from '$lib/utils/heatIndex';
+  import { weatherStore } from '#lib/stores/weather.js';
+  import { muonStore } from '#lib/stores/muon.js';
+  import { earthquakeStore } from '#lib/stores/earthquakes.js';
+  import { astronomyStore } from '#lib/stores/astronomy.js';
+  import { composeSubtitle } from '#lib/utils/narrative.js';
+  import { tsToLocalTime, ageSeconds } from '#lib/utils/time.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness } from '#lib/utils/staleness.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import MoonPhase from '#lib/atoms/MoonPhase.svelte';
+  import { feelsLikeC } from '#lib/utils/heatIndex.js';
 
   // Current local time, updated every minute
   let currentTimeSec = Math.floor(Date.now() / 1000);

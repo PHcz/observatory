@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { ForbushResponse } from '$lib/types';
-import { fetchForbush } from '$lib/api/rest';
+import type { ForbushResponse } from '#lib/types.js';
+import { fetchForbush } from '#lib/api/rest.js';
 
 export interface ForbushState {
   data: ForbushResponse | null;

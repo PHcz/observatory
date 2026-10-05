@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { spaceWeatherStore } from '$lib/stores/spaceWeather';
-  import KpBar from '$lib/atoms/KpBar.svelte';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
+  import { spaceWeatherStore } from '#lib/stores/spaceWeather.js';
+  import KpBar from '#lib/atoms/KpBar.svelte';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
 
   $: current = $spaceWeatherStore.current;
   $: kp_index = current?.kp_index ?? null;

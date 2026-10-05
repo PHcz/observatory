@@ -7,10 +7,10 @@ import type {
   NmdbSeriesPoint,
   NmdbLocalPoint,
   IndoorPoint,
-} from '$lib/types';
-import { loess } from '$lib/charts/loess';
-import { niceFloorDomain } from '$lib/charts/domain';
-import { dewPointC } from '$lib/utils/dewpoint';
+} from '#lib/types.js';
+import { loess } from '#lib/charts/loess.js';
+import { niceFloorDomain } from '#lib/charts/domain.js';
+import { dewPointC } from '#lib/utils/dewpoint.js';
 
 const WINDOW_SEC = 86400;
 

@@ -1,5 +1,5 @@
 import { writable, type Writable } from 'svelte/store';
-import type { LightningSummary } from '$lib/types';
+import type { LightningSummary } from '#lib/types.js';
 
 export interface LightningState {
   summary: LightningSummary | null;

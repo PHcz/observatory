@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { lightningStore } from '$lib/stores/lightning';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
+  import { lightningStore } from '#lib/stores/lightning.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
 
   $: summary = $lightningStore.summary;
   // /api/lightning/summary now emits hourly_buckets (Phase 8 Plan 08-07). Read

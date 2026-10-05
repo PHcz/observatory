@@ -44,8 +44,8 @@ describe('themeStore', () => {
   it("yields 'light' when settingsStore.theme==='light' regardless of system", async () => {
     mqlMatches = true; // system would prefer dark
     installMatchMedia();
-    const { settingsStore } = await import('$lib/stores/settings');
-    const { themeStore } = await import('$lib/stores/theme');
+    const { settingsStore } = await import('#lib/stores/settings.js');
+    const { themeStore } = await import('#lib/stores/theme.js');
     settingsStore.update((s) => ({ ...s, theme: 'light' }));
     expect(get(themeStore)).toBe('light');
   });
@@ -53,8 +53,8 @@ describe('themeStore', () => {
   it("yields 'dark' when settingsStore.theme==='dark' regardless of system", async () => {
     mqlMatches = false;
     installMatchMedia();
-    const { settingsStore } = await import('$lib/stores/settings');
-    const { themeStore } = await import('$lib/stores/theme');
+    const { settingsStore } = await import('#lib/stores/settings.js');
+    const { themeStore } = await import('#lib/stores/theme.js');
     settingsStore.update((s) => ({ ...s, theme: 'dark' }));
     expect(get(themeStore)).toBe('dark');
   });
@@ -62,8 +62,8 @@ describe('themeStore', () => {
   it("auto + system dark resolves to 'dark'", async () => {
     mqlMatches = true;
     installMatchMedia();
-    const { settingsStore } = await import('$lib/stores/settings');
-    const { themeStore } = await import('$lib/stores/theme');
+    const { settingsStore } = await import('#lib/stores/settings.js');
+    const { themeStore } = await import('#lib/stores/theme.js');
     settingsStore.update((s) => ({ ...s, theme: 'auto' }));
     expect(get(themeStore)).toBe('dark');
   });
@@ -71,8 +71,8 @@ describe('themeStore', () => {
   it("auto + system light resolves to 'light'", async () => {
     mqlMatches = false;
     installMatchMedia();
-    const { settingsStore } = await import('$lib/stores/settings');
-    const { themeStore } = await import('$lib/stores/theme');
+    const { settingsStore } = await import('#lib/stores/settings.js');
+    const { themeStore } = await import('#lib/stores/theme.js');
     settingsStore.update((s) => ({ ...s, theme: 'auto' }));
     expect(get(themeStore)).toBe('light');
   });
@@ -80,8 +80,8 @@ describe('themeStore', () => {
   it('applies data-theme to <html> on resolved-theme change', async () => {
     mqlMatches = false;
     installMatchMedia();
-    const { settingsStore } = await import('$lib/stores/settings');
-    await import('$lib/stores/theme');
+    const { settingsStore } = await import('#lib/stores/settings.js');
+    await import('#lib/stores/theme.js');
     settingsStore.update((s) => ({ ...s, theme: 'dark' }));
     expect(document.documentElement.dataset.theme).toBe('dark');
     settingsStore.update((s) => ({ ...s, theme: 'light' }));
@@ -91,8 +91,8 @@ describe('themeStore', () => {
   it("auto + matchMedia change flips to dark when system flips", async () => {
     mqlMatches = false;
     installMatchMedia();
-    const { settingsStore } = await import('$lib/stores/settings');
-    const { themeStore } = await import('$lib/stores/theme');
+    const { settingsStore } = await import('#lib/stores/settings.js');
+    const { themeStore } = await import('#lib/stores/theme.js');
     settingsStore.update((s) => ({ ...s, theme: 'auto' }));
     expect(get(themeStore)).toBe('light');
     fireMatchMediaChange(true);

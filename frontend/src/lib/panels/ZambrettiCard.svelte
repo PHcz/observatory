@@ -1,6 +1,6 @@
 <script lang="ts">
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
-  import { weatherDerivedStore } from '$lib/stores/weatherDerived';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
+  import { weatherDerivedStore } from '#lib/stores/weatherDerived.js';
 
   $: outlook = $weatherDerivedStore.outlook;
 

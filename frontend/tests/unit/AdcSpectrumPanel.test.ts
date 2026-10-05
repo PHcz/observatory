@@ -3,9 +3,9 @@ import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 // RED until Wave 5 (plan 13-05): the panel + muonAnalysis store do not exist yet,
 // so this import fails RED exactly as intended.
-import AdcSpectrumPanel from '$lib/panels/AdcSpectrumPanel.svelte';
-import { setMuonAnalysis } from '$lib/stores/muonAnalysis';
-import { settingsStore } from '$lib/stores/settings';
+import AdcSpectrumPanel from '#lib/panels/AdcSpectrumPanel.svelte';
+import { setMuonAnalysis } from '#lib/stores/muonAnalysis.js';
+import { settingsStore } from '#lib/stores/settings.js';
 
 beforeEach(() => {
   settingsStore.resetToDefaults();

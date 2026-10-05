@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { wsStatus, initWs, routeMessage } from '$lib/stores/ws';
-import { weatherStore } from '$lib/stores/weather';
-import { muonStore } from '$lib/stores/muon';
-import { spaceWeatherStore } from '$lib/stores/spaceWeather';
-import { lightningStore } from '$lib/stores/lightning';
-import { auroraStore } from '$lib/stores/aurora';
-import { earthquakeStore } from '$lib/stores/earthquakes';
+import { wsStatus, initWs, routeMessage } from '#lib/stores/ws.js';
+import { weatherStore } from '#lib/stores/weather.js';
+import { muonStore } from '#lib/stores/muon.js';
+import { spaceWeatherStore } from '#lib/stores/spaceWeather.js';
+import { lightningStore } from '#lib/stores/lightning.js';
+import { auroraStore } from '#lib/stores/aurora.js';
+import { earthquakeStore } from '#lib/stores/earthquakes.js';
 
 // Mock WebSocket
 class MockWs {

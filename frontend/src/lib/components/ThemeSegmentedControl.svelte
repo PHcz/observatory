@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { settingsStore } from '$lib/stores/settings';
-  import type { Theme } from '$lib/utils/settingsSchema';
+  import { settingsStore } from '#lib/stores/settings.js';
+  import type { Theme } from '#lib/utils/settingsSchema.js';
 
   const OPTIONS: ReadonlyArray<{ value: Theme; label: string; ariaLabel: string }> = [
     { value: 'light', label: 'Light', ariaLabel: 'Light theme' },

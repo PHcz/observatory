@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/svelte';
-import MuonChart from '$lib/panels/MuonChart.svelte';
+import MuonChart from '#lib/panels/MuonChart.svelte';
 
 const mockFetchResponse = {
   ok: true,

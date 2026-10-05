@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import MagnitudePill from '$lib/atoms/MagnitudePill.svelte';
+import MagnitudePill from '#lib/atoms/MagnitudePill.svelte';
 
 describe('MagnitudePill', () => {
   it('has class mag-small and text "2.5" for magnitude 2.5', () => {

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import CadenceWarningBanner from '$lib/components/CadenceWarningBanner.svelte';
-import { healthStore } from '$lib/stores/health';
-import type { HealthResponse, SourceHealth } from '$lib/types';
+import CadenceWarningBanner from '#lib/components/CadenceWarningBanner.svelte';
+import { healthStore } from '#lib/stores/health.js';
+import type { HealthResponse, SourceHealth } from '#lib/types.js';
 
 function mkEntry(
   cadence_warning: boolean,

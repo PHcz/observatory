@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { weatherStore, maxLuxToday } from '$lib/stores/weather';
-  import { muonDisplayRate } from '$lib/stores/muon';
-  import { dewPointC, dewComfort } from '$lib/utils/dewpoint';
-  import { tendency } from '$lib/utils/tendency';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import { alertsStore } from '$lib/stores/alerts';
-  import { weatherDerivedStore } from '$lib/stores/weatherDerived';
+  import { weatherStore, maxLuxToday } from '#lib/stores/weather.js';
+  import { muonDisplayRate } from '#lib/stores/muon.js';
+  import { dewPointC, dewComfort } from '#lib/utils/dewpoint.js';
+  import { tendency } from '#lib/utils/tendency.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import { alertsStore } from '#lib/stores/alerts.js';
+  import { weatherDerivedStore } from '#lib/stores/weatherDerived.js';
 
   $: weather = $weatherStore.current;
 

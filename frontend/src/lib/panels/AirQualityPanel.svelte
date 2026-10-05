@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { airQualityStore } from '$lib/stores/airQuality';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
-  import { aqiBand, uvBand, pollenBand, type PollenType, type Band } from '$lib/utils/airQualityBands';
-  import type { AirQualityPollen } from '$lib/types';
+  import { airQualityStore } from '#lib/stores/airQuality.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
+  import { aqiBand, uvBand, pollenBand, type PollenType, type Band } from '#lib/utils/airQualityBands.js';
+  import type { AirQualityPollen } from '#lib/types.js';
 
   $: data = $airQualityStore.data;
 

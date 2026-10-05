@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loess } from '$lib/charts/loess';
+import { loess } from '#lib/charts/loess.js';
 
 describe('loess', () => {
   it('returns empty for empty input', () => {

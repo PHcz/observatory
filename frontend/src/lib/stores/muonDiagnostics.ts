@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { MuonDiagnosticsResponse } from '$lib/types';
-import { fetchMuonDiagnostics } from '$lib/api/rest';
+import type { MuonDiagnosticsResponse } from '#lib/types.js';
+import { fetchMuonDiagnostics } from '#lib/api/rest.js';
 
 export interface MuonDiagnosticsState {
   data: MuonDiagnosticsResponse | null;

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import EarthquakeList from '$lib/panels/EarthquakeList.svelte';
-import { setEarthquakes, earthquakeStore } from '$lib/stores/earthquakes';
-import type { EarthquakeItem } from '$lib/types';
+import EarthquakeList from '#lib/panels/EarthquakeList.svelte';
+import { setEarthquakes, earthquakeStore } from '#lib/stores/earthquakes.js';
+import type { EarthquakeItem } from '#lib/types.js';
 
 describe('EarthquakeList', () => {
   it('shows empty message when earthquake list is empty', async () => {

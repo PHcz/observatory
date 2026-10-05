@@ -2,7 +2,7 @@
 // Persists to localStorage key observatory.settings.v1 with a 100 ms debounced write.
 
 import { writable } from 'svelte/store';
-import { parseSettings, DEFAULTS, type Settings } from '$lib/utils/settingsSchema';
+import { parseSettings, DEFAULTS, type Settings } from '#lib/utils/settingsSchema.js';
 
 const KEY = 'observatory.settings.v1';
 

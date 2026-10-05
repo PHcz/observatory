@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nextBackoffMs } from '$lib/api/reconnect';
+import { nextBackoffMs } from '#lib/api/reconnect.js';
 
 const cfg = { baseMs: 1000, capMs: 30000 };
 

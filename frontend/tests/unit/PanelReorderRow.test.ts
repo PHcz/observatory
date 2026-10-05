@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
-import PanelReorderRow from '$lib/components/PanelReorderRow.svelte';
-import { settingsStore } from '$lib/stores/settings';
+import PanelReorderRow from '#lib/components/PanelReorderRow.svelte';
+import { settingsStore } from '#lib/stores/settings.js';
 
 const props = (over = {}) => ({
   panelKey: 'lightning' as const,

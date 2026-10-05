@@ -14,7 +14,7 @@ import type {
   WeatherOutlookResponse,
   IndoorCurrentResponse,
   IndoorHistoryResponse,
-} from '$lib/types';
+} from '#lib/types.js';
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Accept': 'application/json' } });

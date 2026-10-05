@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildLightPlot } from '$lib/charts/plotHelpers';
-import * as loessMod from '$lib/charts/loess';
-import type { WeatherPoint } from '$lib/types';
+import { buildLightPlot } from '#lib/charts/plotHelpers.js';
+import * as loessMod from '#lib/charts/loess.js';
+import type { WeatherPoint } from '#lib/types.js';
 
 describe('buildLightPlot', () => {
   it('is exported', () => {

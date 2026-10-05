@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import KpBar from '$lib/atoms/KpBar.svelte';
+import KpBar from '#lib/atoms/KpBar.svelte';
 
 describe('KpBar', () => {
   it('renders 2 active-low cells when kpIndex=2', () => {

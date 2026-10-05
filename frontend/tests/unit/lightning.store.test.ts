@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { lightningStore, setLightning } from '$lib/stores/lightning';
-import type { LightningSummary } from '$lib/types';
+import { lightningStore, setLightning } from '#lib/stores/lightning.js';
+import type { LightningSummary } from '#lib/types.js';
 
 describe('lightning store setLightning', () => {
   beforeEach(() => {

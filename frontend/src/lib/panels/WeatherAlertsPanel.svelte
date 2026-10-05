@@ -1,6 +1,6 @@
 <script lang="ts">
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
-  import { alertsStore } from '$lib/stores/alerts';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
+  import { alertsStore } from '#lib/stores/alerts.js';
 
   $: active = $alertsStore.active;
   $: recent = $alertsStore.recent;

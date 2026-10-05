@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { weatherStore, seedWeatherHistory } from '$lib/stores/weather';
-  import { fetchWeatherHistory } from '$lib/api/rest';
-  import { buildTempPlot } from '$lib/charts/plotHelpers';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import { startReseed } from '$lib/utils/reseed';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
+  import { weatherStore, seedWeatherHistory } from '#lib/stores/weather.js';
+  import { fetchWeatherHistory } from '#lib/api/rest.js';
+  import { buildTempPlot } from '#lib/charts/plotHelpers.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import { startReseed } from '#lib/utils/reseed.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;

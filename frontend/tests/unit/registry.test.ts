@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { PANEL_COMPONENTS } from '$lib/panels/registry';
-import { ALL_PANELS } from '$lib/utils/settingsSchema';
+import { PANEL_COMPONENTS } from '#lib/panels/registry.js';
+import { ALL_PANELS } from '#lib/utils/settingsSchema.js';
 
 describe('PANEL_COMPONENTS registry', () => {
   it('has a component for every panel except indoorAir', () => {

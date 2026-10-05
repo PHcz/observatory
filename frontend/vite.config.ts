@@ -1,12 +1,18 @@
+import adapter from '@sveltejs/adapter-static';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default defineConfig({
-  plugins: [sveltekit()],
-  resolve: {
-    conditions: ['browser']
-  },
+  plugins: [
+    sveltekit({
+      preprocess: vitePreprocess(),
+      adapter: adapter({ fallback: '200.html' }),
+      prerender: { handleHttpError: 'warn' }
+    })
+  ],
+  resolve: { conditions: ['browser'] },
   server: {
     proxy: {
       '/api': { target: 'http://observatory.local:8000', changeOrigin: true },

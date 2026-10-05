@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { moveItem, buildRenderPlan, type RenderItem } from '$lib/utils/renderPlan';
-import { ALL_PANELS, type PanelKey } from '$lib/utils/settingsSchema';
+import { moveItem, buildRenderPlan, type RenderItem } from '#lib/utils/renderPlan.js';
+import { ALL_PANELS, type PanelKey } from '#lib/utils/settingsSchema.js';
 
 const allVisible = (): Record<PanelKey, boolean> =>
   Object.fromEntries(ALL_PANELS.map((k) => [k, true])) as Record<PanelKey, boolean>;

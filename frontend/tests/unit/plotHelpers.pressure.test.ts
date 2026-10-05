@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildPressurePlot } from '$lib/charts/plotHelpers';
-import type { WeatherPoint } from '$lib/types';
+import { buildPressurePlot } from '#lib/charts/plotHelpers.js';
+import type { WeatherPoint } from '#lib/types.js';
 
 describe('buildPressurePlot', () => {
   it('is exported as a function', () => {

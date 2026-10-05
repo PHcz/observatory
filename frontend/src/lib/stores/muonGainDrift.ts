@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { MuonGainDriftResponse } from '$lib/types';
-import { fetchMuonGainDrift } from '$lib/api/rest';
+import type { MuonGainDriftResponse } from '#lib/types.js';
+import { fetchMuonGainDrift } from '#lib/api/rest.js';
 
 export interface MuonGainDriftState {
   data: MuonGainDriftResponse | null;

@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { healthStore } from '$lib/stores/health';
-  import { wsStatus } from '$lib/stores/ws';
-  import StatusDot from '$lib/atoms/StatusDot.svelte';
-  import { formatAgeCaption } from '$lib/utils/time';
-  import { deriveStaleness } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import type { SourceHealth } from '$lib/types';
+  import { healthStore } from '#lib/stores/health.js';
+  import { wsStatus } from '#lib/stores/ws.js';
+  import StatusDot from '#lib/atoms/StatusDot.svelte';
+  import { formatAgeCaption } from '#lib/utils/time.js';
+  import { deriveStaleness } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import type { SourceHealth } from '#lib/types.js';
 
   type DotColor = 'green' | 'amber' | 'red';
 

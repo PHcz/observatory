@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // RED until Wave 3 (plan 11-04) creates this module — import fails by design.
-import { aqiBand, uvBand, pollenBand } from '$lib/utils/airQualityBands';
+import { aqiBand, uvBand, pollenBand } from '#lib/utils/airQualityBands.js';
 
 // Locked band→{label, token} collapses from 11-UI-SPEC §Color.
 describe('airQualityBands aqiBand()', () => {

@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 // RED until Wave 3 (plan 11-04): the panel + airQuality store do not exist yet.
-import AirQualityPanel from '$lib/panels/AirQualityPanel.svelte';
-import { setAirQuality } from '$lib/stores/airQuality';
-import { settingsStore } from '$lib/stores/settings';
+import AirQualityPanel from '#lib/panels/AirQualityPanel.svelte';
+import { setAirQuality } from '#lib/stores/airQuality.js';
+import { settingsStore } from '#lib/stores/settings.js';
 
 // Seed shape mirrors the /api/air-quality contract (OAQ-02 + UI-SPEC).
 function snapshot(overrides: Record<string, unknown> = {}) {

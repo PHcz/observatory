@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 // RED until Wave 3 (plan 10-04): the panel + forecast store do not exist yet.
-import ForecastPanel from '$lib/panels/ForecastPanel.svelte';
-import { setForecast } from '$lib/stores/forecast';
-import { settingsStore } from '$lib/stores/settings';
+import ForecastPanel from '#lib/panels/ForecastPanel.svelte';
+import { setForecast } from '#lib/stores/forecast.js';
+import { settingsStore } from '#lib/stores/settings.js';
 
 // Seed shapes mirror the /api/forecast contract (10-RESEARCH Pattern 2 + UI-SPEC).
 const HOURLY = [

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tsToLocalTime, ageSeconds, ageMinutes, formatAgeCaption } from '$lib/utils/time';
+import { tsToLocalTime, ageSeconds, ageMinutes, formatAgeCaption } from '#lib/utils/time.js';
 
 describe('time utilities', () => {
   describe('tsToLocalTime', () => {

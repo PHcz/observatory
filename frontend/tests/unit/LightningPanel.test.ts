@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
-import { lightningStore } from '$lib/stores/lightning';
-import LightningPanel from '$lib/panels/LightningPanel.svelte';
+import { lightningStore } from '#lib/stores/lightning.js';
+import LightningPanel from '#lib/panels/LightningPanel.svelte';
 
 describe('LightningPanel', () => {
   beforeEach(() => {

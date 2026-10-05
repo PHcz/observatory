@@ -1,5 +1,5 @@
 import { writable, type Writable } from 'svelte/store';
-import type { AuroraData } from '$lib/types';
+import type { AuroraData } from '#lib/types.js';
 
 export interface AuroraState {
   current: AuroraData | null;

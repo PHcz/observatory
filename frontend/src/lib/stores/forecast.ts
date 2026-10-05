@@ -1,6 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
-import type { ForecastResponse } from '$lib/types';
-import { fetchForecast } from '$lib/api/rest';
+import type { ForecastResponse } from '#lib/types.js';
+import { fetchForecast } from '#lib/api/rest.js';
 
 export interface ForecastState {
   data: ForecastResponse | null;

@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { forecastStore } from '$lib/stores/forecast';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
-  import WeatherGlyph from '$lib/atoms/WeatherGlyph.svelte';
-  import { condition } from '$lib/utils/weatherCodes';
-  import type { ForecastTempMetric } from '$lib/types';
+  import { forecastStore } from '#lib/stores/forecast.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness, DEFAULT_STALENESS_THRESHOLD_SEC } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
+  import WeatherGlyph from '#lib/atoms/WeatherGlyph.svelte';
+  import { condition } from '#lib/utils/weatherCodes.js';
+  import type { ForecastTempMetric } from '#lib/types.js';
 
   $: data = $forecastStore.data;
 

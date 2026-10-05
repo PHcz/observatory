@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { wsStatus, initWs } from '$lib/stores/ws';
+import { wsStatus, initWs } from '#lib/stores/ws.js';
 
 // Mock WebSocket — mirrors tests/unit/ws.store.test.ts pattern, with closeSpy
 class MockWs {

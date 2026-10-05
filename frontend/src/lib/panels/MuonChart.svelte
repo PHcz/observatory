@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { muonStore, flushMuonBuffer, seedMuonHistory } from '$lib/stores/muon';
-  import { fetchMuonHistory } from '$lib/api/rest';
-  import { buildMuonPlot } from '$lib/charts/plotHelpers';
-  import { healthStore } from '$lib/stores/health';
-  import { deriveStaleness } from '$lib/utils/staleness';
-  import { ageSeconds } from '$lib/utils/time';
-  import { startReseed } from '$lib/utils/reseed';
-  import StalenessCaption from '$lib/atoms/StalenessCaption.svelte';
-  import ChartHeader from '$lib/atoms/ChartHeader.svelte';
+  import { muonStore, flushMuonBuffer, seedMuonHistory } from '#lib/stores/muon.js';
+  import { fetchMuonHistory } from '#lib/api/rest.js';
+  import { buildMuonPlot } from '#lib/charts/plotHelpers.js';
+  import { healthStore } from '#lib/stores/health.js';
+  import { deriveStaleness } from '#lib/utils/staleness.js';
+  import { ageSeconds } from '#lib/utils/time.js';
+  import { startReseed } from '#lib/utils/reseed.js';
+  import StalenessCaption from '#lib/atoms/StalenessCaption.svelte';
+  import ChartHeader from '#lib/atoms/ChartHeader.svelte';
 
   let container: HTMLDivElement | undefined;
   let observer: ResizeObserver | undefined;

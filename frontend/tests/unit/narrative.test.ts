@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numberToWord, composeSubtitle } from '$lib/utils/narrative';
+import { numberToWord, composeSubtitle } from '#lib/utils/narrative.js';
 
 describe('numberToWord', () => {
   it('returns word for 1', () => expect(numberToWord(1)).toBe('one'));

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { get } from 'svelte/store';
-import { settingsStore } from '$lib/stores/settings';
-import { DEFAULTS } from '$lib/utils/settingsSchema';
+import { settingsStore } from '#lib/stores/settings.js';
+import { DEFAULTS } from '#lib/utils/settingsSchema.js';
 
 describe('settingsStore', () => {
   beforeEach(() => {

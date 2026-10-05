@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import StatsRow from '$lib/panels/StatsRow.svelte';
-import { weatherStore } from '$lib/stores/weather';
-import { muonStore } from '$lib/stores/muon';
-import type { WeatherData } from '$lib/types';
+import StatsRow from '#lib/panels/StatsRow.svelte';
+import { weatherStore } from '#lib/stores/weather.js';
+import { muonStore } from '#lib/stores/muon.js';
+import type { WeatherData } from '#lib/types.js';
 
 describe('StatsRow', () => {
   it('renders four em-dashes when weather data is null', () => {

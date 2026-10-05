@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stpFactor, stpCorrectedRate, REFERENCE_PRESSURE_HPA } from '$lib/utils/stp';
+import { stpFactor, stpCorrectedRate, REFERENCE_PRESSURE_HPA } from '#lib/utils/stp.js';
 
 describe('stpCorrectedRate (UKRAA STP method)', () => {
   it('is a no-op at reference conditions (20°C, 1013.25 hPa)', () => {
