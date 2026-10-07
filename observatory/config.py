@@ -177,9 +177,15 @@ class Settings(BaseSettings):
 
     # --- API (Phase 5 scaffold; Phase 6 may tighten) ---
     # LAN topology is the trust boundary; Phase 6 may tighten if remote access is added.
-    # Phase 6 SEC-04: default to "auto" (resolve LAN IPv4 at startup via __main__.resolve_lan_ip).
-    # "0.0.0.0" remains valid for local dev; explicit IP also accepted.
-    api_bind_host: str = "auto"
+    # Phase 6 SEC-04 originally defaulted to "auto" (resolve the LAN IPv4 at startup via
+    # __main__.resolve_lan_ip). That left the API IPv4-only while Avahi publishes BOTH an
+    # A and an AAAA record for observatory.local, so a browser that preferred IPv6 got a
+    # stalled connection and reported the dashboard unreachable (2026-10-07). Default is
+    # now "::", which __main__.make_listen_socket turns into a true dual-stack listener.
+    # This does not widen exposure on the Pi: wlan0 is the only live interface, there are
+    # no tunnels and no port forwarding, so the API stays LAN-only exactly as before.
+    # "auto", "0.0.0.0" and an explicit IP all remain valid.
+    api_bind_host: str = "::"
     api_bind_port: int = Field(default=8000, ge=1, le=65535)
     api_watchdog_ping_interval_sec: int = Field(default=10, ge=2, le=60)
 

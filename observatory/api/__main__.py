@@ -91,6 +91,39 @@ def resolve_lan_ip() -> str:
     )
 
 
+def make_listen_socket(host: str, port: int, *, backlog: int) -> socket.socket | None:
+    """Return a dual-stack listening socket for an IPv6 ``host``, else ``None``.
+
+    ``observatory.local`` resolves to both the Pi's IPv4 address and its IPv6
+    link-local address, because Avahi publishes A and AAAA records. A browser
+    may pick either, so the API has to answer on both or it is intermittently
+    "unreachable" depending on which family the client prefers.
+
+    One socket can serve both families, but only if we build it ourselves:
+    Linux defaults ``net.ipv6.bindv6only=0``, yet ``asyncio``'s own
+    ``loop.create_server()`` explicitly sets ``IPV6_V6ONLY=1`` on sockets it
+    creates, which is what uvicorn uses when given a plain ``host``. Clearing
+    the option on a socket we own and handing it to uvicorn is the only way
+    through. Pinned by ``tests/api/test_dual_stack_bind.py``.
+
+    Returns ``None`` for IPv4 hosts (including ``"auto"``), where uvicorn's
+    own bind is already correct and needs no help.
+    """
+    if ":" not in host:
+        return None
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        sock.bind((host, port))
+        sock.listen(backlog)
+        sock.setblocking(False)
+    except OSError:
+        sock.close()
+        raise
+    return sock
+
+
 async def _serve() -> None:
     notifier = sdnotify.SystemdNotifier()
 
@@ -119,6 +152,9 @@ async def _serve() -> None:
     )
     server = uvicorn.Server(config)
 
+    # Dual-stack listener for IPv6 bind hosts; None means "let uvicorn bind".
+    listen_sock = make_listen_socket(bind_host, settings.api_bind_port, backlog=config.backlog)
+
     async def _ready_then_watchdog() -> None:
         # Wait for uvicorn to start serving before we tell systemd READY.
         while not server.started and not server.should_exit:
@@ -130,6 +166,7 @@ async def _serve() -> None:
             "api_ready",
             host=bind_host,
             port=settings.api_bind_port,
+            dual_stack=listen_sock is not None,
         )
         # Watchdog ping loop. WatchdogSec=30s in the unit; default ping=10s.
         while not server.should_exit:
@@ -151,7 +188,7 @@ async def _serve() -> None:
 
     watchdog_task = asyncio.create_task(_ready_then_watchdog())
     try:
-        await server.serve()
+        await server.serve(sockets=[listen_sock] if listen_sock else None)
     finally:
         watchdog_task.cancel()
 
