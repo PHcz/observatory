@@ -13,11 +13,36 @@ Configuration (all in settings — set on Pi .env only, never commit real values
 
 from __future__ import annotations
 
+from email.header import Header
+
 import structlog
 
 from observatory.config import settings
 
 log = structlog.get_logger(__name__)
+
+# Large enough that Header never folds the value across lines — a folded header
+# is invalid in a single HTTP header field.
+_NO_HEADER_FOLDING: int = 10**6
+
+
+def _ascii_safe_header(value: str) -> str:
+    """Return ``value`` safe to put in an HTTP header, RFC 2047-encoded if needed.
+
+    HTTP header values are latin-1; httpx raises UnicodeEncodeError on anything
+    outside it. Our CO2 alert title contains U+2082 (subscript two), so every
+    CO2 push died in ``notify_ntfy``'s blanket except and was silently never
+    delivered (observed 2026-10-05). ntfy decodes RFC 2047 encoded-words, so
+    the phone still shows the real title.
+
+    ASCII values are returned unchanged — encoding them would only make the
+    header unreadable for no gain.
+    """
+    try:
+        value.encode("ascii")
+    except UnicodeEncodeError:
+        return str(Header(value, "utf-8").encode(maxlinelen=_NO_HEADER_FOLDING))
+    return value
 
 
 async def notify_ntfy(
@@ -42,7 +67,7 @@ async def notify_ntfy(
 
     url = f"{settings.alert_ntfy_url}/{settings.alert_ntfy_topic}"
     headers: dict[str, str] = {
-        "Title": title,
+        "Title": _ascii_safe_header(title),
         "Priority": str(priority),
     }
     if settings.alert_ntfy_token:

@@ -120,3 +120,56 @@ class TestTelegramSendsAndSwallows:
             )
             mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
             asyncio.run(notify_telegram(title="Test", message="hi"))  # must not raise
+
+
+class TestNtfyNonAsciiTitle:
+    """HTTP headers are latin-1; a UTF-8 title must be RFC 2047 encoded.
+
+    Regression: the CO2 alert title contains U+2082 (subscript two). httpx
+    raised ``'ascii' codec can't encode character '\\u2082'``, notify_ntfy's
+    blanket ``except Exception`` swallowed it into a warning, and every CO2
+    alert was silently never delivered (observed on the Pi 2026-10-05).
+    """
+
+    @staticmethod
+    def _post_headers(title: str) -> dict[str, str]:
+        with (
+            patch("observatory.weather.alerts.notifier.settings") as mock_settings,
+            patch("httpx.AsyncClient") as mock_client_class,
+        ):
+            mock_settings.alert_ntfy_enabled = True
+            mock_settings.alert_ntfy_url = "https://ntfy.sh"
+            mock_settings.alert_ntfy_topic = "test-topic"
+            mock_settings.alert_ntfy_token = ""
+
+            mock_post = AsyncMock()
+            mock_instance = AsyncMock()
+            mock_instance.post = mock_post
+            mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_instance)
+            mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            asyncio.run(notify_ntfy(title=title, message="body"))
+
+            mock_post.assert_called_once()
+            headers = mock_post.call_args.kwargs["headers"]
+            assert isinstance(headers, dict)
+            return headers
+
+    def test_non_ascii_title_is_header_safe(self) -> None:
+        """The Title header must be encodable by httpx (ascii) and unfolded."""
+        headers = self._post_headers("CO\u2082 high \u2014 living room")
+        title = headers["Title"]
+        title.encode("ascii")  # must not raise — this is what broke in production
+        assert "\n" not in title and "\r" not in title, "folded header breaks HTTP"
+
+    def test_non_ascii_title_round_trips(self) -> None:
+        """Encoding must be reversible so the phone shows the real title."""
+        from email.header import decode_header, make_header
+
+        original = "CO\u2082 high \u2014 living room"
+        decoded = str(make_header(decode_header(self._post_headers(original)["Title"])))
+        assert decoded == original
+
+    def test_ascii_title_left_untouched(self) -> None:
+        """Plain ASCII titles must not be needlessly mangled into encoded-words."""
+        assert self._post_headers("Frost warning")["Title"] == "Frost warning"
