@@ -103,7 +103,20 @@ def _payload_str(message: aiomqtt.Message) -> str:
 
 
 async def _handle_message(message: aiomqtt.Message, aggregator: IndoorAggregator) -> None:
-    """Parse one MQTT message and feed the aggregator. Never raises."""
+    """Parse one MQTT message and feed the aggregator. Never raises.
+
+    Retained messages are dropped. ESPHome publishes retained, so the broker
+    re-delivers the node's last reading to every new subscription — i.e. on
+    every obs-api restart. ``flush()`` stamps rows with server receive time and
+    the table dedupes on UNIQUE(node_id, ts), so a replay cannot be deduped: it
+    lands as a brand-new row, resets the freshness clock and makes a dead node
+    look healthy. (Seen 2026-10-07: the node had been silent 44h while three
+    restarts wrote three identical "fresh" rows.) The weather path does not
+    need this because its payload carries its own timestamp, which is what
+    makes INSERT OR IGNORE work there.
+    """
+    if getattr(message, "retain", False):
+        return
     parsed = parse_metric_topic(_topic_str(message))
     if parsed is None:
         return  # status / debug / unknown metric — ignore
