@@ -14,9 +14,8 @@
 #   - tmpfs for /tmp and /var/log via fstab marker
 #   - swap disabled
 #   - uv installed system-wide, anchored to system Python 3.11
-#   - venv created at /opt/observatory/.venv via `uv sync`
+#   - venv created at /opt/observatory/.venv via `uv sync --frozen --no-dev`
 #   - udev rule, mosquitto config installed
-#   - pre-commit hooks installed
 #   - yoyo migrations applied to /var/lib/observatory/observatory.db
 #   - obs-backup.timer enabled
 #
@@ -142,7 +141,13 @@ chown -R observatory:observatory "$REPO_ROOT"
 # --- SECTION 9: uv sync (anchored to system Python 3.11) ---
 log "Section 9: uv sync"
 cd "$REPO_ROOT"
-sudo -u observatory uv sync --python /usr/bin/python3.11
+# Production install: exactly uv.lock (--frozen), runtime deps only (--no-dev),
+# plus the analysis extra that the muon endpoints import. Re-run this same
+# command after every uv.lock change -- the venv is NOT updated by rsyncing code
+# (security audit 2026-10-20, M10). TMPDIR must be on real disk: /tmp is a 64 MB
+# tmpfs and large wheels fail there with a misleading "network" error.
+sudo -u observatory mkdir -p /home/observatory/tmp
+sudo -u observatory env TMPDIR=/home/observatory/tmp uv sync --frozen --no-dev --extra analysis --python /usr/bin/python3.11
 
 # --- SECTION 10: install deploy artifacts ---
 log "Section 10: deploy artifacts"
@@ -170,12 +175,9 @@ fi
 systemctl enable mosquitto
 systemctl restart mosquitto
 
-# --- SECTION 11: pre-commit hooks ---
-log "Section 11: pre-commit hooks"
-sudo -u observatory \
-  "$REPO_ROOT/.venv/bin/pre-commit" install --install-hooks --config "$REPO_ROOT/.pre-commit-config.yaml"
-sudo -u observatory \
-  "$REPO_ROOT/.venv/bin/pre-commit" install --hook-type pre-push --config "$REPO_ROOT/.pre-commit-config.yaml"
+# --- SECTION 11: (removed) pre-commit hooks ---
+# Commits happen on the dev machine, where the hooks are installed. The Pi runs
+# a runtime-only venv (see Section 9), so it has no pre-commit to install.
 
 # --- SECTION 12: apply yoyo migrations + enable WAL mode ---
 log "Section 12: migrations"

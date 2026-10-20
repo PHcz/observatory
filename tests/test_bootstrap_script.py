@@ -80,10 +80,39 @@ def test_uv_anchored_to_system_python() -> None:
     assert "--python /usr/bin/python3.11" in t
 
 
-def test_installs_pre_commit_hooks_both_stages() -> None:
-    t = _text()
-    assert "pre-commit" in t
-    assert "install --hook-type pre-push" in t
+def _uv_sync_line() -> str:
+    lines = [
+        ln
+        for ln in _text().splitlines()
+        if "uv sync" in ln and not ln.lstrip().startswith(("#", "log "))
+    ]
+    assert len(lines) == 1, f"expected exactly one uv sync invocation, got {lines}"
+    return lines[0]
+
+
+def test_production_sync_is_frozen_runtime_only() -> None:
+    """The Pi must run exactly what uv.lock says, without dev tooling.
+
+    Bootstrap used a plain `uv sync` and nothing re-synced afterwards, so by the
+    2026-10-20 audit (M10) the Pi ran fastapi 0.136 / starlette 1.3 / uvicorn
+    0.39 -- all below pyproject's security floors -- plus pytest, mypy, docker
+    and testcontainers in production, while every dependency audit inspected
+    the lockfile and reported "clean".
+    """
+    line = _uv_sync_line()
+    for flag in ("--frozen", "--no-dev", "--extra analysis"):
+        assert flag in line, f"uv sync on the Pi must pass {flag}: {line!r}"
+
+
+def test_production_sync_keeps_temp_files_off_the_tmpfs() -> None:
+    """/tmp is a 64 MB tmpfs; large wheels fail there with a misleading
+    'network connectivity' error (polars-runtime is ~50 MB)."""
+    assert "TMPDIR=" in _uv_sync_line()
+
+
+def test_does_not_install_dev_hooks_on_the_pi() -> None:
+    """Commits happen on the dev machine; the Pi has no dev tooling to run them."""
+    assert ".venv/bin/pre-commit" not in _text()
 
 
 def test_applies_yoyo_migrations() -> None:
