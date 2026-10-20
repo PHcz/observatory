@@ -203,3 +203,67 @@ def test_no_verify_false_in_source() -> None:
     assert src is not None
     text = open(src).read()
     assert "verify=False" not in text
+
+
+# --- Security audit 2026-10-20, F28/F29 --------------------------------------
+
+
+def _redirect_then_ok(location: str) -> tuple[httpx.MockTransport, list[str]]:
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        if len(seen) == 1:
+            return httpx.Response(302, headers={"location": location})
+        return httpx.Response(200, content=b"ok")
+
+    return httpx.MockTransport(handler), seen
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "http://example.com/api",  # https -> http downgrade on the same host
+        "https://example.com:8443/api",  # same host, different port
+    ],
+)
+def test_same_host_redirect_must_keep_scheme_and_port(location: str) -> None:
+    transport, _ = _redirect_then_ok(location)
+    with pytest.raises(CrossHostRedirect):
+        fetch(URL, source="t", _client_factory=_client_factory_with(transport))
+
+
+def test_relative_redirect_is_resolved_against_the_current_url() -> None:
+    transport, seen = _redirect_then_ok("/v2/api")
+    body = fetch(URL, source="t", _client_factory=_client_factory_with(transport))
+    assert body == b"ok"
+    assert seen[-1] == "https://example.com/v2/api"
+
+
+def test_http_to_https_upgrade_on_the_same_host_is_allowed() -> None:
+    transport, seen = _redirect_then_ok("https://example.com/api")
+    body = fetch(
+        "http://example.com/api", source="t", _client_factory=_client_factory_with(transport)
+    )
+    assert body == b"ok"
+    assert seen[-1] == "https://example.com/api"
+
+
+@pytest.mark.parametrize("value", ["²", "٣", "1e3", "-5", "99999999999"])
+def test_unusual_retry_after_values_do_not_crash(value: str, _no_sleep: list[float]) -> None:
+    """str.isdigit() accepts superscripts (int() then raises) and Arabic-Indic
+    digits; only ASCII 0-9 is a valid delay-seconds."""
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # Raw bytes, as a server would send them (str headers must be ASCII).
+            return httpx.Response(429, headers=[(b"retry-after", value.encode())])
+        return httpx.Response(200, content=b"ok")
+
+    try:
+        fetch(URL, source="t", _client_factory=_client_factory_with(httpx.MockTransport(handler)))
+    except httpx.HTTPStatusError:
+        pass  # an unparseable Retry-After may end the attempt; it must not crash
+    assert all(s <= 60 for s in _no_sleep)

@@ -121,3 +121,30 @@ def test_ingest_wrong_password(client_with_auth: TestClient) -> None:
     payload = _make_payload()
     resp = client_with_auth.post("/ingest", json=payload, auth=("enviro", "wrong-password"))
     assert resp.status_code == 401
+
+
+# --- Security audit 2026-10-20, F06/F10/F24 ----------------------------------
+
+
+def test_ingest_422_does_not_echo_the_submitted_values(client_with_auth: TestClient) -> None:
+    """pydantic's error text quoted the attacker-controlled input back."""
+    payload = _make_payload()
+    payload["readings"]["temperature"] = "<script>canary-7f3a</script>"
+    resp = client_with_auth.post("/ingest", json=payload, auth=("enviro", "test-secret-123"))
+    assert resp.status_code == 422
+    assert "canary-7f3a" not in resp.text
+    assert resp.json() == {"detail": "invalid payload"}
+
+
+def test_ingest_enforces_the_nickname_allowlist(
+    client_with_auth: TestClient, db_path: Path
+) -> None:
+    """The MQTT path only persists settings.weather_nickname; /ingest wrote any."""
+    payload = _make_payload("2026-06-08T14:00:00Z")
+    payload["nickname"] = "someone-else"
+    resp = client_with_auth.post("/ingest", json=payload, auth=("enviro", "test-secret-123"))
+    assert resp.status_code == 422
+    conn = sqlite3.connect(str(db_path))
+    count = conn.execute("SELECT COUNT(*) FROM weather WHERE node_id='someone-else'").fetchone()[0]
+    conn.close()
+    assert count == 0

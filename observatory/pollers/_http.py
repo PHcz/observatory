@@ -16,9 +16,10 @@ Note: httpx.Timeout has no aggregate field; the retry-loop sleep budget
 from __future__ import annotations
 
 import random
+import re
 import time
 from collections.abc import Callable
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -60,6 +61,28 @@ def _stream_with_cap(response: httpx.Response, cap: int) -> bytes:
     return bytes(buf)
 
 
+_DELAY_SECONDS = re.compile(r"[0-9]{1,9}")
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _origin(url: str) -> tuple[str, str | None, int | None]:
+    parts = urlparse(url)
+    return parts.scheme, parts.hostname, parts.port or _DEFAULT_PORTS.get(parts.scheme)
+
+
+def _same_origin_or_upgrade(original: str, target: str) -> bool:
+    """Follow a redirect only to the same scheme, host and port -- or an
+    http -> https upgrade on the same host. Comparing the hostname alone let a
+    redirect downgrade https to http or move to another port (audit F28)."""
+    o_scheme, o_host, o_port = _origin(original)
+    t_scheme, t_host, t_port = _origin(target)
+    if t_host is None or t_host != o_host:
+        return False
+    if (t_scheme, t_port) == (o_scheme, o_port):
+        return True
+    return o_scheme == "http" and t_scheme == "https" and t_port == 443
+
+
 def fetch(
     url: str,
     *,
@@ -75,7 +98,6 @@ def fetch(
             Defaults to httpx.Client.
     """
     factory: Callable[..., httpx.Client] = _client_factory or httpx.Client
-    original_host = urlparse(url).hostname
     max_redirects = settings.poller_http_max_redirects
     max_bytes = settings.poller_http_max_response_bytes
     del source  # reserved for logging context; not used directly here
@@ -106,17 +128,21 @@ def fetch(
                             loc = response.headers.get("location")
                             if not loc:
                                 raise httpx.HTTPError("redirect without Location header")
-                            redirect_host = urlparse(loc).hostname
-                            if redirect_host != original_host:
+                            target = urljoin(current_url, loc)
+                            if not _same_origin_or_upgrade(url, target):
                                 raise CrossHostRedirect(
-                                    f"redirect off-host: {original_host} -> {redirect_host}"
+                                    f"redirect off-origin: {_origin(url)} -> {_origin(target)}"
                                 )
-                            current_url = loc
+                            current_url = target
                             continue
                         if status == 429:
                             ra = response.headers.get("retry-after")
+                            # ASCII digits only: str.isdigit() also accepts
+                            # superscripts, which int() then rejects (audit F29).
                             wait_s = (
-                                min(int(ra), RETRY_AFTER_CAP_SEC) if ra and ra.isdigit() else None
+                                min(int(ra), RETRY_AFTER_CAP_SEC)
+                                if ra and _DELAY_SECONDS.fullmatch(ra)
+                                else None
                             )
                             if wait_s is not None:
                                 time.sleep(wait_s)

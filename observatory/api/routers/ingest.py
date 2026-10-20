@@ -73,8 +73,16 @@ async def post_ingest(
     try:
         envelope = parse_envelope(body)
     except (ValidationError, ValueError) as exc:
-        log.warning("ingest_parse_error", error=str(exc))
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        # Full reason to the journal only: pydantic's text quotes the submitted
+        # values, which must not be reflected to the client (audit F06).
+        log.warning("ingest_parse_error", error=str(exc)[:500])
+        raise HTTPException(status_code=422, detail="invalid payload") from exc
+
+    # Same strict allowlist as the MQTT path (weather/subscriber.py). 4xx, not
+    # 2xx, so a misconfigured board keeps its cache instead of discarding it.
+    if envelope.nickname != settings.weather_nickname:
+        log.warning("ingest_nickname_unknown", nickname=envelope.nickname[:64])
+        raise HTTPException(status_code=422, detail="invalid payload")
 
     write_reading(envelope)  # dedup on UNIQUE(node_id, ts) handles replays
     log.info("ingest_accepted", node_id=envelope.nickname)
