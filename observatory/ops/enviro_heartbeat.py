@@ -36,6 +36,7 @@ import structlog
 
 from observatory.config import settings
 from observatory.db.connection import get_conn
+from observatory.logging import configure_logging
 from observatory.weather.alerts.notifier import notify_telegram
 from observatory.weather.alerts.rules import _format_age
 
@@ -199,6 +200,7 @@ async def _amain() -> int:
 
 
 def main() -> int:
+    configure_logging()
     return asyncio.run(_amain())
 
 

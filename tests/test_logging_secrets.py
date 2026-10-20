@@ -100,3 +100,33 @@ def test_telegram_notifier_never_logs_the_token(
 
     joined = "\n".join(production_logging.lines)
     assert FAKE_TOKEN not in joined, f"bot token reached the logs:\n{joined}"
+
+
+def _service_modules() -> list[str]:
+    import re
+    from pathlib import Path
+
+    units = Path(__file__).resolve().parent.parent / "deploy" / "systemd"
+    mods: set[str] = set()
+    for unit in units.glob("obs-*.service"):
+        for m in re.finditer(r"^ExecStart=.*?-m ([\w.]+)", unit.read_text(), re.M):
+            mods.add(m.group(1))
+    return sorted(mods)
+
+
+@pytest.mark.parametrize("module", _service_modules())
+def test_every_service_entry_point_configures_logging(module: str) -> None:
+    """Every unit's module must call configure_logging(): it is where the
+    secret-leak guard above lives, and it gives one JSON log format. Two ops
+    scripts skipped it and logged in console format, which silently defeated
+    a grep for their JSON events during verification (2026-10-20)."""
+    import importlib.util
+
+    spec = importlib.util.find_spec(module)
+    assert spec is not None and spec.origin, module
+    origin = spec.origin
+    if origin.endswith("__init__.py"):
+        origin = origin.replace("__init__.py", "__main__.py")
+    from pathlib import Path
+
+    assert "configure_logging(" in Path(origin).read_text(), f"{module} never configures logging"
