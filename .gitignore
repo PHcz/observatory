@@ -71,3 +71,6 @@ STATUS.local.md
 firmware/indoor-air/secrets.yaml
 firmware/indoor-air/.esphome/
 firmware/**/.esphome/
+
+# Output of the manual Blitzortung network probe (tests/pollers/blitzortung/test_port_probe.py)
+*.latest.md

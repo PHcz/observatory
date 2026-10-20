@@ -7,8 +7,10 @@ Run with::
 
     uv run pytest tests/pollers/blitzortung/test_port_probe.py -m network -s
 
-The probe writes ``BLITZORTUNG_PORT_PROBE.md`` next to this file with the
-working URL(s), a short hex preview of the first received frame, and the
+Set ``BLITZ_REFRESH_FIXTURE=1`` to also overwrite the committed fixture.
+
+The probe writes ``BLITZORTUNG_PORT_PROBE.latest.md`` (gitignored) next to
+this file with the working URL(s), a short hex preview of the first received frame, and the
 capture command that refreshed ``tests/fixtures/blitzortung/sample_frames.bin``.
 
 Skipped by default — the ``addopts = "-m 'not network'"`` filter in
@@ -19,24 +21,29 @@ upstream availability.
 from __future__ import annotations
 
 import json
+import os
 import ssl
 import struct
 import time
 from pathlib import Path
 from typing import cast
 
+import certifi
 import pytest
 
 websockets_sync = pytest.importorskip("websockets.sync.client")
 
 HERE = Path(__file__).parent
-PROBE_DOC = HERE / "BLITZORTUNG_PORT_PROBE.md"
+PROBE_DOC = HERE / "BLITZORTUNG_PORT_PROBE.latest.md"
 FIXTURE = HERE.parent.parent / "fixtures" / "blitzortung" / "sample_frames.bin"
 SUBSCRIBE = '{"a": 111}'
 HOSTS = ("ws1.blitzortung.org", "ws3.blitzortung.org", "ws7.blitzortung.org", "ws8.blitzortung.org")
-# (scheme, port, verify_ssl) — Blitzortung's volunteer pool has historically
-# used self-signed or expired certs; the community decoder writeups (gkbrk,
-# SimonSchick) connect with verification relaxed. We try strict first.
+# Verify against certifi's bundle: a python.org macOS Python ships without a
+# CA store, which is how the 2026-05 run misreported valid Let's Encrypt
+# certificates as "self-signed" (security audit 2026-10-20, M5).
+CA_FILE = certifi.where()
+# (scheme, port, verify_ssl) — strict first; the relaxed variant shows whether a
+# failure is the certificate or the endpoint itself.
 ENDPOINT_VARIANTS = (
     ("wss", 443, True),
     ("wss", 443, False),
@@ -61,7 +68,7 @@ def _probe(
     url = f"{scheme}://{host}:{port}"
     ssl_ctx: ssl.SSLContext | None
     if scheme == "wss":
-        ssl_ctx = ssl.create_default_context()
+        ssl_ctx = ssl.create_default_context(cafile=CA_FILE)
         if verify is False:
             ssl_ctx.check_hostname = False
             ssl_ctx.verify_mode = ssl.CERT_NONE
@@ -166,7 +173,8 @@ def test_probe_blitzortung_endpoints() -> None:
 
     PROBE_DOC.write_text("\n".join(lines) + "\n")
 
-    if captured:
+    # Opt-in: the fixture is committed and the decoder tests depend on it.
+    if captured and os.environ.get("BLITZ_REFRESH_FIXTURE") == "1":
         # Length-prefixed encoding so the decoder test can split frames cleanly.
         FIXTURE.parent.mkdir(parents=True, exist_ok=True)
         buf = bytearray()
@@ -176,10 +184,10 @@ def test_probe_blitzortung_endpoints() -> None:
         FIXTURE.write_bytes(bytes(buf))
 
     # Don't fail the test if the upstream is unreachable — record + degrade.
-    # Operator reads BLITZORTUNG_PORT_PROBE.md to decide next step.
+    # Operator reads BLITZORTUNG_PORT_PROBE.latest.md to decide next step.
     if not captured:
         pytest.skip(
-            "No frames captured from any endpoint; see BLITZORTUNG_PORT_PROBE.md. "
+            "No frames captured from any endpoint; see BLITZORTUNG_PORT_PROBE.latest.md. "
             "Service will rely on graceful-degradation path."
         )
 

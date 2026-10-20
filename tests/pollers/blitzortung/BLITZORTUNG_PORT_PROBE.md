@@ -1,5 +1,15 @@
 # Blitzortung WebSocket port probe result
 
+> **Correction (2026-10-20, security audit M5):** the "invalid/self-signed
+> certificate" conclusion below is wrong. This run used a python.org macOS
+> Python with no CA bundle installed, so *every* verified TLS connection
+> failed. Re-checked from the Pi: ws1, ws7 and ws8 serve valid Let's Encrypt
+> certificates; ws3 presents a certificate for another hostname. The client
+> now verifies certificates (`POLLER_BLITZORTUNG_SSL_VERIFY`, default true)
+> and ws3 is dropped from the defaults. The probe now verifies against
+> certifi and writes `BLITZORTUNG_PORT_PROBE.latest.md` (gitignored), so this
+> file is a historical record only.
+
 **Probed:** 2026-05-26T07:02:03Z
 **Hosts:** ws1.blitzortung.org, ws3.blitzortung.org, ws7.blitzortung.org, ws8.blitzortung.org
 **Endpoints per host:** wss://*:443, wss://*:443, ws://*:8056

@@ -5,17 +5,12 @@ Uses the sync ``websockets.sync.client.connect`` rather than asyncio so the
 flush-buffer + watchdog cadence shares the muon-reader idiom of two cooperating
 threads driven by a ``stopping`` flag.
 
-SSL note (resolves 05-04 Task 1 finding): Blitzortung's volunteer pool serves
-an invalid/self-signed certificate; strict TLS verification fails with
-``CERTIFICATE_VERIFY_FAILED``. We connect with ``check_hostname=False`` and
-``verify_mode=ssl.CERT_NONE``. Justified because:
-
-- Blitzortung's ToS forbids republishing — payload integrity is not a security
-  boundary for us.
-- The decoded JSON is parsed defensively (key whitelist + types + distance filter
-  drops anything outside ``settings.poller_lightning_radius_km``).
-- There is no auth/credential exchange; an attacker MITMing the stream can only
-  inject fake strikes (already dropped by the radius filter for distant points).
+TLS: certificates are verified (``settings.poller_blitzortung_ssl_verify``,
+default True). The 2026-05 port probe reported "invalid/self-signed
+certificates", but it ran on a python.org macOS Python with no CA bundle
+installed; from the Pi, ws1/ws7/ws8 serve valid Let's Encrypt certificates
+(security audit 2026-10-20, M5). ``ssl_verify=False`` remains for tests that
+use a plain ``ws://`` mock and as an operator escape hatch.
 
 Graceful degradation (05-CONTEXT 2026-05-26 amendment, NO LightningMaps fallback):
 - 3 consecutive connect failures across all URLs OR no frame received within
@@ -73,7 +68,7 @@ class BlitzortungClient:
         flush_interval_sec: float | None = None,
         degraded_after_sec: float | None = None,
         notifier: Any | None = None,
-        ssl_verify: bool = False,
+        ssl_verify: bool | None = None,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self.urls = list(urls) if urls else list(settings.poller_blitzortung_ws_urls)
@@ -91,7 +86,9 @@ class BlitzortungClient:
             else float(settings.poller_blitzortung_degraded_after_sec)
         )
         self.notifier = notifier if notifier is not None else sdnotify.SystemdNotifier()
-        self.ssl_verify = ssl_verify
+        self.ssl_verify: bool = (
+            ssl_verify if ssl_verify is not None else settings.poller_blitzortung_ssl_verify
+        )
         self.clock = clock
 
         self.stopping: bool = False

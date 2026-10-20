@@ -161,12 +161,12 @@ class Settings(BaseSettings):
     poller_nmdb_station: str = "OULU"
 
     # --- Blitzortung lightning (Phase 5) ---
-    # Port (8056 vs 443) probed at 05-04 first-task; URL list defaults to wss:// (443).
-    # Plan 05-04 may flip these defaults after probe via a follow-up edit.
+    # wss:// on 443; ws://:8056 is dead pool-wide. ws3 is left out: it presents a
+    # certificate for another hostname and rejects the WS handshake (re-checked
+    # 2026-10-20). ws1/ws7/ws8 serve valid Let's Encrypt certificates.
     poller_blitzortung_ws_urls: list[str] = Field(
         default_factory=lambda: [
             "wss://ws1.blitzortung.org",
-            "wss://ws3.blitzortung.org",
             "wss://ws7.blitzortung.org",
             "wss://ws8.blitzortung.org",
         ]
@@ -174,6 +174,9 @@ class Settings(BaseSettings):
     poller_lightning_radius_km: float = Field(default=500.0, ge=10.0, le=10000.0)
     poller_blitzortung_flush_interval_sec: int = Field(default=30, ge=5, le=300)
     poller_blitzortung_degraded_after_sec: int = Field(default=300, ge=60, le=3600)
+    # Escape hatch only: set False if the volunteer pool ever serves a broken
+    # certificate again. Verification on is the norm (security audit M5).
+    poller_blitzortung_ssl_verify: bool = True
 
     # --- API (Phase 5 scaffold; Phase 6 may tighten) ---
     # LAN topology is the trust boundary; Phase 6 may tighten if remote access is added.

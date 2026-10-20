@@ -311,3 +311,44 @@ def _count_lightning_rows(db_path: Path) -> int:
     with sqlite3.connect(str(db_path)) as c:
         count: int = c.execute("SELECT COUNT(*) FROM lightning_strikes").fetchone()[0]
         return count
+
+
+# --- TLS verification (security audit 2026-10-20, M5) -----------------------
+# The client connected with CERT_NONE on the strength of a 2026-05 probe that
+# reported "invalid/self-signed certificates". The probe ran on a python.org
+# macOS Python with no CA bundle installed; from the Pi, ws1/ws7/ws8 present
+# valid Let's Encrypt certificates. Verification is now on by default.
+
+
+def test_tls_is_verified_by_default() -> None:
+    import ssl
+
+    from observatory.pollers.blitzortung.client import BlitzortungClient
+
+    ctx = BlitzortungClient(notifier=FakeNotifier())._ssl_context("wss://ws1.blitzortung.org")
+    assert ctx is not None
+    assert ctx.verify_mode == ssl.CERT_REQUIRED
+    assert ctx.check_hostname is True
+
+
+def test_tls_verification_follows_the_setting(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Escape hatch if the pool ever does serve a broken certificate again."""
+    import ssl
+
+    from observatory.config import settings
+    from observatory.pollers.blitzortung.client import BlitzortungClient
+
+    monkeypatch.setattr(settings, "poller_blitzortung_ssl_verify", False)
+    ctx = BlitzortungClient(notifier=FakeNotifier())._ssl_context("wss://ws1.blitzortung.org")
+    assert ctx is not None
+    assert ctx.verify_mode == ssl.CERT_NONE
+
+
+def test_default_urls_exclude_the_misconfigured_ws3_host() -> None:
+    """ws3 presents a certificate for another hostname and rejects the WS
+    handshake; with verification on it only burns a reconnect slot."""
+    from observatory.config import Settings
+
+    urls = Settings().poller_blitzortung_ws_urls
+    assert urls and all(u.startswith("wss://") for u in urls)
+    assert not any("ws3." in u for u in urls)

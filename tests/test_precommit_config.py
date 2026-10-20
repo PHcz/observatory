@@ -206,3 +206,13 @@ def test_gitleaks_with_repo_config_actually_detects_a_secret(tmp_path: Path) -> 
         f"(exit {result.returncode}); the hook is not enforcing anything.\n"
         f"{result.stdout}{result.stderr}"
     )
+
+
+def test_blitzortung_probe_output_is_gitignored() -> None:
+    """The manual network probe rewrote a committed doc on every run, which is
+    how a host-specific CA failure became repo 'fact' (security audit M5)."""
+    from tests.pollers.blitzortung import test_port_probe
+
+    rel = test_port_probe.PROBE_DOC.relative_to(REPO_ROOT)
+    result = subprocess.run(["git", "check-ignore", "-q", str(rel)], cwd=REPO_ROOT, check=False)
+    assert result.returncode == 0, f"{rel} must be gitignored"
