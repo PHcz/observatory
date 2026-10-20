@@ -1,0 +1,71 @@
+# Runs the full test suites on every push to main and every pull request.
+#
+# Until 2026-10-20 nothing ran the suite before code merged: the pre-push hook
+# only does `pytest --collect-only`, so Dependabot PRs could be merged
+# completely untested (security audit M11). Branch protection on `main` requires
+# both jobs to pass before a PR can merge.
+#
+# Third-party actions are pinned to full commit SHAs, not tags: a tag can be
+# re-pointed at different code, a SHA cannot. Dependabot keeps them current
+# (github-actions ecosystem in .github/dependabot.yml).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: python
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          python-version: "3.11"
+      - name: Install (exactly uv.lock)
+        run: uv sync --frozen --all-extras
+      - name: Lint
+        run: uv run ruff check .
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Types (scope from pyproject [tool.mypy])
+        run: uv run mypy
+      - name: Tests
+        run: uv run pytest -q
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install (exactly package-lock.json)
+        run: npm ci
+      - name: Type check
+        run: npm run check
+      - name: Unit tests
+        run: npm run test:unit -- --run
+      - name: Build
+        run: npm run build
