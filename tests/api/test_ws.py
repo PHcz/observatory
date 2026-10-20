@@ -345,10 +345,9 @@ def test_ws_snapshot_is_built_off_the_event_loop(
     other client and the watchdog ping while it runs."""
     import asyncio
 
-    import observatory.api.routers.ws as ws_mod
+    from observatory.api.routers.current import build_current_snapshot as real
 
     on_loop: list[bool] = []
-    real = ws_mod.build_current_snapshot
 
     def spy(conn: Any) -> dict[str, Any]:
         try:
@@ -358,7 +357,7 @@ def test_ws_snapshot_is_built_off_the_event_loop(
             on_loop.append(False)
         return real(conn)
 
-    monkeypatch.setattr(ws_mod, "build_current_snapshot", spy)
+    monkeypatch.setattr("observatory.api.routers.ws.build_current_snapshot", spy)
     with TestClient(ws_app) as client:
         with client.websocket_connect("/ws") as ws:
             ws.receive_json()
