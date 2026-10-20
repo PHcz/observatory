@@ -1,4 +1,6 @@
 # observatory-backup
-# To activate: replace XXXX-XXXX with the UUID from `sudo blkid /dev/sda1`,
-# then append this line to /etc/fstab.
-UUID=XXXX-XXXX /mnt/backup vfat defaults,nofail,uid=observatory,gid=observatory,umask=0027 0 0
+# To activate: format the stick ext4 with label OBS_BACKUP (docs/OPERATIONS.md),
+# then uncomment this line in /etc/fstab. Mounted by label so a stick swap needs
+# no edit; nosuid,nodev,noexec because nothing on a removable backup stick should
+# ever be executable or a device node (audit F52).
+LABEL=OBS_BACKUP /mnt/backup ext4 defaults,nofail,nosuid,nodev,noexec 0 2

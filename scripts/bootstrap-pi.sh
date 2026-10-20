@@ -21,7 +21,7 @@
 #
 # Does NOT:
 #   - install or enable observatory application services (muon, pollers, API) — those land in Phase 2+
-#   - fill in the USB backup UUID — operator does this after `blkid` (see README)
+#   - format the USB backup stick (ext4, label OBS_BACKUP) — operator step, see docs/OPERATIONS.md
 #   - fill in the PicoMuon udev PID — happens in Phase 2 with device plugged in
 set -euo pipefail
 
@@ -128,7 +128,7 @@ fi
 if ! grep -q "# observatory-backup" /etc/fstab; then
   {
     echo ""
-    echo "# observatory-backup — uncomment after running blkid /dev/sda1 and replacing UUID:"
+    echo "# observatory-backup — uncomment once the stick is formatted ext4 with label OBS_BACKUP:"
     sed 's/^/# /' "$REPO_ROOT/deploy/fstab/observatory-backup.fstab.template"
   } >> /etc/fstab
 fi
@@ -371,7 +371,7 @@ log "     so verify-*.sh scripts can read /var/lib/observatory/observatory.db:"
 log "       sudo usermod -aG observatory \$USER"
 log "     Then log out and back in for the group membership to apply."
 log "  1. Edit /etc/observatory/observatory.env — set real HOME_LAT and HOME_LON."
-log "  2. Configure USB stick: blkid /dev/sda1 -> uncomment + fill UUID in /etc/fstab observatory-backup line."
+log "  2. Configure USB stick: mkfs.ext4 -L OBS_BACKUP (see docs/OPERATIONS.md) -> uncomment the observatory-backup line in /etc/fstab."
 log "  3. sudo mount -a, then start the obs-backup.timer (systemctl start)"
 log "  4. Reboot to activate tmpfs mounts: sudo reboot"
 log "  5. After reboot, run cold-boot acceptance checklist (see README)."

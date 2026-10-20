@@ -149,7 +149,7 @@ def test_seeds_observatory_env() -> None:
 def test_documents_operator_next_steps() -> None:
     t = _text()
     assert "Next steps for the operator" in t
-    assert "blkid" in t
+    assert "OBS_BACKUP" in t
     assert "cold-boot" in t.lower()
 
 

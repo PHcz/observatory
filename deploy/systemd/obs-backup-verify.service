@@ -7,6 +7,8 @@ ConditionPathIsMountPoint=/mnt/backup
 Type=oneshot
 User=observatory
 Group=observatory
+# Backups hold the whole sensor history: owner+group only (audit F11).
+UMask=0027
 EnvironmentFile=/etc/observatory/observatory.env
 ExecStart=/usr/bin/bash /opt/observatory/scripts/verify-latest-backup.sh
 StandardOutput=journal

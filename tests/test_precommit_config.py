@@ -216,3 +216,12 @@ def test_blitzortung_probe_output_is_gitignored() -> None:
     rel = test_port_probe.PROBE_DOC.relative_to(REPO_ROOT)
     result = subprocess.run(["git", "check-ignore", "-q", str(rel)], cwd=REPO_ROOT, check=False)
     assert result.returncode == 0, f"{rel} must be gitignored"
+
+
+def test_bgs_probe_output_is_gitignored() -> None:
+    """Same trap as the Blitzortung probe: running it dirtied a tracked file."""
+    from tests.pollers.bgs import test_https_probe
+
+    rel = test_https_probe.RESULT_FILE.relative_to(REPO_ROOT)
+    result = subprocess.run(["git", "check-ignore", "-q", str(rel)], cwd=REPO_ROOT, check=False)
+    assert result.returncode == 0, f"{rel} must be gitignored"

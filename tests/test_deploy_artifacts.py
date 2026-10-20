@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -52,12 +54,10 @@ def test_tmpfs_fstab_snippet_has_both_mounts() -> None:
     assert "noatime" in f
 
 
-def test_backup_fstab_template_has_uuid_placeholder() -> None:
+def test_backup_fstab_template_does_not_block_boot() -> None:
     f = _read("deploy/fstab/observatory-backup.fstab.template")
-    assert "UUID=XXXX-XXXX" in f
     assert "/mnt/backup" in f
-    assert "nofail" in f
-    assert "uid=observatory" in f
+    assert "nofail" in f  # a missing stick must never stop the Pi booting
 
 
 # === Phase 3: Weather Node Mosquitto bundle ===
@@ -90,3 +90,31 @@ def test_mosquitto_readme_documents_passwd() -> None:
     assert "enviro-observatory-weather" in content
     assert "obs-api-subscriber" in content
     assert "ss -tlnp" in content
+
+
+# --- Backup confidentiality (security audit 2026-10-20, F11/F52) -------------
+# Backups were 0644 on an ext4 stick mounted without nosuid/nodev/noexec: every
+# local account could read months of home sensor history.
+
+
+@pytest.mark.parametrize("unit", ["obs-backup.service", "obs-backup-verify.service"])
+def test_backup_units_write_group_private_files(unit: str) -> None:
+    assert "UMask=0027" in _read(f"deploy/systemd/{unit}")
+
+
+_HARDENED_MOUNT = ("nosuid", "nodev", "noexec")
+
+
+def test_backup_fstab_template_matches_the_live_ext4_label_mount() -> None:
+    t = _read("deploy/fstab/observatory-backup.fstab.template")
+    line = next(ln for ln in t.splitlines() if "/mnt/backup" in ln and not ln.startswith("#"))
+    assert line.startswith("LABEL=OBS_BACKUP /mnt/backup ext4 ")
+    for opt in _HARDENED_MOUNT:
+        assert opt in line, f"backup mount must use {opt}: {line!r}"
+
+
+def test_operations_doc_fstab_line_is_hardened() -> None:
+    doc = _read("docs/OPERATIONS.md")
+    line = next(ln for ln in doc.splitlines() if ln.strip().startswith("LABEL=OBS_BACKUP"))
+    for opt in _HARDENED_MOUNT:
+        assert opt in line, f"documented backup mount must use {opt}: {line!r}"

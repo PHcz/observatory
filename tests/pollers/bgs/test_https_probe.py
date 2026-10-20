@@ -4,9 +4,10 @@ Run manually:
 
     uv run pytest tests/pollers/bgs/test_https_probe.py -m network -s
 
-The result is committed to ``tests/pollers/bgs/HTTPS_PROBE_RESULT.md`` so
-future maintainers can see the SEC-05 carve-out justification
-(04-RESEARCH Open Question 2).
+The committed ``tests/pollers/bgs/HTTPS_PROBE_RESULT.md`` records the
+original SEC-05 carve-out justification (04-RESEARCH Open Question 2). A run
+writes ``HTTPS_PROBE_RESULT.latest.md`` (gitignored) so it never dirties the
+tracked record.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-RESULT_FILE = Path(__file__).parent / "HTTPS_PROBE_RESULT.md"
+RESULT_FILE = Path(__file__).parent / "HTTPS_PROBE_RESULT.latest.md"
 HTTPS_URL = "https://earthquakes.bgs.ac.uk/feeds/MhSeismology.xml"
 
 

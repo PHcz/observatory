@@ -96,7 +96,7 @@ The script is idempotent — you can re-run it safely.
    Mount it by **label** (so future stick swaps need no fstab edit). The fstab line is:
 
    ```
-   LABEL=OBS_BACKUP /mnt/backup ext4 defaults,nofail 0 2
+   LABEL=OBS_BACKUP /mnt/backup ext4 defaults,nofail,nosuid,nodev,noexec 0 2
    ```
 
    Then mount and grant the service user write access (ext4 stores real ownership, so the
@@ -106,6 +106,7 @@ The script is idempotent — you can re-run it safely.
    sudo systemctl daemon-reload
    sudo mount /mnt/backup
    sudo chown observatory:observatory /mnt/backup     # so obs-backup (User=observatory) can write
+   sudo chmod 0750 /mnt/backup                        # backups are not world-readable
    findmnt /mnt/backup                                # confirm ext4 mounted
    sudo systemctl start obs-backup.timer obs-backup-verify.timer
    systemctl list-timers obs-backup.timer obs-backup-verify.timer
