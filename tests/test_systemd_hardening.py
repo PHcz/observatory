@@ -135,3 +135,20 @@ def test_deploy_frontend_refuses_unsafe_remote_dirs(bad: str) -> None:
     )
     assert proc.returncode != 0
     assert "refusing" in (proc.stdout + proc.stderr).lower()
+
+
+def test_github_token_is_readable_by_the_vuln_check_only() -> None:
+    """Every unit loads observatory.env, so a token kept there reached every
+    service (security audit F46). It lives in a root-only file that only
+    obs-vuln-check loads; systemd reads it as root before dropping privileges."""
+    env_files = [
+        line.split("=", 1)[1]
+        for line in (REPO_ROOT / "deploy/systemd/obs-vuln-check.service").read_text().splitlines()
+        if line.startswith("EnvironmentFile=")
+    ]
+    assert env_files[-1] == "-/etc/observatory/vuln-check.env"  # last one wins
+    for unit in UNITS:
+        if unit.name != "obs-vuln-check.service":
+            assert "vuln-check.env" not in unit.read_text(), unit.name
+    example = (REPO_ROOT / ".env.example").read_text()
+    assert "/etc/observatory/vuln-check.env" in example

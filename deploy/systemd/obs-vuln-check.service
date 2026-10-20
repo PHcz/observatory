@@ -9,6 +9,9 @@ Type=oneshot
 User=observatory
 Group=observatory
 EnvironmentFile=/etc/observatory/observatory.env
+# The GitHub token lives in its own root-only (0600) file that no other unit
+# loads (audit F46). Loaded last, so it wins over observatory.env.
+EnvironmentFile=-/etc/observatory/vuln-check.env
 ExecStart=/opt/observatory/.venv/bin/python -m observatory.ops.vuln_check
 StandardOutput=journal
 StandardError=journal
