@@ -26,7 +26,7 @@ def get_lightning_summary() -> dict[str, Any]:
         {
             "past_hour":      int,           # strikes in last 3600s
             "past_24h":       int,           # strikes in last 86400s
-            "nearest_km":     float | None,  # MIN(distance_km) in last 86400s, 1dp
+            "nearest_km":     float | None,  # MIN(distance_km) in last 86400s, whole km
             "total_today":    int,           # strikes since start of UTC day
             "hourly_buckets": list[int],     # length 24; [0]=oldest hour, [23]=most recent
             "ts":             int            # epoch-seconds at query time
@@ -80,7 +80,9 @@ def get_lightning_summary() -> dict[str, Any]:
         if 0 <= hours_ago < 24:
             hourly_buckets[23 - hours_ago] = strikes  # index 23 = most recent hour
 
-    nearest_km: float | None = round(raw_nearest, 1) if raw_nearest is not None else None
+    # Whole km: the panel renders toFixed(0), and finer precision on a value
+    # computed from the exact home only aids trilateration (security audit H1).
+    nearest_km: float | None = float(round(raw_nearest)) if raw_nearest is not None else None
 
     return {
         "past_hour": past_hour,

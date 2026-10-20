@@ -418,3 +418,12 @@ def test_build_current_snapshot_callable() -> None:
     from observatory.api.routers.current import build_current_snapshot
 
     assert callable(build_current_snapshot)
+
+
+def test_served_astronomy_is_minute_aligned(client: TestClient) -> None:
+    """/api/current and the /ws snapshot share build_current_snapshot; both must
+    serve the coarsened public astronomy, never seconds (security audit H1)."""
+    astronomy = client.get("/api/current").json()["astronomy"]
+    for key in ("sunrise_ts", "sunset_ts", "moonrise_ts", "moonset_ts"):
+        value = astronomy[key]
+        assert value is None or value % 60 == 0, f"{key}={value} carries seconds"

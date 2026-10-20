@@ -107,16 +107,22 @@ def test_nearest_km(client: TestClient, db_path: Path) -> None:
     assert body["nearest_km"] == 10.0
 
 
-def test_nearest_km_rounds_to_1dp(client: TestClient, db_path: Path) -> None:
+def test_nearest_km_reported_to_whole_km(client: TestClient, db_path: Path) -> None:
+    """Whole kilometres only (security audit H1).
+
+    Replaces a test that pinned 1 dp. That was ~100 m of precision on a value
+    computed from the exact home location; the panel renders it with
+    toFixed(0), so the extra digit only ever served someone trilaterating.
+    """
     now = int(time.time())
     conn = sqlite3.connect(str(db_path))
-    _insert_strike(conn, now - 100, distance_km=10.123456)
+    _insert_strike(conn, now - 100, distance_km=12.346)
     conn.commit()
     conn.close()
 
-    resp = client.get("/api/lightning/summary")
-    body = resp.json()
-    assert body["nearest_km"] == round(10.123456, 1)
+    body = client.get("/api/lightning/summary").json()
+    assert body["nearest_km"] == 12.0
+    assert isinstance(body["nearest_km"], float), "keep the float type the client expects"
 
 
 # ---------------------------------------------------------------------------

@@ -194,3 +194,19 @@ def test_data_is_dict_not_string(client: TestClient, db_path: Path) -> None:
     body = resp.json()
     row = body["rows"][0]
     assert isinstance(row["data"], dict), f"Expected dict, got {type(row['data'])}"
+
+
+def test_lightning_rows_carry_no_home_distance(client: TestClient, db_path: Path) -> None:
+    """Strike coordinates are public (Blitzortung), so exact per-strike distances
+    from the home -- matched to strikes by timestamp -- trilaterate the house.
+    The dashboard renders no per-strike distance (security audit H1)."""
+    conn = sqlite3.connect(str(db_path))
+    _insert_lightning(conn, int(time.time()) - 50)
+    conn.commit()
+    conn.close()
+
+    rows = client.get("/api/events/recent").json()["rows"]
+    lightning = [r for r in rows if r["type"] == "lightning"]
+    assert lightning, "fixture strike missing from the feed"
+    for row in lightning:
+        assert "distance_km" not in row["data"], row

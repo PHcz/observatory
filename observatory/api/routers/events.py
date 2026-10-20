@@ -45,8 +45,10 @@ SELECT type, ts, data FROM (
            json_object('kp_index', kp_index, 'flare_class', flare_class) AS data
     FROM space_weather
     UNION ALL
+    -- No per-strike distance: strike coordinates are public, so exact
+    -- distances from the home trilaterate it (security audit 2026-10-20, H1).
     SELECT 'lightning' AS type, ts,
-           json_object('distance_km', distance_km) AS data
+           json_object() AS data
     FROM lightning_strikes
     UNION ALL
     SELECT 'aurora' AS type, ts,

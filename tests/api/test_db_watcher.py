@@ -288,3 +288,60 @@ async def test_db_watcher_per_tick_limit(seeded_db: Path, monkeypatch: pytest.Mo
 
     assert first_tick_count == 100, f"Expected 100 rows in first tick, got: {first_tick_count}"
     assert second_tick_total == 200, f"Expected 200 total after two ticks, got: {second_tick_total}"
+
+
+# ---------------------------------------------------------------------------
+# Location privacy in the live stream (security audit 2026-10-20, H1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_lightning_fanout_strips_strike_location(
+    seeded_db: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A strike envelope must carry no coordinates and no home distance.
+
+    The watcher fanned out dict(row): every strike's latitude, longitude and
+    exact distance_km from the home went to every WebSocket client. Strike
+    coordinates are public, so those distances trilaterate the house. The
+    dashboard reads none of these per-strike fields (it merges frames into the
+    summary and only ever displays nearest_km).
+    """
+    s = _config_mod.settings
+    monkeypatch.setattr(s, "api_db_watcher_interval_sec", 0.05, raising=False)
+
+    received: list[dict] = []  # type: ignore[type-arg]
+
+    async def fake_fanout(env: dict) -> None:  # type: ignore[type-arg]
+        received.append(env)
+
+    monkeypatch.setattr("observatory.api.db_watcher.fanout_event", fake_fanout)
+
+    from observatory.api.db_watcher import db_watcher_loop
+
+    task = asyncio.create_task(db_watcher_loop())
+    await asyncio.sleep(0.08)  # bootstrap
+
+    now = int(time.time()) + 100
+    conn = sqlite3.connect(str(seeded_db))
+    conn.execute(
+        "INSERT INTO lightning_strikes (ts, latitude, longitude, distance_km)"
+        " VALUES (?,51.5,-0.1,100.0)",
+        (now,),
+    )
+    conn.commit()
+    conn.close()
+
+    await asyncio.sleep(0.2)
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+    strikes = [e for e in received if e["type"] == "lightning"]
+    assert strikes, "no lightning envelope fanned out"
+    for env in strikes:
+        leaked = {"latitude", "longitude", "distance_km"} & set(env["data"])
+        assert not leaked, f"strike envelope leaks {sorted(leaked)}: {env['data']}"
+        assert env["ts"] == now, "the strike itself must still be announced"

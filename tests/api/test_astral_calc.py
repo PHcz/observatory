@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import datetime
+from datetime import date
 
-from observatory.api.astral_calc import compute_moon_illumination, get_astronomy
+from observatory.api.astral_calc import compute_moon_illumination, get_astronomy, public_astronomy
 
 
 class TestComputeMoonIllumination:
@@ -116,3 +117,43 @@ class TestGetAstronomy:
     def test_sunrise_before_sunset(self) -> None:
         result = get_astronomy(self.LAT, self.LON, today=datetime.date(2024, 6, 21))
         assert result["sunrise_ts"] < result["sunset_ts"]
+
+
+class TestPublicAstronomy:
+    """Security audit 2026-10-20, H1: astronomy must not pin the home location.
+
+    Sunrise/sunset/moonrise/moonset are functions of latitude and longitude.
+    Emitted to the second they invert to the house within ~250 m. Rounding the
+    OUTPUT alone is not enough: it is a deterministic function of a fixed
+    location, so samples taken over many days narrow it back down. The public
+    view is therefore computed from a coarsened location, which bounds the leak
+    absolutely, and reported to the minute, which is all the dashboard shows.
+    Coordinates below are public city locations, never the home.
+    """
+
+    DAY = date(2026, 6, 21)
+    _TS_KEYS = ("sunrise_ts", "sunset_ts", "moonrise_ts", "moonset_ts")
+
+    def test_timestamps_are_minute_aligned(self) -> None:
+        result = public_astronomy(51.5074, -0.1278, today=self.DAY)
+        for key in self._TS_KEYS:
+            value = result[key]
+            assert value is None or value % 60 == 0, f"{key}={value} carries seconds"
+
+    def test_identical_for_points_in_the_same_tenth_degree_cell(self) -> None:
+        # Both round to (51.5, -0.1): ~5 km apart, must be indistinguishable.
+        a = public_astronomy(51.5074, -0.1278, today=self.DAY)
+        b = public_astronomy(51.4626, -0.1449, today=self.DAY)
+        assert a == b
+
+    def test_still_tracks_location_between_cells(self) -> None:
+        # Guard against a degenerate fix (e.g. a constant): ~260 km apart differs.
+        london = public_astronomy(51.5074, -0.1278, today=self.DAY)
+        manchester = public_astronomy(53.4808, -2.2426, today=self.DAY)
+        assert london["sunrise_ts"] != manchester["sunrise_ts"]
+
+    def test_keeps_the_shape_and_types_callers_rely_on(self) -> None:
+        result = public_astronomy(51.5074, -0.1278, today=self.DAY)
+        assert set(result) == set(get_astronomy(51.5074, -0.1278, today=self.DAY))
+        assert isinstance(result["sunrise_ts"], int)
+        assert isinstance(result["sunset_ts"], int)

@@ -136,3 +136,36 @@ def get_astronomy(
         "moonrise_ts": moonrise_ts,
         "moonset_ts": moonset_ts,
     }
+
+
+# Precision of the astronomy the API publishes. Computed from the home location
+# rounded to one decimal place (~11 km north-south, ~7 km east-west at 52 N),
+# then reported to the minute -- the dashboard only ever shows HH:MM.
+PUBLIC_COORD_DECIMALS = 1
+_PUBLIC_TS_KEYS = ("sunrise_ts", "sunset_ts", "moonrise_ts", "moonset_ts")
+
+
+def public_astronomy(
+    lat: float,
+    lon: float,
+    today: date | None = None,
+) -> dict[str, Any]:
+    """get_astronomy() for publication: cannot be inverted to the home location.
+
+    Emitted to the second, sunrise/sunset/moonrise/moonset invert to the house
+    within ~250 m (security audit 2026-10-20, H1). Rounding only the output
+    would not fix that: it is a deterministic function of one fixed location,
+    so readings taken across many days narrow it back down. Computing from a
+    coarsened location instead bounds the leak absolutely -- the result is
+    exactly what any point in that ~11 x 7 km cell would produce, however many
+    samples are taken. Minute rounding then drops precision nothing displays.
+    """
+    data = get_astronomy(
+        round(lat, PUBLIC_COORD_DECIMALS),
+        round(lon, PUBLIC_COORD_DECIMALS),
+        today,
+    )
+    for key in _PUBLIC_TS_KEYS:
+        if data[key] is not None:
+            data[key] = round(data[key] / 60) * 60
+    return data

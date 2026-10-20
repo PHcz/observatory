@@ -31,7 +31,7 @@ from observatory.api._freshness import (
     cross_check_poller,
     freshness,
 )
-from observatory.api.astral_calc import get_astronomy
+from observatory.api.astral_calc import public_astronomy
 from observatory.config import settings
 from observatory.db.connection import get_conn
 
@@ -301,7 +301,8 @@ def build_current_snapshot(conn: sqlite3.Connection) -> dict[str, Any]:
     aurora_freshness = _compute_block_freshness(conn, "aurora", aurora_ts, now)
 
     # --- Astronomy ---
-    astronomy = get_astronomy(settings.home_lat, settings.home_lon)
+    # Coarsened + minute-rounded: never the precise home (security audit H1).
+    astronomy = public_astronomy(settings.home_lat, settings.home_lon)
 
     return {
         "timestamp": now,

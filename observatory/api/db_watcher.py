@@ -54,6 +54,23 @@ TABLE_EVENT_TYPES: dict[str, str] = {
     "aurora_status": "aurora",
 }
 
+
+# Columns that never leave the server in the live stream. Strike coordinates are
+# public (Blitzortung), so a strike's exact distance from the home -- whether
+# sent alongside its coordinates or matched to them by timestamp -- trilaterates
+# the house (security audit 2026-10-20, H1). The dashboard reads none of these
+# per strike: it merges frames into the summary and only displays nearest_km.
+_PRIVATE_COLUMNS: dict[str, frozenset[str]] = {
+    "lightning_strikes": frozenset({"latitude", "longitude", "distance_km"}),
+}
+
+
+def public_event_data(table: str, row: Any) -> dict[str, Any]:
+    """Return a row as a dict with any location-revealing columns removed."""
+    hidden = _PRIVATE_COLUMNS.get(table, frozenset())
+    return {k: v for k, v in dict(row).items() if k not in hidden}
+
+
 # Maximum rows emitted per table per tick (prevents burst-replay of large back-fills).
 PER_TICK_LIMIT = 100
 
@@ -105,7 +122,7 @@ async def db_watcher_loop() -> None:
                     for row in rows:
                         envelope: dict[str, Any] = {
                             "type": evt_type,
-                            "data": dict(row),
+                            "data": public_event_data(tbl, row),
                             "ts": int(row["ts"]),
                         }
                         await fanout_event(envelope)
