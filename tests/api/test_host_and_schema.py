@@ -5,7 +5,7 @@ Security audit 2026-10-20: M11 (no foreign-Host test), F03/F57/F71
 CIDRs, stale since the API went dual-stack).
 
 The Host check defends against DNS rebinding: a hostile page whose own domain
-re-resolves to 192.168.0.75 still sends `Host: <hostile domain>`. The Hub
+re-resolves to 192.168.1.20 still sends `Host: <hostile domain>`. The Hub
 currently filters such DNS answers, so this is defence in depth -- but it must
 cover websockets too, or it repeats the original /ws hole.
 """
@@ -42,7 +42,7 @@ def test_foreign_host_rejected(client: TestClient, host: str) -> None:
     [
         "observatory.local:8000",
         "observatory.local",
-        "192.168.0.75:8000",
+        "192.168.1.20:8000",
         "localhost:5173",
         "127.0.0.1:8000",
         "[::1]:8000",
@@ -113,7 +113,7 @@ def test_duplicate_host_headers_rejected() -> None:
         "query_string": b"",
         "headers": [(b"host", b"observatory.local:8000"), (b"host", b"evil.example.com")],
         "client": ("192.168.0.95", 5000),
-        "server": ("192.168.0.75", 8000),
+        "server": ("192.168.1.20", 8000),
         "scheme": "http",
         "http_version": "1.1",
         "root_path": "",

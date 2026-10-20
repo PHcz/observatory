@@ -22,6 +22,19 @@ if [[ "$(uname -s)" == "Linux" ]] && [[ "${USER:-}" == "observatory" ]]; then
   exit 2
 fi
 
+SSH_TARGET="${OBS_SSH_TARGET:-}"
+if [[ -z "$SSH_TARGET" ]]; then
+  echo "ERROR: set OBS_SSH_TARGET=<admin-user>@observatory.local" >&2
+  exit 2
+fi
+REMOTE_DIR="${OBS_REMOTE_BUNDLE_DIR:-/opt/observatory/frontend/build}"
+# Root rsync --delete + chown -R go into this path: only a directory strictly
+# inside /opt/observatory, no "..", is acceptable (security audit F51).
+if [[ ! "$REMOTE_DIR" =~ ^/opt/observatory/[A-Za-z0-9._/-]+$ ]] || [[ "$REMOTE_DIR" == *..* ]]; then
+  echo "[deploy-frontend] refusing unsafe OBS_REMOTE_BUNDLE_DIR: '$REMOTE_DIR'" >&2
+  exit 2
+fi
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="$REPO_ROOT/frontend/build"
 
@@ -30,14 +43,6 @@ if [[ ! -d "$BUILD_DIR" ]]; then
   exit 1
 fi
 
-SSH_TARGET="${OBS_SSH_TARGET:-ph@observatory.local}"
-REMOTE_DIR="${OBS_REMOTE_BUNDLE_DIR:-/opt/observatory/frontend/build}"
-# Root rsync --delete + chown -R go into this path: only a directory strictly
-# inside /opt/observatory, no "..", is acceptable (security audit F51).
-if [[ ! "$REMOTE_DIR" =~ ^/opt/observatory/[A-Za-z0-9._/-]+$ ]] || [[ "$REMOTE_DIR" == *..* ]]; then
-  echo "[deploy-frontend] refusing unsafe OBS_REMOTE_BUNDLE_DIR: '$REMOTE_DIR'" >&2
-  exit 2
-fi
 REMOTE_HOST="${OBS_HTTP_HOST:-observatory.local}"
 
 echo "[deploy-frontend] Rsyncing $BUILD_DIR/ -> $SSH_TARGET:$REMOTE_DIR/ (as root)"

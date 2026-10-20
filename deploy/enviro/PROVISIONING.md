@@ -226,7 +226,7 @@ and ACL expect.
 | Wifi SSID         | _your home wifi SSID_                                   |
 | Wifi password     | _your home wifi password_                               |
 | Destination       | **MQTT**                                                |
-| Broker host       | **Pi's LAN IP, e.g. `192.168.0.75`** (NOT `observatory.local` — Pico W's lightweight mDNS stack is unreliable; use the IP directly) |
+| Broker host       | **Pi's reserved LAN IP, e.g. `192.168.1.20`** (NOT `observatory.local` — Pico W's lightweight mDNS stack is unreliable; use the IP directly) |
 | Broker port       | `1883`                                                  |
 | Broker username   | `enviro-observatory-weather`                            |
 | Broker password   | value of `OBS_MQTT_PUB_PASSWORD` from `/etc/observatory/secrets.env` |
@@ -470,7 +470,7 @@ Diagnostic signature in SQLite:
 
 ```bash
 # Look for missing 5-min slots in a recent window
-ssh ph@observatory.local 'sudo -n sqlite3 /var/lib/observatory/observatory.db \
+ssh <admin-user>@observatory.local 'sudo -n sqlite3 /var/lib/observatory/observatory.db \
   "SELECT datetime(ts,'\''unixepoch'\'') FROM weather \
    WHERE ts > strftime('\''%s'\'','\''now'\'','\''-1 hour'\'') ORDER BY ts"'
 ```
@@ -663,7 +663,7 @@ In the Enviro provisioning captive portal (step A.3):
    ```
    http://<Pi-LAN-IP>:8000/ingest
    ```
-   Use the Pi's LAN IP (e.g. `192.168.0.75`) rather than `observatory.local`;
+   Use the Pi's LAN IP (e.g. `192.168.1.20`) rather than `observatory.local`;
    the Pico W's mDNS stack is unreliable (same reason as MQTT broker host).
 3. Set **HTTP Basic Auth user** to the value of `OBSERVATORY_INGEST_BASIC_AUTH_USER`
    (default: `enviro`).

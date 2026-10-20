@@ -10,8 +10,13 @@
 #   4. refuse any staged content matching local, gitignored sensitive patterns —
 #      the real PII strings live ONLY in .git-sensitive-patterns, never in the repo
 #
-# pre-commit passes the staged filenames as "$@".
+# pre-commit passes the staged filenames as "$@". Content checks read the
+# STAGED blob (`git show :path`), not the working tree: what matters is what
+# the commit will contain (security audit F76).
 set -euo pipefail
+
+staged() { git show ":$1" 2>/dev/null; }          # empty for deletions
+is_staged() { git cat-file -e ":$1" 2>/dev/null; }
 
 fail=0
 note() { echo "  ✗ $*"; fail=1; }
@@ -39,8 +44,8 @@ if command -v exiftool >/dev/null 2>&1; then
   for f in "$@"; do
     case "$f" in
       *.png|*.jpg|*.jpeg|*.tiff|*.tif|*.heic|*.webp)
-        [ -f "$f" ] || continue
-        if exiftool -GPS:all "$f" 2>/dev/null | grep -qiE 'GPS'; then
+        is_staged "$f" || continue
+        if staged "$f" | exiftool -GPS:all - 2>/dev/null | grep -qiE 'GPS'; then
           note "GPS EXIF in image $f — strip with: exiftool -GPS:all= -overwrite_original '$f'"
         fi ;;
     esac
@@ -50,14 +55,18 @@ fi
 # 4) Project-specific PII/secret patterns, kept LOCAL and gitignored so the actual
 #    sensitive strings are never committed. One POSIX extended-regex per line;
 #    blank lines and lines starting with '#' are ignored.
+#    A missing file used to skip this check silently -- on every fresh clone
+#    (security audit F61). It is now an error.
 patterns=".git-sensitive-patterns"
-if [ -f "$patterns" ]; then
+if [ ! -f "$patterns" ]; then
+  note "$patterns is missing, so PII patterns cannot be checked — copy .git-sensitive-patterns.example to $patterns and fill in the real values"
+else
   while IFS= read -r rx || [ -n "$rx" ]; do
     [ -z "$rx" ] && continue
     case "$rx" in \#*) continue ;; esac
     for f in "$@"; do
-      [ -f "$f" ] || continue
-      if grep -nIEe "$rx" "$f" >/dev/null 2>&1; then
+      is_staged "$f" || continue
+      if staged "$f" | grep -qIEe "$rx" 2>/dev/null; then
         note "staged file '$f' matches sensitive pattern /$rx/"
       fi
     done

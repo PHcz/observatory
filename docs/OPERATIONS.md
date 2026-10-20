@@ -58,7 +58,7 @@ pre-installed on Pi OS Lite).
 SSH in (key-only):
 
 ```bash
-ssh ph@observatory.local
+ssh <admin-user>@observatory.local
 ```
 
 Clone the repo and run the bootstrap script:
@@ -139,7 +139,7 @@ acceptance. This is the literal pull-the-plug test:
 
 1. **Pull the Pi's PSU.** Wait 30 seconds. Plug it back in.
 2. Wait 2 minutes.
-3. SSH to `ph@observatory.local`.
+3. SSH to `<admin-user>@observatory.local`.
 4. Run:
 
    ```bash

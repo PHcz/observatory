@@ -74,3 +74,13 @@ firmware/**/.esphome/
 
 # Output of the manual Blitzortung network probe (tests/pollers/blitzortung/test_port_probe.py)
 *.latest.md
+
+# Local noise (security audit F63/C8): logs, coverage, test reports, agent scratch
+*.log
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+test-results/
+playwright-report/
+.superpowers/

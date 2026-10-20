@@ -1109,7 +1109,7 @@ The frontend deploys separately from git. When the user approves:
 
 ```bash
 cd frontend && npm run build
-OBS_SSH_TARGET=ph@observatory.local scripts/deploy-frontend.sh
+OBS_SSH_TARGET=<admin-user>@observatory.local scripts/deploy-frontend.sh
 ```
 
 Then verify at `http://observatory.local:8000/`. (Backend untouched — no obs-api restart or migration needed.)

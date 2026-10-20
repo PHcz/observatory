@@ -26,7 +26,7 @@ ota:
     password: !secret ota_password  # future updates over wifi, no USB needed
 
 mqtt:
-  broker: 192.168.0.75              # observatory Pi (reserved IP)
+  broker: !secret mqtt_broker       # the Pi's reserved LAN IP (mDNS is unreliable here)
   port: 1883
   username: !secret mqtt_user
   password: !secret mqtt_password

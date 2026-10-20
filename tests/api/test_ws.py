@@ -294,7 +294,7 @@ def test_ws_rejects_foreign_origin(ws_app: FastAPI, origin: str) -> None:
     "origin",
     [
         "http://observatory.local:8000",  # the documented URL
-        "http://192.168.0.75:8000",  # browsing by LAN IP
+        "http://192.168.1.20:8000",  # browsing by LAN IP
         "http://localhost:5173",  # the Vite dev server
     ],
 )

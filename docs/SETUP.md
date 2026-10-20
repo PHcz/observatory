@@ -53,7 +53,7 @@ Deploy flow once the Pi is bootstrapped:
 1. Build the frontend locally: `cd frontend && npm ci && npm run build`.
 2. `rsync` the built `frontend/build/` bundle to the Pi (FastAPI serves it as static
    files from `/`, alongside the JSON + WebSocket API on the same host). `scripts/deploy-frontend.sh`
-   does this (`OBS_SSH_TARGET=ph@observatory.local`).
+   does this (`OBS_SSH_TARGET=<admin-user>@observatory.local`).
 3. For backend changes, `rsync` `observatory/`, `picomuon/`, `migrations/`, `scripts/`, and
    `deploy/` to `/opt/observatory/` (as root, e.g. `rsync --rsync-path="sudo rsync"`), then
    `sudo chown -R root:root` the synced dirs and precompile:

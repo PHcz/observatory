@@ -314,7 +314,7 @@ C2_EPOCH="$(date +%s)"
 # 2a: WS fanout test using Python websockets (installed in Phase 5 venv)
 info "running Python WS fanout test (insert muon row → expect 'muon' envelope within 12s)..."
 
-# Derive ws:// URL from API_BASE (e.g. http://192.168.0.75:8000 → ws://192.168.0.75:8000/ws)
+# Derive ws:// URL from API_BASE (e.g. http://192.168.1.20:8000 → ws://192.168.1.20:8000/ws)
 export OBS_WS_URL="${API_BASE/http:/ws:}/ws"
 
 WS_TEST_EXIT=0

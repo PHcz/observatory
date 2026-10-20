@@ -67,7 +67,7 @@ def test_specific_ipv6_host_yields_an_ipv6_socket() -> None:
         sock.close()
 
 
-@pytest.mark.parametrize("host", ["0.0.0.0", "127.0.0.1", "192.168.0.75", "auto"])
+@pytest.mark.parametrize("host", ["0.0.0.0", "127.0.0.1", "192.168.1.20", "auto"])
 def test_ipv4_host_defers_to_uvicorn(host: str) -> None:
     """IPv4 hosts need no special handling — uvicorn's own bind is correct."""
     assert make_listen_socket(host, 0, backlog=16) is None
