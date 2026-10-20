@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import secrets
+import shutil
+import string
+import subprocess
 import tomllib
 from pathlib import Path
 from typing import Any, cast
 
+import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -152,3 +157,52 @@ def test_ruff_hooks_keep_force_exclude() -> None:
         assert "--force-exclude" in entry, (
             f"hook {hid} dropped --force-exclude; extend-exclude would be ignored"
         )
+
+
+GITLEAKS_CONFIG = REPO_ROOT / ".gitleaks.toml"
+
+
+def test_gitleaks_config_loads_the_default_ruleset() -> None:
+    """A gitleaks config with only an [allowlist] loads ZERO rules.
+
+    That was this repo's state from the day the hook was added until the
+    2026-10-20 audit (M7): every "gitleaks ... Passed" meant nothing. The
+    default ruleset must be extended explicitly.
+    """
+    cfg = tomllib.loads(GITLEAKS_CONFIG.read_text())
+    assert cfg.get("extend", {}).get("useDefault") is True, (
+        "add `[extend]\\nuseDefault = true` to .gitleaks.toml, or gitleaks loads no rules"
+    )
+
+
+@pytest.mark.skipif(shutil.which("gitleaks") is None, reason="gitleaks binary not installed")
+def test_gitleaks_with_repo_config_actually_detects_a_secret(tmp_path: Path) -> None:
+    """Behavioural proof, not a config read: the repo config must catch a secret.
+
+    The secret is generated at runtime so this file never contains a literal
+    token -- otherwise, once real rules load, the hook would block this test.
+    """
+    alphabet = string.ascii_letters + string.digits
+    token = "ghp_" + "".join(secrets.choice(alphabet) for _ in range(36))
+    (tmp_path / "creds.txt").write_text(f'github_token = "{token}"\n')
+
+    result = subprocess.run(
+        [
+            "gitleaks",
+            "detect",
+            "--no-git",
+            "--no-banner",
+            "--source",
+            str(tmp_path),
+            "--config",
+            str(GITLEAKS_CONFIG),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1, (
+        "gitleaks with the repo config did not flag a synthetic GitHub token "
+        f"(exit {result.returncode}); the hook is not enforcing anything.\n"
+        f"{result.stdout}{result.stderr}"
+    )

@@ -1,6 +1,19 @@
+# Load gitleaks' built-in ruleset. Without this [extend] block, a config file
+# that only defines an [allowlist] loads ZERO rules -- which is how this hook
+# ran from the day it was added until the 2026-10-20 audit (M7): every
+# "gitleaks ... Passed" was vacuous. Guarded by tests/test_precommit_config.py.
+[extend]
+useDefault = true
+
 # Allowlist the fixture file from gitleaks scans — its purpose is to be a sample.
 [allowlist]
 description = "Phase 1 gitleaks fixture file"
 paths = [
   '''tests/fixtures/leak-sample\.txt''',
+]
+# Documentation placeholders such as `-u "enviro:<password>"` in
+# deploy/enviro/PROVISIONING.md are not secrets. Matches whose captured secret
+# contains an angle-bracket placeholder are allowed; real credentials never do.
+regexes = [
+  '''<[A-Za-z][A-Za-z0-9_-]*>''',
 ]
