@@ -97,9 +97,14 @@ class Settings(BaseSettings):
     # --- NOAA SWPC pollers (Phase 5) ---
     # URLs verified live 2026-05-25 by researcher (CONTEXT-listed URLs returned 404).
     poller_noaa_kp_url: str = "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json"
-    poller_noaa_solar_wind_url: str = (
-        "https://services.swpc.noaa.gov/products/solar-wind/plasma-2-hour.json"
+    # products/solar-wind/plasma-2-hour.json was retired (404 since 2026-09);
+    # the real-time solar wind (RTSW) JSON feeds replace it.
+    poller_noaa_solar_wind_url: str = "https://services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json"
+    poller_noaa_mag_url: str = "https://services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json"
+    poller_noaa_protons_url: str = (
+        "https://services.swpc.noaa.gov/json/goes/primary/integral-protons-6-hour.json"
     )
+    poller_noaa_scales_url: str = "https://services.swpc.noaa.gov/products/noaa-scales.json"
     poller_noaa_xray_url: str = "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json"
 
     # --- AuroraWatch UK (Phase 5) ---

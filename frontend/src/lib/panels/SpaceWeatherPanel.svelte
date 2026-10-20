@@ -11,14 +11,54 @@
   $: kp_index = current?.kp_index ?? null;
   $: solar_wind_kms = current?.solar_wind_kms ?? null;
   $: flare_class = current?.flare_class ?? null;
+  $: density = current?.solar_wind_density ?? null;
+  $: bz = current?.imf_bz_nt ?? null;
+  $: bt = current?.imf_bt_nt ?? null;
+  $: protons = current?.proton_flux_10mev ?? null;
+  $: scaleR = current?.noaa_scale_r ?? null;
+  $: scaleS = current?.noaa_scale_s ?? null;
+  $: scaleG = current?.noaa_scale_g ?? null;
+  $: hasScales = scaleR != null && scaleS != null && scaleG != null;
+
+  // Sustained southward (negative) Bz is what lets the solar wind couple into
+  // Earth's field; around −5 nT and below it starts to matter for aurora.
+  $: bzText = bz == null ? '—' : `${bz < 0 ? '−' : '+'}${Math.abs(bz).toFixed(1)} nT`;
+  $: bzMeta = bz == null
+    ? 'Interplanetary magnetic field'
+    : bz <= -5
+      ? `southward · favours aurora${bt != null ? ` · Bt ${bt.toFixed(1)} nT` : ''}`
+      : bz < 0
+        ? `southward · weak${bt != null ? ` · Bt ${bt.toFixed(1)} nT` : ''}`
+        : `northward · quiet${bt != null ? ` · Bt ${bt.toFixed(1)} nT` : ''}`;
+
+  // ≥10 MeV integral flux defines NOAA's S scale: 10 pfu is S1.
+  $: protonText = protons == null
+    ? '—'
+    : `${protons >= 10 ? protons.toFixed(1) : protons.toPrecision(2)} pfu`;
+  $: protonMeta = protons != null && protons >= 10
+    ? '≥10 MeV · radiation storm level (S1+)'
+    : '≥10 MeV · background level';
+
+  const SCALE_NAMES = { R: 'radio blackout', S: 'radiation storm', G: 'geomagnetic storm' } as const;
+  $: scalesText = hasScales ? `R${scaleR} · S${scaleS} · G${scaleG}` : '—';
+  $: activeScales = hasScales
+    ? ([['R', scaleR], ['S', scaleS], ['G', scaleG]] as const)
+        .filter(([, level]) => (level ?? 0) > 0)
+        .map(([key, level]) => `${key}${level} ${SCALE_NAMES[key]}`)
+    : [];
+  $: scalesMeta = !hasScales
+    ? 'NOAA scales · 0–5'
+    : activeScales.length > 0
+      ? activeScales.join(' · ')
+      : 'No storms or blackouts in progress';
 
   $: flareClassMeta = flare_class == null || flare_class < 'M'
     ? 'Last 24h peak · no major activity'
     : 'Last 24h peak';
 
-  $: solarWindMeta = solar_wind_kms != null && solar_wind_kms >= 600
-    ? 'km/s · elevated'
-    : 'km/s · within normal range';
+  $: solarWindMeta = `km/s${density != null ? ` · ${density.toFixed(1)} p/cm³` : ''} · ${
+    solar_wind_kms != null && solar_wind_kms >= 600 ? 'elevated' : 'within normal range'
+  }`;
 
   $: kpMeta = kp_index != null && kp_index >= 5
     ? 'Active · storm threshold reached'
@@ -54,6 +94,24 @@
       <div class="solar-card-value">{kp_index != null ? `Kp ${kp_index.toFixed(1)}` : '—'}</div>
       <KpBar kpIndex={kp_index} />
       <div class="solar-card-meta">{kpMeta}</div>
+    </div>
+
+    <div class="solar-card">
+      <div class="solar-card-label">IMF Bz</div>
+      <div class="solar-card-value">{bzText}</div>
+      <div class="solar-card-meta">{bzMeta}</div>
+    </div>
+
+    <div class="solar-card">
+      <div class="solar-card-label">Proton flux</div>
+      <div class="solar-card-value">{protonText}</div>
+      <div class="solar-card-meta">{protonMeta}</div>
+    </div>
+
+    <div class="solar-card">
+      <div class="solar-card-label">NOAA scales</div>
+      <div class="solar-card-value">{scalesText}</div>
+      <div class="solar-card-meta">{scalesMeta}</div>
     </div>
   </div>
 

@@ -1,9 +1,9 @@
 """RED tests for NOAA combined poller __main__ (Phase 05-02).
 
 Scenarios:
-  - all 3 endpoints succeed -> exit 0, ONE space_weather row, poller_runs.status='success'
-  - 1 endpoint network-fails -> exit 0, row with NULL field, status='partial', error_summary
-  - all 3 endpoints fail -> exit 1, NO space_weather row, status='transient_fail'
+  - all endpoints succeed -> exit 0, ONE space_weather row, poller_runs.status='success'
+  - 1 endpoint network-fails / 404s -> exit 0, row with NULL field, status='partial'
+  - all endpoints fail -> exit 1, NO space_weather row, status='transient_fail'
   - 1 endpoint parse-fails -> exit 0, partial row, error_summary contains 'parse:'
 """
 
@@ -12,6 +12,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import httpx
 import pytest
 
 import observatory.pollers.noaa.__main__ as noaa_main
@@ -44,29 +45,38 @@ def patched_db(monkeypatch: pytest.MonkeyPatch, tmp_db: Path) -> Path:
     return tmp_db
 
 
-def _fetch_bodies(fixtures_dir: Path) -> dict[str, bytes]:
+_FIXTURES = {
+    "kp": "kp_sample.json",
+    "sw": "rtsw_wind_sample.json",
+    "imf": "rtsw_mag_sample.json",
+    "protons": "protons_sample.json",
+    "scales": "scales_sample.json",
+    "xray": "xray_sample.json",
+}
+
+
+def _urls() -> dict[str, str]:
+    from observatory.config import settings as _s
+
     return {
-        "kp": (fixtures_dir / "noaa" / "kp_sample.json").read_bytes(),
-        "sw": (fixtures_dir / "noaa" / "solar_wind_sample.json").read_bytes(),
-        "xray": (fixtures_dir / "noaa" / "xray_sample.json").read_bytes(),
+        "kp": _s.poller_noaa_kp_url,
+        "sw": _s.poller_noaa_solar_wind_url,
+        "imf": _s.poller_noaa_mag_url,
+        "protons": _s.poller_noaa_protons_url,
+        "scales": _s.poller_noaa_scales_url,
+        "xray": _s.poller_noaa_xray_url,
     }
 
 
 def _install_fetch(
     monkeypatch: pytest.MonkeyPatch,
-    *,
-    kp: bytes | Exception,
-    sw: bytes | Exception,
-    xray: bytes | Exception,
+    fixtures_dir: Path,
+    **overrides: bytes | Exception,
 ) -> None:
-    """Replace observatory.pollers.noaa.__main__.fetch with a router by URL."""
-    from observatory.config import settings as _s
-
-    routes = {
-        _s.poller_noaa_kp_url: kp,
-        _s.poller_noaa_solar_wind_url: sw,
-        _s.poller_noaa_xray_url: xray,
-    }
+    """Route noaa_main.fetch by URL: fixture bodies unless overridden per label."""
+    routes: dict[str, bytes | Exception] = {}
+    for label, url in _urls().items():
+        routes[url] = overrides.get(label, (fixtures_dir / "noaa" / _FIXTURES[label]).read_bytes())
 
     def _fake_fetch(url: str, *, source: str) -> bytes:
         result = routes[url]
@@ -77,16 +87,22 @@ def _install_fetch(
     monkeypatch.setattr(noaa_main, "fetch", _fake_fetch)
 
 
+def _http_error(status: int, url: str) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", url)
+    return httpx.HTTPStatusError(
+        f"{status}", request=request, response=httpx.Response(status, request=request)
+    )
+
+
 # ---------------------------------------------------------------------------
 # Scenarios
 # ---------------------------------------------------------------------------
 
 
-def test_main_all_three_succeed(
+def test_main_all_endpoints_succeed(
     monkeypatch: pytest.MonkeyPatch, patched_db: Path, fixtures_dir: Path
 ) -> None:
-    bodies = _fetch_bodies(fixtures_dir)
-    _install_fetch(monkeypatch, kp=bodies["kp"], sw=bodies["sw"], xray=bodies["xray"])
+    _install_fetch(monkeypatch, fixtures_dir)
 
     rc = noaa_main.main()
     assert rc == 0
@@ -97,7 +113,12 @@ def test_main_all_three_succeed(
     assert len(sw_rows) == 1
     row = sw_rows[0]
     assert row["kp_index"] == pytest.approx(2.0)
-    assert row["solar_wind_kms"] == pytest.approx(403.0)
+    assert row["solar_wind_kms"] == pytest.approx(352.1)
+    assert row["solar_wind_density"] == pytest.approx(5.99)
+    assert row["imf_bz_nt"] == pytest.approx(-6.16)
+    assert row["imf_bt_nt"] is not None
+    assert row["proton_flux_10mev"] == pytest.approx(0.2756652235984802)
+    assert (row["noaa_scale_r"], row["noaa_scale_s"], row["noaa_scale_g"]) == (0, 0, 0)
     assert row["flare_class"] == "C4.6"
     assert row["flare_peak_ts"] == 1779748920
 
@@ -108,16 +129,32 @@ def test_main_all_three_succeed(
     conn.close()
 
 
+def test_main_retired_endpoint_404_is_partial_not_a_crash(
+    monkeypatch: pytest.MonkeyPatch, patched_db: Path, fixtures_dir: Path
+) -> None:
+    """NOAA retired the old solar-wind URL in 2026-09. The 404 escaped
+    _safe_fetch and crashed the whole poll, so Kp and flares froze too --
+    the space-weather panel showed 2026-09-09 data for six weeks."""
+    _install_fetch(monkeypatch, fixtures_dir, sw=_http_error(404, "https://x/retired.json"))
+
+    assert noaa_main.main() == 0
+
+    conn = sqlite3.connect(str(patched_db))
+    conn.row_factory = sqlite3.Row
+    row = conn.execute("SELECT * FROM space_weather").fetchone()
+    assert row["solar_wind_kms"] is None
+    assert row["kp_index"] == pytest.approx(2.0)
+    assert row["flare_class"] == "C4.6"
+    pr = conn.execute("SELECT * FROM poller_runs WHERE source='noaa'").fetchone()
+    assert pr["status"] == "partial"
+    assert "sw:http:404" in pr["error_summary"]
+    conn.close()
+
+
 def test_main_solar_wind_network_fails_writes_partial(
     monkeypatch: pytest.MonkeyPatch, patched_db: Path, fixtures_dir: Path
 ) -> None:
-    bodies = _fetch_bodies(fixtures_dir)
-    _install_fetch(
-        monkeypatch,
-        kp=bodies["kp"],
-        sw=RetriesExhausted("connection reset"),
-        xray=bodies["xray"],
-    )
+    _install_fetch(monkeypatch, fixtures_dir, sw=RetriesExhausted("connection reset"))
 
     rc = noaa_main.main()
     assert rc == 0
@@ -129,6 +166,7 @@ def test_main_solar_wind_network_fails_writes_partial(
     row = sw_rows[0]
     assert row["kp_index"] == pytest.approx(2.0)
     assert row["solar_wind_kms"] is None
+    assert row["solar_wind_density"] is None
     assert row["flare_class"] == "C4.6"
 
     pr = conn.execute("SELECT * FROM poller_runs WHERE source='noaa'").fetchone()
@@ -141,13 +179,7 @@ def test_main_solar_wind_network_fails_writes_partial(
 def test_main_xray_parse_fail_writes_partial(
     monkeypatch: pytest.MonkeyPatch, patched_db: Path, fixtures_dir: Path
 ) -> None:
-    bodies = _fetch_bodies(fixtures_dir)
-    _install_fetch(
-        monkeypatch,
-        kp=bodies["kp"],
-        sw=bodies["sw"],
-        xray=b"not json at all",
-    )
+    _install_fetch(monkeypatch, fixtures_dir, xray=b"not json at all")
 
     rc = noaa_main.main()
     assert rc == 0
@@ -167,12 +199,13 @@ def test_main_xray_parse_fail_writes_partial(
     conn.close()
 
 
-def test_main_all_three_fail_no_row(monkeypatch: pytest.MonkeyPatch, patched_db: Path) -> None:
+def test_main_all_endpoints_fail_no_row(
+    monkeypatch: pytest.MonkeyPatch, patched_db: Path, fixtures_dir: Path
+) -> None:
     _install_fetch(
         monkeypatch,
-        kp=RetriesExhausted("kp net"),
-        sw=RetriesExhausted("sw net"),
-        xray=RetriesExhausted("xray net"),
+        fixtures_dir,
+        **{label: RetriesExhausted(f"{label} net") for label in _FIXTURES},
     )
 
     rc = noaa_main.main()
@@ -187,5 +220,4 @@ def test_main_all_three_fail_no_row(monkeypatch: pytest.MonkeyPatch, patched_db:
     assert pr["error_summary"] is not None
     assert "kp:network" in pr["error_summary"]
     assert "sw:network" in pr["error_summary"]
-    assert "xray:network" in pr["error_summary"]
     conn.close()

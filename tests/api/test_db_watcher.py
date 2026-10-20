@@ -13,8 +13,7 @@ import observatory.config as _config_mod
 from observatory.config import Settings
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_0001 = REPO_ROOT / "migrations" / "0001_initial_schema.sql"
-SCHEMA_0002 = REPO_ROOT / "migrations" / "0002_poller_runs.sql"
+MIGRATIONS = sorted((REPO_ROOT / "migrations").glob("[0-9][0-9][0-9][0-9]_*.sql"))
 
 
 @pytest.fixture
@@ -22,8 +21,8 @@ def seeded_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Create a seeded SQLite DB with known rows for testing db_watcher."""
     db_path = tmp_path / "watcher_test.db"
     conn = sqlite3.connect(str(db_path))
-    conn.executescript(SCHEMA_0001.read_text())
-    conn.executescript(SCHEMA_0002.read_text())
+    for migration in MIGRATIONS:
+        conn.executescript(migration.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
 
     now = int(time.time())

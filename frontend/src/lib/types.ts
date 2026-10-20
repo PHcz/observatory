@@ -28,6 +28,15 @@ export interface SpaceWeatherData {
   solar_wind_kms: number | null;
   flare_class: string | null;
   flare_peak_ts: number | null;
+  // 2026-10 NOAA additions (migration 0011). Optional: NULL on older rows and
+  // absent from callers that predate them.
+  solar_wind_density?: number | null; // protons/cm³
+  imf_bz_nt?: number | null; // GSM Bz; negative = southward
+  imf_bt_nt?: number | null;
+  proton_flux_10mev?: number | null; // GOES ≥10 MeV, pfu (S1 at 10)
+  noaa_scale_r?: number | null; // 0–5
+  noaa_scale_s?: number | null;
+  noaa_scale_g?: number | null;
 }
 
 export interface LightningSummary {

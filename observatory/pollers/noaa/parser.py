@@ -1,6 +1,6 @@
-"""NOAA SWPC parsers: Kp index, solar wind, GOES X-ray flare class.
+"""NOAA SWPC parsers: Kp, solar wind, IMF, protons, NOAA scales, X-ray flare class.
 
-Three independent parsers, one per endpoint, sharing nothing but the
+Independent parsers, one per endpoint, sharing nothing but the
 ``ValueError``-on-malformed-input contract:
 
   - ``parse_kp(body)`` returns ``(ts, estimated_kp)`` from the LAST entry.
@@ -8,11 +8,16 @@ Three independent parsers, one per endpoint, sharing nothing but the
     the parser level (carve-out — strict ``parse_ts`` is deliberately NOT
     routed through; mirrors BGS pubDate handling in Phase 04-04).
 
-  - ``parse_solar_wind(body)`` returns ``(ts, speed_kms)`` from the LAST
-    data row of the CSV-as-JSON payload. Row 0 is the header
-    ``[time_tag, density, speed, temperature]``; data rows are
-    string-typed. ``time_tag`` uses a SPACE separator (``2026-05-25
-    23:27:00.000``) and is naive UTC — handled inline.
+  - ``parse_solar_wind(body)`` / ``parse_imf(body)`` read the real-time
+    solar wind (RTSW) plasma and magnetometer feeds -- lists of dicts, one
+    row per (minute, spacecraft), newest first, naive-UTC ``time_tag``.
+    Only the ``active`` spacecraft's newest row is used. (The old
+    ``products/solar-wind/plasma-2-hour.json`` CSV-as-JSON feed was retired
+    by NOAA in 2026-09 and returns 404.)
+
+  - ``parse_proton_flux(body)`` -- newest GOES >=10 MeV integral proton flux.
+
+  - ``parse_noaa_scales(body)`` -- current R/S/G NOAA scale levels.
 
   - ``parse_xray_flare(body)`` returns ``(flare_class, peak_ts)`` or
     ``None``. Filters records to the ``0.1-0.8nm`` long band, picks the
@@ -31,11 +36,14 @@ NOAA flare-class scale (long-band peak flux W/m^2):
 from __future__ import annotations
 
 import json
+import math
 from datetime import UTC, datetime
+from typing import Any
 
 from observatory.pollers._parse_ts import parse_ts
 
 LONG_BAND = "0.1-0.8nm"
+PROTON_CHANNEL = ">=10 MeV"
 
 # (class_letter, floor) ordered from highest to lowest so first match wins.
 _FLARE_CLASSES: tuple[tuple[str, float], ...] = (
@@ -72,34 +80,128 @@ def parse_kp(body: bytes | str) -> tuple[int, float]:
     return ts, estimated_kp
 
 
-def parse_solar_wind(body: bytes | str) -> tuple[int, float]:
-    """Return ``(ts, speed_kms)`` from the LAST data row of the CSV-as-JSON payload.
+def _newest_active(body: bytes | str, label: str, required: str) -> dict[str, Any]:
+    """Newest ``active`` row with a non-null ``required`` field from an RTSW feed.
 
-    Row 0 is the header. Speed is column index 2. ``time_tag`` uses a
-    space separator and is naive UTC.
-
-    Raises ``ValueError`` on header-only payload, JSON decode error, or
-    missing column.
+    RTSW feeds list one row per (minute, spacecraft), newest first; exactly one
+    spacecraft is ``active`` (the operational source) at any time. Inactive
+    rows can be newer than the newest active one, so order is not trusted.
     """
     try:
         data = json.loads(body)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"sw: not JSON: {exc}") from exc
-    if not isinstance(data, list) or len(data) < 2:
-        raise ValueError("sw: header-only or empty payload")
-    last = data[-1]
-    try:
-        time_tag = str(last[0])
-        speed = float(last[2])
-    except (IndexError, TypeError, ValueError) as exc:
-        raise ValueError(f"sw: malformed last row {last!r}: {exc}") from exc
-    # Space separator + naive UTC; datetime.fromisoformat in 3.11+ accepts space.
+        raise ValueError(f"{label}: not JSON: {exc}") from exc
+    if not isinstance(data, list):
+        raise ValueError(f"{label}: non-list payload")
+    rows = [
+        r
+        for r in data
+        if isinstance(r, dict)
+        and r.get("active") is True
+        and r.get(required) is not None
+        and isinstance(r.get("time_tag"), str)
+    ]
+    if not rows:
+        raise ValueError(f"{label}: no active row with {required}")
+    return max(rows, key=lambda r: str(r["time_tag"]))
+
+
+def _naive_utc_ts(time_tag: str, label: str) -> int:
     try:
         dt = datetime.fromisoformat(time_tag)
     except ValueError as exc:
-        raise ValueError(f"sw: bad time_tag {time_tag!r}: {exc}") from exc
-    ts = int(dt.replace(tzinfo=UTC).timestamp())
-    return ts, speed
+        raise ValueError(f"{label}: bad time_tag {time_tag!r}: {exc}") from exc
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return int(dt.timestamp())
+
+
+def _opt_float(value: object, label: str) -> float | None:
+    if value is None:
+        return None
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{label}: non-numeric value {value!r}") from exc
+    if not math.isfinite(out):
+        raise ValueError(f"{label}: non-finite value {value!r}")
+    return out
+
+
+def _req_float(value: object, label: str) -> float:
+    out = _opt_float(value, label)
+    if out is None:
+        raise ValueError(f"{label}: missing value")
+    return out
+
+
+def parse_solar_wind(body: bytes | str) -> tuple[int, float, float | None]:
+    """Return ``(ts, speed_kms, density_cm3)`` from the RTSW wind feed."""
+    row = _newest_active(body, "sw", "proton_speed")
+    speed = _req_float(row["proton_speed"], "sw")
+    density = _opt_float(row.get("proton_density"), "sw")
+    return _naive_utc_ts(row["time_tag"], "sw"), speed, density
+
+
+def parse_imf(body: bytes | str) -> tuple[int, float, float | None]:
+    """Return ``(ts, bz_gsm_nt, bt_nt)`` from the RTSW magnetometer feed.
+
+    Bz in GSM coordinates is the component that couples to Earth's field:
+    sustained negative (southward) Bz is what drives geomagnetic storms.
+    """
+    row = _newest_active(body, "imf", "bz_gsm")
+    bz = _req_float(row["bz_gsm"], "imf")
+    return _naive_utc_ts(row["time_tag"], "imf"), bz, _opt_float(row.get("bt"), "imf")
+
+
+def parse_proton_flux(body: bytes | str) -> tuple[int, float]:
+    """Return ``(ts, flux_pfu)`` for the newest GOES >=10 MeV integral proton reading.
+
+    The >=10 MeV channel defines NOAA's S (solar radiation storm) scale;
+    10 pfu is S1. High-energy proton events are what neutron monitors and
+    muon detectors can see as ground-level enhancements.
+    """
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"protons: not JSON: {exc}") from exc
+    if not isinstance(data, list):
+        raise ValueError("protons: non-list payload")
+    rows = [
+        r
+        for r in data
+        if isinstance(r, dict) and r.get("energy") == PROTON_CHANNEL and r.get("flux") is not None
+    ]
+    if not rows:
+        raise ValueError(f"protons: no {PROTON_CHANNEL} readings")
+    newest = max(rows, key=lambda r: str(r.get("time_tag")))
+    flux = _req_float(newest["flux"], "protons")
+    return parse_ts(newest["time_tag"]), flux
+
+
+def parse_noaa_scales(body: bytes | str) -> tuple[int, int, int]:
+    """Return the current ``(R, S, G)`` NOAA space-weather scale levels (0-5).
+
+    The payload is keyed by day offset; ``"0"`` is now (``"-1"`` is the past
+    24h, ``"1".."3"`` are predictions).
+    """
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"scales: not JSON: {exc}") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("0"), dict):
+        raise ValueError("scales: no current entry")
+    current = data["0"]
+    levels: list[int] = []
+    for key in ("R", "S", "G"):
+        try:
+            level = int(current[key]["Scale"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(f"scales: bad {key} entry: {exc}") from exc
+        if not 0 <= level <= 5:
+            raise ValueError(f"scales: {key} level {level} outside 0-5")
+        levels.append(level)
+    return levels[0], levels[1], levels[2]
 
 
 def _derive_flare_class(flux: float) -> str:

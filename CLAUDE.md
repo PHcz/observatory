@@ -173,7 +173,7 @@ CREATE INDEX idx_aurora_ts ON aurora_status(ts);
 ```
 
 **Migrations beyond the v1 schema** (yoyo, in `migrations/`; obs-api does NOT auto-apply — run `apply_migrations()` before restarting on upgrade):
-`0005` forecast (`forecast_hourly`/`forecast_daily`/`forecast_meta`), `0006` `air_quality`+`air_quality_meta`, `0007` `nmdb_counts`+`nmdb_meta`, `0008` `alerts` (threshold-alert log), `0009` `muon_weekly_summary` (weekly MIP-peak gain-drift), `0010` `indoor_air`+`indoor_events` (indoor CO₂ node, multi-node keyed). Derived weather metrics (Zambretti / MSLP / feels-like / today-so-far) are computed **read-time** — no tables.
+`0005` forecast (`forecast_hourly`/`forecast_daily`/`forecast_meta`), `0006` `air_quality`+`air_quality_meta`, `0007` `nmdb_counts`+`nmdb_meta`, `0008` `alerts` (threshold-alert log), `0009` `muon_weekly_summary` (weekly MIP-peak gain-drift), `0010` `indoor_air`+`indoor_events` (indoor CO₂ node, multi-node keyed). `0011` extra NOAA columns on `space_weather` (solar-wind density, IMF Bz/Bt, GOES ≥10 MeV protons, NOAA R/S/G scales). Derived weather metrics (Zambretti / MSLP / feels-like / today-so-far) are computed **read-time** — no tables.
 
 Back the database up daily to a USB stick (`obs-backup.timer`): gzip-compressed `observatory-YYYY-MM-DD.db.gz`, 10-day retention, with a separate **weekly** integrity check (`obs-backup-verify.timer`). Restore: `gunzip -c /mnt/backup/observatory-YYYY-MM-DD.db.gz > /var/lib/observatory/restore.db` (not `/tmp` — it is a small tmpfs).
 
@@ -200,7 +200,7 @@ GET  /api/nmdb                  -> NMDB (Oulu) neutron-monitor %-baseline series
 GET  /api/forbush               -> Forbush-decrease indicator status
 GET  /api/alerts                -> active + recent (24h) threshold alerts (frost / pressure-fall / enviro-stale / indoor-CO₂)
 GET  /api/earthquakes?from&to&min_mag -> recent earthquake list
-GET  /api/space-weather/current -> latest Kp, solar wind, flare class
+GET  /api/space-weather/current -> latest Kp, solar wind speed/density, IMF Bz/Bt, ≥10 MeV protons, NOAA R/S/G scales, flare class
 GET  /api/space-weather?from&to -> time series
 GET  /api/lightning/summary     -> hour counts, nearest strike, total today
 GET  /api/aurora/current        -> current AuroraWatch status

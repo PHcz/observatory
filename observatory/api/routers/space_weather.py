@@ -11,7 +11,10 @@ Note on flare_class bucketing:
 
 from __future__ import annotations
 
+import sqlite3
 import time
+from collections.abc import Mapping
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -29,6 +32,47 @@ from observatory.api._serializers import (
 from observatory.db.connection import get_conn
 
 router = APIRouter()
+
+# Column -> decimals for the public payload (None = pass through unrounded).
+# Shared by /api/space-weather/current and the /api/current snapshot so the two
+# cannot drift apart.
+_PUBLIC_FIELDS: dict[str, int | None] = {
+    "kp_index": 2,
+    "solar_wind_kms": 1,
+    "flare_class": None,
+    "flare_peak_ts": None,
+    "solar_wind_density": 1,
+    "imf_bz_nt": 1,
+    "imf_bt_nt": 1,
+    "proton_flux_10mev": 3,
+    "noaa_scale_r": None,
+    "noaa_scale_s": None,
+    "noaa_scale_g": None,
+}
+_SELECT_COLUMNS = ", ".join(["ts", *_PUBLIC_FIELDS])
+
+
+def _rounded(value: object, decimals: int | None) -> object:
+    if value is None or decimals is None:
+        return value
+    return round(float(value), decimals)  # type: ignore[arg-type]
+
+
+def serialize_space_weather(row: Mapping[str, Any]) -> dict[str, object]:
+    """Public JSON shape of one space_weather row."""
+    out: dict[str, object] = {"ts": int(row["ts"])}
+    for col, decimals in _PUBLIC_FIELDS.items():
+        out[col] = _rounded(row[col], decimals)
+    return out
+
+
+def latest_space_weather(conn: sqlite3.Connection) -> dict[str, object] | None:
+    row = conn.execute(
+        f"SELECT {_SELECT_COLUMNS} FROM space_weather ORDER BY ts DESC LIMIT 1"  # nosec B608
+    ).fetchone()
+    if row is None or row["ts"] is None:
+        return None
+    return serialize_space_weather(row)
 
 
 @router.get("/space-weather", response_model=TimeSeriesResponse)
@@ -66,7 +110,9 @@ def get_space_weather(
         if resolved == "raw":
             cursor = conn.execute(
                 """
-                SELECT ts, kp_index, solar_wind_kms, flare_class
+                SELECT ts, kp_index, solar_wind_kms, flare_class,
+                       solar_wind_density, imf_bz_nt, imf_bt_nt, proton_flux_10mev,
+                       noaa_scale_r, noaa_scale_s, noaa_scale_g
                 FROM space_weather
                 WHERE ts BETWEEN ? AND ?
                 ORDER BY ts ASC
@@ -84,7 +130,14 @@ def get_space_weather(
                 SELECT MIN(ts) AS ts,
                        AVG(kp_index) AS kp_index,
                        AVG(solar_wind_kms) AS solar_wind_kms,
-                       MAX(flare_class) AS flare_class
+                       MAX(flare_class) AS flare_class,
+                       AVG(solar_wind_density) AS solar_wind_density,
+                       AVG(imf_bz_nt) AS imf_bz_nt,
+                       AVG(imf_bt_nt) AS imf_bt_nt,
+                       MAX(proton_flux_10mev) AS proton_flux_10mev,
+                       MAX(noaa_scale_r) AS noaa_scale_r,
+                       MAX(noaa_scale_s) AS noaa_scale_s,
+                       MAX(noaa_scale_g) AS noaa_scale_g
                 FROM space_weather
                 WHERE ts BETWEEN ? AND ?
                 GROUP BY {bucket_expr}
@@ -93,23 +146,14 @@ def get_space_weather(
                 """,  # nosec B608
                 (from_, to, MAX_ROWS),
             )
-            raw_rows = [dict(r) for r in cursor]
-            rows = []
-            for r in raw_rows:
-                rows.append(
-                    {
-                        "ts": r["ts"],
-                        "kp_index": (
-                            round(r["kp_index"], 2) if r["kp_index"] is not None else None
-                        ),
-                        "solar_wind_kms": (
-                            round(r["solar_wind_kms"], 1)
-                            if r["solar_wind_kms"] is not None
-                            else None
-                        ),
-                        "flare_class": r["flare_class"],
-                    }
-                )
+            rows = [
+                {
+                    k: v
+                    for k, v in serialize_space_weather({**dict(r), "flare_peak_ts": None}).items()
+                    if k != "flare_peak_ts"
+                }
+                for r in cursor
+            ]
 
     return TimeSeriesResponse(
         window={"from": from_, "to": to},
@@ -130,31 +174,18 @@ def get_space_weather_current() -> dict[str, object]:
             "kp_index": float | None,      # rounded to 2dp
             "solar_wind_kms": float | None, # rounded to 1dp
             "flare_class": str | None,
-            "flare_peak_ts": int | None
+            "flare_peak_ts": int | None,
+            "solar_wind_density": float | None,  # p/cm^3, 1dp
+            "imf_bz_nt": float | None,           # GSM Bz, 1dp (negative = southward)
+            "imf_bt_nt": float | None,           # 1dp
+            "proton_flux_10mev": float | None,   # GOES >=10 MeV pfu, 3dp
+            "noaa_scale_r" / "_s" / "_g": int | None   # current NOAA scale levels 0-5
         }
 
     Raises 404 if no space_weather rows exist.
     """
     with get_conn() as conn:
-        row = conn.execute(
-            """
-            SELECT ts, kp_index, solar_wind_kms, flare_class, flare_peak_ts
-            FROM space_weather
-            ORDER BY ts DESC
-            LIMIT 1
-            """
-        ).fetchone()
-
-    if row is None:
+        latest = latest_space_weather(conn)
+    if latest is None:
         raise HTTPException(status_code=404, detail="No space_weather rows yet")
-
-    r = dict(row)
-    return {
-        "ts": r["ts"],
-        "kp_index": round(r["kp_index"], 2) if r["kp_index"] is not None else None,
-        "solar_wind_kms": (
-            round(r["solar_wind_kms"], 1) if r["solar_wind_kms"] is not None else None
-        ),
-        "flare_class": r["flare_class"],
-        "flare_peak_ts": r["flare_peak_ts"],
-    }
+    return latest

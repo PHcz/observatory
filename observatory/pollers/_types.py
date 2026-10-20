@@ -46,6 +46,14 @@ class SpaceWeatherSnapshot:
     solar_wind_kms: float | None
     flare_class: str | None  # NOAA scale, e.g. "C4.6"
     flare_peak_ts: int | None  # UTC epoch of the flare peak
+    # 2026-10 additions (migration 0011); default None so older callers still work.
+    solar_wind_density: float | None = None  # protons/cm^3
+    imf_bz_nt: float | None = None  # GSM Bz; negative = southward
+    imf_bt_nt: float | None = None
+    proton_flux_10mev: float | None = None  # GOES >=10 MeV, pfu
+    noaa_scale_r: int | None = None
+    noaa_scale_s: int | None = None
+    noaa_scale_g: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

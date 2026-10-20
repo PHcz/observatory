@@ -25,6 +25,7 @@ SCHEMA_0005 = REPO_ROOT / "migrations" / "0005_forecast.sql"
 SCHEMA_0006 = REPO_ROOT / "migrations" / "0006_air_quality.sql"
 # Phase 13 MU2-06: NMDB poller write/read tests need nmdb_counts + nmdb_meta tables.
 SCHEMA_0007 = REPO_ROOT / "migrations" / "0007_nmdb.sql"
+SCHEMA_0011 = REPO_ROOT / "migrations" / "0011_space_weather_noaa_extras.sql"
 
 
 @pytest.fixture(autouse=True)
@@ -143,6 +144,7 @@ def tmp_db(tmp_path: Path) -> Path:
     conn.executescript(SCHEMA_0005.read_text())
     conn.executescript(SCHEMA_0006.read_text())
     conn.executescript(SCHEMA_0007.read_text())
+    conn.executescript(SCHEMA_0011.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA synchronous=NORMAL")

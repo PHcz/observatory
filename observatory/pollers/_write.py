@@ -158,12 +158,12 @@ def write_space_weather(
     row survives any rollback of the snapshot insert).
 
     NOAA-specific: introduces ``status='partial'`` to the ``poller_runs``
-    status vocabulary, meaning 1 or 2 of NOAA's 3 endpoints succeeded.
+    status vocabulary, meaning some but not all NOAA endpoints succeeded.
     The /api/health endpoint (Plan 05-05) treats ``partial`` as non-fatal
     (the source is healthy from the data-freshness perspective).
 
     Args:
-      snapshot: per-poll snapshot, or ``None`` when all 3 endpoints
+      snapshot: per-poll snapshot, or ``None`` when all endpoints
         failed and caller is recording a ``transient_fail``.
       started_at: poll start time (unix epoch seconds).
       status: ``'success'`` | ``'partial'`` | ``'transient_fail'`` |
@@ -189,14 +189,23 @@ def write_space_weather(
                 try:
                     cur = conn.execute(
                         "INSERT INTO space_weather "
-                        "(ts, kp_index, solar_wind_kms, flare_class, flare_peak_ts) "
-                        "VALUES (?,?,?,?,?)",
+                        "(ts, kp_index, solar_wind_kms, flare_class, flare_peak_ts, "
+                        "solar_wind_density, imf_bz_nt, imf_bt_nt, proton_flux_10mev, "
+                        "noaa_scale_r, noaa_scale_s, noaa_scale_g) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                         (
                             snapshot.ts,
                             snapshot.kp_index,
                             snapshot.solar_wind_kms,
                             snapshot.flare_class,
                             snapshot.flare_peak_ts,
+                            snapshot.solar_wind_density,
+                            snapshot.imf_bz_nt,
+                            snapshot.imf_bt_nt,
+                            snapshot.proton_flux_10mev,
+                            snapshot.noaa_scale_r,
+                            snapshot.noaa_scale_s,
+                            snapshot.noaa_scale_g,
                         ),
                     )
                     written = cur.rowcount

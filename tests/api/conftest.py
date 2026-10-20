@@ -23,23 +23,9 @@ from observatory.api.main import app
 from observatory.config import Settings
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCHEMA_0001 = REPO_ROOT / "migrations" / "0001_initial_schema.sql"
-SCHEMA_0002 = REPO_ROOT / "migrations" / "0002_poller_runs.sql"
-# Phase 3: UNIQUE(node_id, ts) index on weather — required for INSERT OR IGNORE dedup.
-SCHEMA_0003 = REPO_ROOT / "migrations" / "0003_weather_unique.sql"
-# Phase 8.5 UI-18: /api/earthquakes router selects is_local; api tmp_db must carry it.
-SCHEMA_0004 = REPO_ROOT / "migrations" / "0004_earthquakes_is_local.sql"
-# Phase 10 FCAST-02: /api/forecast router reads forecast_* tables; api tmp_db must carry them.
-SCHEMA_0005 = REPO_ROOT / "migrations" / "0005_forecast.sql"
-# Phase 11 OAQ-02: /api/air-quality + /api/health read air_quality* tables; tmp_db must carry them.
-SCHEMA_0006 = REPO_ROOT / "migrations" / "0006_air_quality.sql"
-# Phase 13 MU2-06: /api/nmdb + /api/forbush + /api/health read nmdb* tables; tmp_db must carry them.
-SCHEMA_0007 = REPO_ROOT / "migrations" / "0007_nmdb.sql"
-# Phase 16 ENH-04: /api/alerts reads alerts table; tmp_db must carry it.
-SCHEMA_0008 = REPO_ROOT / "migrations" / "0008_alerts.sql"
-# Phase 16 ENH-01: muon_weekly_summary table.
-SCHEMA_0009 = REPO_ROOT / "migrations" / "0009_muon_weekly_summary.sql"
-SCHEMA_0010 = REPO_ROOT / "migrations" / "0010_indoor_air.sql"
+# Every migration, in order -- a hand-maintained list silently missed new
+# migrations (0011 broke ~50 API tests that touch space_weather).
+MIGRATIONS = sorted((REPO_ROOT / "migrations").glob("[0-9][0-9][0-9][0-9]_*.sql"))
 
 
 @pytest.fixture(autouse=True)
@@ -47,16 +33,8 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     """Materialize observatory.config.settings for api tests + tmp_db override."""
     db_path = tmp_path / "api_test.db"
     conn = sqlite3.connect(str(db_path), isolation_level=None)
-    conn.executescript(SCHEMA_0001.read_text())
-    conn.executescript(SCHEMA_0002.read_text())
-    conn.executescript(SCHEMA_0003.read_text())
-    conn.executescript(SCHEMA_0004.read_text())
-    conn.executescript(SCHEMA_0005.read_text())
-    conn.executescript(SCHEMA_0006.read_text())
-    conn.executescript(SCHEMA_0007.read_text())
-    conn.executescript(SCHEMA_0008.read_text())
-    conn.executescript(SCHEMA_0009.read_text())
-    conn.executescript(SCHEMA_0010.read_text())
+    for migration in MIGRATIONS:
+        conn.executescript(migration.read_text())
     conn.execute("PRAGMA journal_mode=WAL")
     conn.close()
 

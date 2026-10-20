@@ -32,6 +32,7 @@ from observatory.api._freshness import (
     freshness,
 )
 from observatory.api.astral_calc import public_astronomy
+from observatory.api.routers.space_weather import latest_space_weather
 from observatory.config import settings
 from observatory.db.connection import get_conn
 
@@ -100,21 +101,7 @@ def _latest_muon(conn: sqlite3.Connection, now: int) -> dict[str, Any] | None:
 
 def _latest_space_weather(conn: sqlite3.Connection) -> dict[str, Any] | None:
     """Return the most recent space_weather row or None if table is empty."""
-    row = conn.execute(
-        "SELECT ts, kp_index, solar_wind_kms, flare_class, flare_peak_ts"
-        " FROM space_weather ORDER BY ts DESC LIMIT 1"
-    ).fetchone()
-    if row is None or row["ts"] is None:
-        return None
-    return {
-        "ts": int(row["ts"]),
-        "kp_index": (round(float(row["kp_index"]), 2) if row["kp_index"] is not None else None),
-        "solar_wind_kms": (
-            round(float(row["solar_wind_kms"]), 1) if row["solar_wind_kms"] is not None else None
-        ),
-        "flare_class": row["flare_class"],
-        "flare_peak_ts": (int(row["flare_peak_ts"]) if row["flare_peak_ts"] is not None else None),
-    }
+    return latest_space_weather(conn)
 
 
 def _lightning_aggregate(conn: sqlite3.Connection, now: int) -> dict[str, Any]:

@@ -225,7 +225,7 @@ def test_current_response_shape(client: TestClient, db_path: Path) -> None:
     resp = client.get("/api/space-weather/current")
     assert resp.status_code == 200
     body = resp.json()
-    assert set(body.keys()) == {"ts", "kp_index", "solar_wind_kms", "flare_class", "flare_peak_ts"}
+    assert set(body.keys()) == {"ts", *SW_FIELDS}
 
 
 def test_current_rounding(client: TestClient, db_path: Path) -> None:
@@ -242,3 +242,73 @@ def test_current_rounding(client: TestClient, db_path: Path) -> None:
     body = resp.json()
     assert body["kp_index"] == round(3.789, 2)
     assert body["solar_wind_kms"] == round(412.345, 1)
+
+
+# --- 2026-10 NOAA additions (migration 0011) --------------------------------
+
+SW_FIELDS = (
+    "kp_index",
+    "solar_wind_kms",
+    "flare_class",
+    "flare_peak_ts",
+    "solar_wind_density",
+    "imf_bz_nt",
+    "imf_bt_nt",
+    "proton_flux_10mev",
+    "noaa_scale_r",
+    "noaa_scale_s",
+    "noaa_scale_g",
+)
+
+
+def _insert_full_row(db_path: Path, ts: int) -> None:
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        "INSERT INTO space_weather (ts, kp_index, solar_wind_kms, flare_class, flare_peak_ts,"
+        " solar_wind_density, imf_bz_nt, imf_bt_nt, proton_flux_10mev,"
+        " noaa_scale_r, noaa_scale_s, noaa_scale_g) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (ts, 4.33, 512.34, "M1.2", ts - 600, 7.456, -8.123, 11.987, 0.27566, 1, 0, 2),
+    )
+    conn.commit()
+    conn.close()
+
+
+def test_current_exposes_noaa_additions(client: TestClient, db_path: Path) -> None:
+    _insert_full_row(db_path, int(time.time()) - 30)
+    body = client.get("/api/space-weather/current").json()
+    assert body["solar_wind_density"] == 7.5
+    assert body["imf_bz_nt"] == -8.1
+    assert body["imf_bt_nt"] == 12.0
+    assert body["proton_flux_10mev"] == 0.276
+    assert (body["noaa_scale_r"], body["noaa_scale_s"], body["noaa_scale_g"]) == (1, 0, 2)
+
+
+def test_snapshot_space_weather_matches_current_endpoint(db_path: Path) -> None:
+    """/api/current (the dashboard's snapshot) and /api/space-weather/current
+    must not drift apart when fields are added."""
+    from observatory.api.routers import current as current_router
+
+    app = FastAPI()
+    app.include_router(sw_router.router, prefix="/api")
+    app.include_router(current_router.router, prefix="/api")
+    client = TestClient(app)
+    _insert_full_row(db_path, int(time.time()) - 30)
+    snap = client.get("/api/current").json()["space_weather"]["data"]
+    assert snap == client.get("/api/space-weather/current").json()
+
+
+def test_time_series_raw_includes_noaa_additions(client: TestClient, db_path: Path) -> None:
+    now = int(time.time())
+    _insert_full_row(db_path, now - 30)
+    rows = client.get(f"/api/space-weather?from={now - 600}&to={now}&agg=raw").json()["rows"]
+    assert rows and rows[0]["imf_bz_nt"] == pytest.approx(-8.123)
+    assert rows[0]["noaa_scale_g"] == 2
+
+
+def test_time_series_bucketed_includes_noaa_additions(client: TestClient, db_path: Path) -> None:
+    now = int(time.time())
+    _insert_full_row(db_path, now - 30)
+    rows = client.get(f"/api/space-weather?from={now - 7200}&to={now}&agg=hour").json()["rows"]
+    assert rows and rows[-1]["imf_bz_nt"] == -8.1
+    assert rows[-1]["proton_flux_10mev"] == 0.276
+    assert rows[-1]["noaa_scale_g"] == 2
