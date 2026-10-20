@@ -93,3 +93,62 @@ def test_config_is_valid_yaml() -> None:
     cfg = _config()
     assert isinstance(cfg, dict)
     assert "repos" in cfg
+
+
+# Hooks for tools that pyproject.toml also version-pins. Each one must take its
+# version from the project venv, never from a second pin in this config.
+_PROJECT_VENV_HOOKS = ("ruff", "ruff-format", "mypy", "bandit", "pip-audit")
+_DUAL_PINNED_TOOLS = ("ruff", "mypy", "bandit", "pip-audit")
+
+
+def test_tool_hooks_run_from_the_project_venv() -> None:
+    """A hook and a local run of the same tool must be the same binary.
+
+    Every one of these previously carried its own `rev:`, hand-synced against a
+    floor in pyproject. They drifted: bandit sat at 1.8.3 against >=1.9.4, and
+    pip-audit at v2.8.0 against >=2.10.1, while Dependabot moved the ruff floor
+    without touching its rev because it cannot see the coupling. Two versions of
+    one tool is the bug; running from the venv removes the second one.
+    """
+    hooks = _all_hooks_by_id()
+    for hid in _PROJECT_VENV_HOOKS:
+        assert hid in hooks, f"missing hook: {hid}"
+        hook = hooks[hid]
+        assert hook.get("language") == "system", (
+            f"hook {hid} must run in the project venv (language: system), "
+            f"got language={hook.get('language')!r}"
+        )
+        entry = str(hook.get("entry", ""))
+        assert entry.startswith("uv run "), (
+            f"hook {hid} must invoke the venv tool via `uv run`, got {entry!r}"
+        )
+
+
+def test_no_remote_repo_reintroduces_a_second_version_pin() -> None:
+    """Guards the other direction: re-adding the upstream repo restores the pin."""
+    offenders = [
+        (repo["repo"], tool)
+        for repo in _config()["repos"]
+        if repo.get("repo") != "local"
+        for tool in _DUAL_PINNED_TOOLS
+        if tool in repo["repo"]
+    ]
+    assert not offenders, (
+        f"these remote hook repos pin a tool pyproject also pins: {offenders}; "
+        "use a local hook running `uv run <tool>` so there is only one version"
+    )
+
+
+def test_ruff_hooks_keep_force_exclude() -> None:
+    """Without --force-exclude ruff ignores extend-exclude for explicit paths.
+
+    pre-commit always passes explicit filenames, so dropping the flag silently
+    starts linting frontend/, migrations/ and .venv (verified: the same file is
+    skipped with the flag and reports 4 errors without it).
+    """
+    hooks = _all_hooks_by_id()
+    for hid in ("ruff", "ruff-format"):
+        entry = str(hooks[hid].get("entry", ""))
+        assert "--force-exclude" in entry, (
+            f"hook {hid} dropped --force-exclude; extend-exclude would be ignored"
+        )
