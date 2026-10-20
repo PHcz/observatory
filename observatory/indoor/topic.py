@@ -14,6 +14,7 @@ No I/O here — all functions are pure so they unit-test without MQTT or a DB.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 # ESPHome sensor name (topic segment) → indoor_air column.
@@ -30,6 +31,19 @@ METRIC_COLUMNS: dict[str, str] = {
 
 # Columns that must be stored as INTEGER (the rest are REAL).
 _INT_COLUMNS: frozenset[str] = frozenset({"co2_ppm", "wifi_rssi"})
+
+# Physically possible ranges, from each sensor's own datasheet with headroom
+# (SCD-41: 0-40000 ppm; BME280: -40..85 C, 300-1100 hPa). Anything outside is a
+# fault or a forgery, not a reading (security audit 2026-10-20, M4). Humidity
+# runs to 105 so rounding can never drop a genuine 100 % reading.
+_PLAUSIBLE: dict[str, tuple[float, float]] = {
+    "co2_ppm": (0, 40_000),
+    "temp_c": (-50, 85),
+    "humidity_pct": (0, 105),
+    "pressure_hpa": (300, 1100),
+    "gas_index": (0, 1_000_000),
+    "lux": (0, 200_000),
+}
 
 
 @dataclass(frozen=True)
@@ -64,14 +78,20 @@ def parse_metric_topic(topic: str) -> IndoorMetric | None:
 def coerce_value(column: str, raw: str) -> float | int | None:
     """Coerce a payload string to the column's type; None on non-numeric.
 
-    ESPHome publishes "nan" when a sensor read fails — that (and any other
-    unparseable payload) maps to None so the column is left NULL.
+    ESPHome publishes "nan" when a sensor read fails — that, any other
+    unparseable payload, and any non-finite or physically impossible value map
+    to None so the column is left NULL.
     """
     try:
         value = float(raw)
     except (TypeError, ValueError):
         return None
-    if value != value:  # NaN
+    # NaN and +/-inf alike: round(inf) raises OverflowError, which used to kill
+    # the indoor subscriber task (security audit M4).
+    if not math.isfinite(value):
+        return None
+    low, high = _PLAUSIBLE.get(column, (-math.inf, math.inf))
+    if not low <= value <= high:
         return None
     if column in _INT_COLUMNS:
         return round(value)

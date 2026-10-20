@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from observatory.indoor.topic import IndoorMetric, coerce_value, parse_metric_topic
 
 
@@ -55,3 +57,40 @@ class TestCoerceValue:
 
     def test_non_numeric_becomes_none(self) -> None:
         assert coerce_value("temp_c", "online") is None
+
+
+# --- Implausible values (security audit 2026-10-20, M4) ---------------------
+# coerce_value("co2_ppm", "inf") used to raise OverflowError from round(); the
+# subscriber caught only MQTT errors, so one bad frame killed indoor ingestion
+# until obs-api restarted. Non-finite or physically impossible values now leave
+# the column NULL, like ESPHome's "nan".
+
+
+@pytest.mark.parametrize(
+    ("column", "raw"),
+    [("co2_ppm", "inf"), ("co2_ppm", "-inf"), ("temp_c", "inf"), ("temp_c", "1e309")],
+)
+def test_non_finite_values_become_none(column: str, raw: str) -> None:
+    assert coerce_value(column, raw) is None
+
+
+@pytest.mark.parametrize(
+    ("column", "raw"),
+    [("co2_ppm", "1e12"), ("temp_c", "500"), ("humidity_pct", "250"), ("pressure_hpa", "5")],
+)
+def test_physically_impossible_values_become_none(column: str, raw: str) -> None:
+    assert coerce_value(column, raw) is None
+
+
+@pytest.mark.parametrize(
+    ("column", "raw", "expected"),
+    [  # real extremes from the live database, 2026-10-20
+        ("co2_ppm", "4791", 4791),
+        ("co2_ppm", "0", 0),
+        ("temp_c", "37.6", 37.6),
+        ("humidity_pct", "100.0", 100.0),
+        ("pressure_hpa", "1030.9", 1030.9),
+    ],
+)
+def test_real_extremes_are_kept(column: str, raw: str, expected: float) -> None:
+    assert coerce_value(column, raw) == expected

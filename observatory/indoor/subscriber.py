@@ -117,13 +117,18 @@ async def _handle_message(message: aiomqtt.Message, aggregator: IndoorAggregator
     """
     if getattr(message, "retain", False):
         return
-    parsed = parse_metric_topic(_topic_str(message))
-    if parsed is None:
-        return  # status / debug / unknown metric — ignore
-    value = coerce_value(parsed.column, _payload_str(message))
-    if value is None:
-        return  # NaN / unparseable — leave that column NULL this cycle
-    aggregator.ingest(parsed.node_id, parsed.column, value)
+    try:
+        parsed = parse_metric_topic(_topic_str(message))
+        if parsed is None:
+            return  # status / debug / unknown metric — ignore
+        value = coerce_value(parsed.column, _payload_str(message))
+        if value is None:
+            return  # NaN / unparseable / implausible — leave the column NULL
+        aggregator.ingest(parsed.node_id, parsed.column, value)
+    except Exception as exc:
+        # One malformed frame must never end ingestion: the loop only catches MQTT
+        # errors, so anything escaping here used to kill the task (audit M4).
+        log.warning("indoor_message_dropped", topic=_topic_str(message), error=str(exc))
 
 
 async def run_indoor_subscriber(stop_event: asyncio.Event, db_path: str | None = None) -> None:

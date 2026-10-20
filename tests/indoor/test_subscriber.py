@@ -6,6 +6,8 @@ import asyncio
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from observatory.indoor.subscriber import IndoorAggregator, _handle_message
 
 
@@ -113,3 +115,20 @@ async def test_handle_message_accepts_live_message_when_retain_absent() -> None:
     await _handle_message(msg, agg)  # type: ignore[arg-type]
     await agg.flush_all()
     assert rec.calls == [("living-room", {"co2_ppm": 822})]
+
+
+async def test_handle_message_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The docstring promised "Never raises"; an OverflowError proved otherwise and
+    killed the subscriber task (security audit M4). Any per-message failure must be
+    logged and dropped so the next reading still arrives."""
+    from observatory.indoor import subscriber as subscriber_mod
+
+    def boom(column: str, raw: str) -> None:
+        raise RuntimeError("malformed frame")
+
+    monkeypatch.setattr(subscriber_mod, "coerce_value", boom)
+    rec = _Recorder()
+    agg = IndoorAggregator(rec.flush, debounce_sec=10.0)
+    await _handle_message(_msg(b"822", "indoor/living-room/sensor/co2/state"), agg)
+    await agg.flush_all()
+    assert rec.calls == []

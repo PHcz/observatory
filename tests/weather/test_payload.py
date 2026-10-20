@@ -107,3 +107,51 @@ def test_parses_live_firmware_capture(load_payload: Callable[[str], bytes]) -> N
     assert env.readings.pressure_hpa == 1018.97
     assert env.readings.lux == 307.47
     assert env.readings.battery_v is None  # Weather board firmware omits voltage
+
+
+# --- Implausible values (security audit 2026-10-20, M4) ---------------------
+# The model accepted Infinity/NaN with no bounds. Stored, they are re-emitted by
+# FastAPI as `Infinity`, which is not valid JSON and breaks the dashboard parser.
+
+_BASE = {"temperature": "18.4", "humidity": "61.2", "pressure": "1012.3", "luminance": "234.5"}
+
+
+def _env(**override: str) -> str:
+    readings = {**_BASE, **override}
+    body = ", ".join(f'"{k}": {v}' for k, v in readings.items())
+    return (
+        '{"nickname": "observatory-weather", "timestamp": "2026-05-27T12:00:00Z", '
+        f'"readings": {{{body}}}}}'
+    )
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"temperature": "Infinity"},
+        {"humidity": "NaN"},
+        {"pressure": "-Infinity"},
+        {"temperature": "500"},
+        {"humidity": "250"},
+        {"pressure": "5"},
+        {"luminance": "-1"},
+    ],
+)
+def test_rejects_non_finite_and_impossible_readings(override: dict[str, str]) -> None:
+    with pytest.raises(ValidationError):
+        parse_envelope(_env(**override))
+
+
+def test_accepts_real_extremes() -> None:
+    """Live-database extremes as of 2026-10-20, incl. overnight 100% humidity."""
+    for override in (
+        {"temperature": "3.73"},
+        {"temperature": "35.83"},
+        {"humidity": "100.0"},
+        {"humidity": "18.29"},
+        {"pressure": "995.34"},
+        {"pressure": "1033.83"},
+        {"luminance": "0.0"},
+        {"luminance": "3688.38"},
+    ):
+        parse_envelope(_env(**override))

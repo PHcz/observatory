@@ -32,13 +32,19 @@ from pydantic import BaseModel, ConfigDict, Field
 class WeatherPayload(BaseModel):
     """The ``readings`` dict — sensor values with column-name aliases."""
 
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+    # No Infinity/NaN, and BME280/LTR-559 physical ranges with headroom (security
+    # audit 2026-10-20, M4): a stored Infinity is re-emitted by FastAPI as
+    # `Infinity`, which is not valid JSON and breaks the dashboard parser. Bounds
+    # sit well outside 35k rows of real history (3.7-35.8 C, humidity to exactly
+    # 100.0, 995-1034 hPa, 0-3688 lux); humidity runs to 105 so rounding cannot
+    # drop a genuine overnight 100 %.
+    model_config = ConfigDict(extra="ignore", populate_by_name=True, allow_inf_nan=False)
 
-    temp_c: float = Field(alias="temperature")
-    humidity_pct: float = Field(alias="humidity")
-    pressure_hpa: float = Field(alias="pressure")
-    lux: float = Field(alias="luminance")
-    battery_v: float | None = Field(default=None, alias="voltage")
+    temp_c: float = Field(alias="temperature", ge=-50, le=85)
+    humidity_pct: float = Field(alias="humidity", ge=0, le=105)
+    pressure_hpa: float = Field(alias="pressure", ge=300, le=1100)
+    lux: float = Field(alias="luminance", ge=0, le=200_000)
+    battery_v: float | None = Field(default=None, alias="voltage", ge=0, le=10)
 
 
 class WeatherEnvelope(BaseModel):

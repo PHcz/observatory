@@ -19,6 +19,7 @@ Rowcount semantics:
 from __future__ import annotations
 
 import sqlite3
+import time
 
 import structlog
 
@@ -27,6 +28,26 @@ from observatory.pollers._parse_ts import parse_ts
 from observatory.weather.payload import WeatherEnvelope
 
 log = structlog.get_logger(__name__)
+
+
+# The earliest timestamp accepted from a device. ABSOLUTE rather than relative to
+# now, so test fixtures dated 2026-05-27 cannot turn into a time bomb as the
+# calendar moves on. Also rejects the Enviro's clock after a battery swap, which
+# boots as 2000-01-01 until it re-syncs over NTP.
+EARLIEST_DEVICE_TS = 1_767_225_600  # 2026-01-01T00:00:00Z
+# Device clocks drift; anything beyond this is a fault or a forgery.
+MAX_CLOCK_SKEW_SEC = 300
+
+
+def ts_is_plausible(ts: int, now: float | None = None) -> bool:
+    """True if a device-supplied reading time can be real.
+
+    A row dated in the far future would be the "latest" reading forever and stall
+    the WebSocket watcher, which only fans out rows newer than its high-water
+    mark (security audit 2026-10-20, M4).
+    """
+    current = time.time() if now is None else now
+    return EARLIEST_DEVICE_TS <= ts <= current + MAX_CLOCK_SKEW_SEC
 
 
 def write_reading(envelope: WeatherEnvelope, db_path: str | None = None) -> bool:
@@ -52,6 +73,15 @@ def write_reading(envelope: WeatherEnvelope, db_path: str | None = None) -> bool
             timestamp=envelope.timestamp,
             node_id=envelope.nickname,
             exc_info=exc,
+        )
+        return False
+
+    if not ts_is_plausible(ts):
+        log.warning(
+            "weather_write_rejected",
+            reason="implausible_timestamp",
+            timestamp=envelope.timestamp,
+            node_id=envelope.nickname,
         )
         return False
 

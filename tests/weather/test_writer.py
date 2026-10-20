@@ -134,3 +134,36 @@ def test_writes_to_configured_db_path(tmp_db: Path, load_payload: Any) -> None:
     rows = _query(tmp_db, "SELECT node_id FROM weather")
     assert len(rows) == 1
     assert rows[0]["node_id"] == "observatory-weather"
+
+
+# --- Implausible timestamps (security audit 2026-10-20, M4) ------------------
+# A row dated year 9999 would be the "latest" reading forever and stall the
+# WebSocket watcher's high-water mark (it only fans out ts > last seen). The
+# floor is ABSOLUTE, not relative to now, so fixtures dated 2026-05-27 cannot
+# become a time bomb as the calendar moves on.
+
+
+@pytest.mark.parametrize(
+    "stamp",
+    [
+        "9999-01-01T00:00:00Z",  # stalls the watcher, pins "latest" forever
+        "2000-01-01T00:00:00Z",  # the Enviro's clock after a battery swap
+    ],
+)
+def test_rejects_implausible_timestamps(tmp_db: Path, load_payload: Any, stamp: str) -> None:
+    raw = load_payload("canonical_payload.json").decode().replace("2026-05-27T12:00:00Z", stamp)
+    assert write_reading(parse_envelope(raw), str(tmp_db)) is False
+    assert _query(tmp_db, "SELECT COUNT(*) AS n FROM weather")[0]["n"] == 0
+
+
+def test_rejects_timestamps_beyond_clock_skew(tmp_db: Path, load_payload: Any) -> None:
+    future = datetime.fromtimestamp(datetime.now(tz=UTC).timestamp() + 3600, tz=UTC)
+    stamp = future.strftime("%Y-%m-%dT%H:%M:%SZ")
+    raw = load_payload("canonical_payload.json").decode().replace("2026-05-27T12:00:00Z", stamp)
+    assert write_reading(parse_envelope(raw), str(tmp_db)) is False
+
+
+def test_accepts_a_reading_from_moments_ago(tmp_db: Path, load_payload: Any) -> None:
+    stamp = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    raw = load_payload("canonical_payload.json").decode().replace("2026-05-27T12:00:00Z", stamp)
+    assert write_reading(parse_envelope(raw), str(tmp_db)) is True
