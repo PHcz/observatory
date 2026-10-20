@@ -18,7 +18,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from observatory.api.db_watcher import db_watcher_loop
-from observatory.api.middleware import HostAllowlistMiddleware, OriginAllowlistMiddleware
+from observatory.api.middleware import (
+    HostAllowlistMiddleware,
+    OriginAllowlistMiddleware,
+    SecurityHeadersMiddleware,
+)
 from observatory.api.routers import air_quality as air_quality_router
 from observatory.api.routers import alerts as alerts_router
 from observatory.api.routers import aurora as aurora_router
@@ -86,6 +90,8 @@ app = FastAPI(
 app.add_middleware(OriginAllowlistMiddleware)
 # Pure ASGI, so it also covers websockets (security audit M11 / H1).
 app.add_middleware(HostAllowlistMiddleware)
+# Outermost, so the Host-rejection 400 and static files carry the headers too.
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.middleware("http")

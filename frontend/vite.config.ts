@@ -9,7 +9,13 @@ export default defineConfig({
     sveltekit({
       preprocess: vitePreprocess(),
       adapter: adapter({ fallback: '200.html' }),
-      prerender: { handleHttpError: 'warn' }
+      prerender: { handleHttpError: 'warn' },
+      // Per-page <meta> CSP pinning SvelteKit's inline bootstrap script by hash.
+      // The API adds the header CSP (frame-ancestors etc. cannot go in a meta).
+      csp: {
+        mode: 'hash',
+        directives: { 'script-src': ['self'] }
+      }
     })
   ],
   resolve: { conditions: ['browser'] },

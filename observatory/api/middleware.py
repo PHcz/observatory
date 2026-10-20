@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import functools
 import ipaddress
+import re
 import urllib.parse
 from collections.abc import Awaitable, Callable
 
@@ -25,7 +26,7 @@ from starlette.datastructures import Headers
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, Response
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 log = structlog.get_logger(__name__)
 
@@ -237,3 +238,75 @@ class HostAllowlistMiddleware:
             await send({"type": "websocket.close", "code": 1008})
             return
         await PlainTextResponse("Invalid host header", status_code=400)(scope, receive, send)
+
+
+# --- Browser security headers (security audit 2026-10-20, F55) ---------------
+
+_SAFE_HOST = re.compile(r"^[A-Za-z0-9.\-]+(:\d{1,5})?$|^\[[0-9A-Fa-f:.%a-z]+\](:\d{1,5})?$")
+
+# script-src keeps 'unsafe-inline' only for the browsers that ignore SvelteKit's
+# per-page <meta> CSP; that meta policy pins the inline bootstrap by hash, and
+# both policies are enforced together. style-src needs 'unsafe-inline' for
+# Svelte/Plot style attributes. Nothing is ever loaded from another origin.
+_CSP_TEMPLATE = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "font-src 'self' data:; "
+    "connect-src 'self'{ws}; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+
+_STATIC_HEADERS: tuple[tuple[bytes, bytes], ...] = (
+    (b"x-content-type-options", b"nosniff"),
+    (b"referrer-policy", b"no-referrer"),
+    (b"x-frame-options", b"DENY"),
+    (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
+)
+
+
+def content_security_policy(host: str | None) -> str:
+    """CSP for a response served under ``host``.
+
+    ``'self'`` does not match ``ws://`` in every browser, so the dashboard's
+    own WebSocket origin is named exactly. A bare ``ws:`` scheme would allow
+    any host, so a Host that does not look like a hostname gets no ws source.
+    """
+    ws = ""
+    if host and _SAFE_HOST.match(host):
+        ws = f" ws://{host} wss://{host}"
+    return _CSP_TEMPLATE.format(ws=ws)
+
+
+class SecurityHeadersMiddleware:
+    """Add CSP, nosniff, Referrer-Policy and anti-framing headers to HTTP responses.
+
+    Pure ASGI (like HostAllowlistMiddleware) so it also covers StaticFiles and
+    error responses; headers a route already set are left alone.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        hosts = Headers(scope=scope).getlist("host")
+        csp = content_security_policy(hosts[0] if len(hosts) == 1 else None).encode()
+
+        async def send_with_headers(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                present = {name.lower() for name, _ in headers}
+                for name, value in (*_STATIC_HEADERS, (b"content-security-policy", csp)):
+                    if name not in present:
+                        headers.append((name, value))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
