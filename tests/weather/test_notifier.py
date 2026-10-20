@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 from pydantic import SecretStr
-from structlog.testing import capture_logs
 
 from observatory.weather.alerts.notifier import notify_ntfy, notify_telegram
 
@@ -180,7 +179,11 @@ class TestNtfyNonAsciiTitle:
 
 
 class TestRejectedPushesAreLogged:
-    """The POST's response was never checked: Telegram answering 401 (revoked
+    """The notifier's ``log`` is patched directly: structlog's capture_logs()
+    misses loggers already cached by an earlier configure_logging() call, which
+    made these tests pass alone and fail in the full suite.
+
+    The POST's response was never checked: Telegram answering 401 (revoked
     token) or 400 (bad chat id) looked exactly like a delivered alert, and
     ntfy 4xx/5xx likewise. Found while sending a test message 2026-10-20."""
 
@@ -194,7 +197,7 @@ class TestRejectedPushesAreLogged:
         with (
             patch("observatory.weather.alerts.notifier.settings") as mock_settings,
             patch("httpx.AsyncClient") as mock_client_class,
-            capture_logs() as logs,
+            patch("observatory.weather.alerts.notifier.log") as mock_log,
         ):
             mock_settings.alert_telegram_enabled = True
             mock_settings.alert_telegram_bot_token = SecretStr("SECRET:TOKEN")
@@ -205,10 +208,10 @@ class TestRejectedPushesAreLogged:
             mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
             asyncio.run(notify_telegram(title="T", message="m"))
 
-        rejected = [e for e in logs if e["event"] == "telegram.push_rejected"]
-        assert rejected and rejected[0]["status"] == 401
-        assert rejected[0]["detail"] == "Unauthorized"
-        assert "SECRET" not in str(logs)
+        mock_log.warning.assert_called_once_with(
+            "telegram.push_rejected", status=401, detail="Unauthorized"
+        )
+        assert "SECRET" not in str(mock_log.mock_calls)
 
     def test_telegram_success_is_logged(self) -> None:
         req = httpx.Request("POST", "https://api.telegram.org/botX/sendMessage")
@@ -216,7 +219,7 @@ class TestRejectedPushesAreLogged:
         with (
             patch("observatory.weather.alerts.notifier.settings") as mock_settings,
             patch("httpx.AsyncClient") as mock_client_class,
-            capture_logs() as logs,
+            patch("observatory.weather.alerts.notifier.log") as mock_log,
         ):
             mock_settings.alert_telegram_enabled = True
             mock_settings.alert_telegram_bot_token = SecretStr("X")
@@ -226,7 +229,8 @@ class TestRejectedPushesAreLogged:
             )
             mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
             asyncio.run(notify_telegram(title="T", message="m"))
-        assert any(e["event"] == "telegram.push_sent" for e in logs)
+        mock_log.info.assert_called_once_with("telegram.push_sent")
+        mock_log.warning.assert_not_called()
 
     def test_ntfy_rejection_is_logged(self) -> None:
         req = httpx.Request("POST", "https://ntfy.sh/topic")
@@ -234,7 +238,7 @@ class TestRejectedPushesAreLogged:
         with (
             patch("observatory.weather.alerts.notifier.settings") as mock_settings,
             patch("httpx.AsyncClient") as mock_client_class,
-            capture_logs() as logs,
+            patch("observatory.weather.alerts.notifier.log") as mock_log,
         ):
             mock_settings.alert_ntfy_enabled = True
             mock_settings.alert_ntfy_url = "https://ntfy.sh"
@@ -245,5 +249,4 @@ class TestRejectedPushesAreLogged:
             )
             mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
             asyncio.run(notify_ntfy(title="T", message="m"))
-        rejected = [e for e in logs if e["event"] == "ntfy.push_rejected"]
-        assert rejected and rejected[0]["status"] == 403
+        mock_log.warning.assert_called_once_with("ntfy.push_rejected", status=403)
