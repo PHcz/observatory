@@ -46,7 +46,22 @@ apt-get install -y \
   curl \
   jq \
   ca-certificates \
-  build-essential
+  build-essential \
+  unattended-upgrades
+
+# Daily security updates (security audit 2026-10-20, F48: never installed, and
+# 48 security updates had accumulated). Debian's stock origins: security plus
+# stable point releases. Automatic reboot stays off -- an unplanned 3 a.m.
+# reboot of the observatory is worse than a patched-but-not-yet-running kernel.
+cat > /etc/apt/apt.conf.d/20auto-upgrades <<'CONF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+CONF
+
+# No purpose on a headless sensor Pi, and both run as root. ModemManager also
+# probes /dev/ttyACM* -- where the muon detector and indoor node live.
+systemctl disable --now bluetooth.service ModemManager.service 2>/dev/null || true
 
 # --- SECTION 2: chrony config with makestep ---
 log "Section 2: chrony"

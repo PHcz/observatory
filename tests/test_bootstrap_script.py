@@ -150,3 +150,22 @@ def test_documents_operator_next_steps() -> None:
     assert "Next steps for the operator" in t
     assert "blkid" in t
     assert "cold-boot" in t.lower()
+
+
+def test_enables_unattended_security_upgrades() -> None:
+    """A rebuilt Pi must patch itself (security audit 2026-10-20, F48).
+
+    unattended-upgrades was never installed, and by the audit 48 security
+    updates had piled up -- OpenSSL, GnuTLS, Kerberos, xz and the system
+    Python 3.11 the venv runs on.
+    """
+    t = _text()
+    assert "unattended-upgrades" in t
+    assert 'APT::Periodic::Unattended-Upgrade "1"' in t
+
+
+def test_disables_unneeded_root_daemons() -> None:
+    """Bluetooth and ModemManager run as root with no purpose on this Pi, and
+    ModemManager probes /dev/ttyACM* -- where the muon detector lives."""
+    t = _text()
+    assert "disable --now bluetooth.service ModemManager.service" in t
