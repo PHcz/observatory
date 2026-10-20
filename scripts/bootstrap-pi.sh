@@ -190,6 +190,29 @@ fi
 systemctl enable mosquitto
 systemctl restart mosquitto
 
+# --- SECTION 10b: host firewall (security audit 2026-10-20, H2) ---
+# Inbound is dropped except LAN-sourced SSH, dashboard/API, MQTT and mDNS, so a
+# UPnP port mapping on the router can never expose the Pi. The LAN subnet is
+# detected from the default-route interface rather than hard-coded.
+log "Section 10b: nftables firewall"
+apt-get install -y nftables
+LAN_IFACE="$(ip route show default | awk '{print $5; exit}')"
+LAN_V4_NET="$(python3 -c 'import ipaddress,sys; print(ipaddress.ip_interface(sys.argv[1]).network)' \
+  "$(ip -o -f inet addr show "$LAN_IFACE" | awk '{print $4; exit}')")"
+install -d -m 0755 /etc/nftables.d
+sed "s#@LAN_V4_NET@#${LAN_V4_NET}#" "$REPO_ROOT/deploy/nftables/observatory.nft" \
+  > /etc/nftables.d/observatory.nft
+install -m 0755 "$REPO_ROOT/deploy/nftables/nftables.conf" /etc/nftables.conf
+nft -c -f /etc/nftables.conf
+systemctl enable nftables.service
+# Rules apply at the next boot rather than now: loading a stateful ruleset under
+# live connections drops their traffic (conntrack never saw them open).
+
+# Keep IPv6 link-local only, so an ISP IPv6 rollout cannot silently give the Pi
+# a public address. Takes effect at the next connect -- the link is not bounced.
+WIFI_CON="$(nmcli -t -f NAME,DEVICE con show --active | awk -F: -v d="$LAN_IFACE" '$2==d{print $1}')"
+[ -n "$WIFI_CON" ] && nmcli con mod "$WIFI_CON" ipv6.method link-local
+
 # --- SECTION 11: (removed) pre-commit hooks ---
 # Commits happen on the dev machine, where the hooks are installed. The Pi runs
 # a runtime-only venv (see Section 9), so it has no pre-commit to install.

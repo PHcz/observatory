@@ -1,0 +1,52 @@
+#!/usr/sbin/nft -f
+# Observatory host firewall (security audit 2026-10-20, H2).
+# Everything inbound is dropped except LAN-sourced SSH, the dashboard/API, MQTT
+# and mDNS. "No port forwarding" used to be a router setting rather than a
+# control: the Hub's UPnP IGD is live, so any compromised LAN device could map
+# the internet to :8000 or :22. With these rules no WAN source can match, even
+# through such a mapping or a future global IPv6 address.
+#
+# @LAN_V4_NET@ is replaced at install by scripts/bootstrap-pi.sh with the
+# subnet of the Pi's default-route interface (e.g. 192.168.0.0/24).
+flush ruleset
+
+table inet observatory {
+    set lan_v4 {
+        type ipv4_addr
+        flags interval
+        elements = { @LAN_V4_NET@ }
+    }
+
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        ct state established,related accept
+        ct state invalid drop
+        iif "lo" accept
+
+        # ICMP / ICMPv6 -- IPv6 neighbour discovery breaks without ICMPv6.
+        ip protocol icmp accept
+        meta l4proto ipv6-icmp accept
+        ip protocol igmp accept
+
+        # DHCP replies to our own client.
+        udp sport 67 udp dport 68 accept
+
+        # mDNS (Avahi) so observatory.local resolves -- LAN only.
+        ip saddr @lan_v4 udp dport 5353 accept
+        ip saddr @lan_v4 udp sport 5353 accept
+        ip6 saddr fe80::/10 udp dport 5353 accept
+        ip6 saddr fe80::/10 udp sport 5353 accept
+
+        # SSH, dashboard/API, MQTT -- LAN only. Mosquitto binds IPv4 only.
+        ip saddr @lan_v4 tcp dport { 22, 8000, 1883 } accept
+        ip6 saddr fe80::/10 tcp dport { 22, 8000 } accept
+
+        limit rate 6/minute log prefix "obs-fw drop: " level info
+        counter drop
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+    }
+}
