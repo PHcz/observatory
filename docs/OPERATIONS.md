@@ -151,7 +151,7 @@ acceptance. This is the literal pull-the-plug test:
    systemctl is-enabled obs-backup.timer obs-backup-verify.timer  # expect "enabled" x2
    ```
 
-5. From a phone on the home wifi, load `http://observatory.local` in Safari. It should
+5. From a phone on the home wifi, load `http://observatory.local:8000` in Safari. It should
    resolve (you'll get "connection refused" because no service is bound to :80 yet — that's
    fine; what matters is Avahi resolved the name).
 

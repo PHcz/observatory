@@ -11,7 +11,7 @@ Brief updated 23 May 2026.
 - **Outdoor weather node simplified**: Pimoroni Enviro Weather (off-the-shelf board with BME280 + LTR-559 light sensor + Pico W wifi) replaces the original LoRa-based DIY node. £30 board + accessories. No soldering, no separate LoRa receiver on the Pi.
 - **Wifi everywhere**: outdoor wifi reaches the sensor location, so LoRa is unnecessary. Sensors publish directly to the Pi's MQTT broker over wifi.
 - **UV sensor dropped** — would require a second mount outside the Stevenson screen. LTR-559 light reading (lux) is a fine proxy. UV deferred to Phase 2.
-- **Local-only setup** — no Cloudflare. FastAPI serves both the API and the static SvelteKit bundle. Browse to `http://observatory.local` from any device on the home wifi.
+- **Local-only setup** — no Cloudflare. FastAPI serves both the API and the static SvelteKit bundle. Browse to `http://observatory.local:8000` from any device on the home wifi.
 - Radio meteor detector removed — antenna too big for the spaces available
 - External data sources added — earthquakes (USGS, EMSC, BGS), solar/space weather (NOAA), lightning (Blitzortung), aurora (AuroraWatch UK)
 - iOS app removed — web app only
@@ -54,7 +54,7 @@ The Pi serves everything locally on the home network. No cloud, no tunnels, no e
 Three ways to reach the dashboard, in increasing order of polish:
 
 1. **By IP address**: `http://192.168.x.x:8000` — works immediately, easy to forget.
-2. **By Bonjour/Avahi hostname**: `http://observatory.local` — Pi OS publishes this automatically. Works from macOS, iOS, Linux, Windows 10+ on the same network. **Recommended.**
+2. **By Bonjour/Avahi hostname**: `http://observatory.local:8000` — Pi OS publishes this automatically. Works from macOS, iOS, Linux, Windows 10+ on the same network. **Recommended.**
 3. **By router-assigned DNS**: most home routers let you set a static IP + name. Reach the Pi at `http://observatory`. Slightly fiddlier setup, cleanest result.
 
 To enable `.local` access, set the Pi's hostname to `observatory` during initial setup. Avahi-daemon is included in Raspberry Pi OS by default — no extra config needed.
@@ -65,7 +65,7 @@ Reserve the Pi's IP on the router so it doesn't change between reboots. Most rou
 
 ### From outside the house (Phase 2)
 
-**Recommended path: Tailscale.** Install Tailscale on the Pi and on your phone/laptop. They're now on a virtual private network reachable from anywhere. Free for personal use, no port forwarding, no DNS, no certificate management. The Pi keeps its `http://observatory.local` URL within the Tailscale network too if you enable MagicDNS.
+**Recommended path: Tailscale.** Install Tailscale on the Pi and on your phone/laptop. They're now on a virtual private network reachable from anywhere. Free for personal use, no port forwarding, no DNS, no certificate management. The Pi keeps its `http://observatory.local:8000` URL within the Tailscale network too if you enable MagicDNS.
 
 **Not recommended**: opening ports on the router. Don't expose the Pi directly to the internet.
 

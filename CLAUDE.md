@@ -8,7 +8,7 @@ Brief updated 23 May 2026. See [observatory_brief.md](observatory_brief.md) for 
 
 ## Summary
 
-A Raspberry Pi 4 acts as the brain, placed wherever convenient indoors (no loft required). An outdoor Pimoroni Enviro Weather board reports back over wifi. A muon detector lives next to the Pi. External data feeds (earthquakes, space weather, lightning, aurora) are polled from free public APIs. Everything logs to SQLite. A FastAPI backend exposes JSON + WebSocket and serves a static SvelteKit web app — all from the Pi itself. Accessible from any device on the home network at `http://observatory.local`.
+A Raspberry Pi 4 acts as the brain, placed wherever convenient indoors (no loft required). An outdoor Pimoroni Enviro Weather board reports back over wifi. A muon detector lives next to the Pi. External data feeds (earthquakes, space weather, lightning, aurora) are polled from free public APIs. Everything logs to SQLite. A FastAPI backend exposes JSON + WebSocket and serves a static SvelteKit web app — all from the Pi itself. Accessible from any device on the home network at `http://observatory.local:8000`.
 
 iOS app, additional themes, wind/rain node, air quality node, second muon detector, the radio meteor detector, and remote access (Tailscale) are explicitly deferred to Phase 2.
 
@@ -18,7 +18,7 @@ iOS app, additional themes, wind/rain node, air quality node, second muon detect
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  Pi 4 (on home network, http://observatory.local)│
+│  Pi 4 (home network, observatory.local:8000)     │
 │  ├── Mosquitto (MQTT broker)                     │
 │  ├── Muon detector via USB serial                │
 │  ├── External API pollers ─── earthquakes,       │
@@ -38,7 +38,7 @@ iOS app, additional themes, wind/rain node, air quality node, second muon detect
 │  └── Pico W · deep sleep     │
 └──────────────────────────────┘
 
-      Home wifi · http://observatory.local
+      Home wifi · http://observatory.local:8000
             ▲
             │
    ┌────────┴────────┐
@@ -53,7 +53,7 @@ iOS app, additional themes, wind/rain node, air quality node, second muon detect
 2. **Muon detector** streams events over USB serial; Python service writes to SQLite. PicoMuon includes onboard BMP280 for pressure correction.
 3. **External API pollers** — small Python services that fetch from public APIs on a schedule (5–15 min intervals depending on source) and write events to SQLite.
 4. **FastAPI** reads SQLite, serves JSON over REST and pushes live updates over WebSocket. Also serves the built SvelteKit static bundle from `/`.
-5. **Browser** on any device on the home wifi loads the web app from `http://observatory.local`, then opens a WebSocket back to the same host.
+5. **Browser** on any device on the home wifi loads the web app from `http://observatory.local:8000`, then opens a WebSocket back to the same host.
 
 ---
 
@@ -267,7 +267,7 @@ doubt, assume a value is sensitive and keep it out of git.
 - **No Cloudflare, no cloud, no tunnels**. Just the Pi on the home network. Tailscale is the right path if remote access becomes a real need later. **One sanctioned exception:** outbound [ntfy](https://ntfy.sh) push for threshold alerts (frost/storm) — outbound-only, no inbound exposure, no tunnel into the LAN; same justification as the external API pollers. Off by default; the topic/token live only in the Pi `.env`.
 - **Web app first, no iOS**. If the project earns its keep after six months, build an iOS companion then.
 - **Single theme (Hyborg) keeps the frontend simple**. The four-theme abstraction is deferred.
-- **Set the Pi hostname to `observatory`** during initial install so `http://observatory.local` works via Avahi from day one.
+- **Set the Pi hostname to `observatory`** during initial install so `http://observatory.local:8000` works via Avahi from day one.
 - **Reserve the Pi's IP on the router** so it doesn't change between reboots.
 - **Local-first by design**: even external API polls are cached locally; the dashboard reads from SQLite, never from upstream APIs directly.
 - **PicoMuon has onboard temp/pressure** (BMP280) — pressure-corrected muon flux from a single device, no extra wiring.

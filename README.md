@@ -12,7 +12,7 @@ This repository is a **build-your-own guide**: everything you need to assemble a
 
 Observatory turns a Raspberry Pi 4 into the brain of a small home science station. An outdoor [Pimoroni Enviro Weather](https://thepihut.com/products/enviro-weather-pico-w-aboard-board-only) board reports temperature, humidity, pressure, and light over wifi; a [PicoMuon](https://ukraa.com/store/categories/cosmic-rays) cosmic-ray detector sits next to the Pi and streams muon events over USB. The Pi also polls free public APIs for earthquakes, solar weather, lightning, and aurora alerts.
 
-It also polls free, keyless public APIs for a local weather forecast, outdoor air quality, earthquakes, space weather, lightning, aurora, and the NMDB neutron-monitor network. Everything logs to a single SQLite database. A FastAPI backend exposes the data as JSON and pushes live updates over a WebSocket, and serves a SvelteKit dashboard from the same process. Open `http://observatory.local` from any device on your home wifi and you get the whole picture in one place. No cloud, no tunnels — local-first by design.
+It also polls free, keyless public APIs for a local weather forecast, outdoor air quality, earthquakes, space weather, lightning, aurora, and the NMDB neutron-monitor network. Everything logs to a single SQLite database. A FastAPI backend exposes the data as JSON and pushes live updates over a WebSocket, and serves a SvelteKit dashboard from the same process. Open `http://observatory.local:8000` from any device on your home wifi and you get the whole picture in one place. No cloud, no tunnels — local-first by design.
 
 ## What it tracks
 
@@ -50,7 +50,7 @@ A short summary of the core kit. The full bill of materials with supplier links 
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  Pi 4 (on home network, http://observatory.local)│
+│  Pi 4 (home network, observatory.local:8000)     │
 │  ├── Mosquitto (MQTT broker)                     │
 │  ├── Muon detector via USB serial                │
 │  ├── External API pollers ─── earthquakes,       │
@@ -72,7 +72,7 @@ A short summary of the core kit. The full bill of materials with supplier links 
 │  └── Pico W · deep sleep     │   │  └── ESP32-S2 · always on    │
 └──────────────────────────────┘   └──────────────────────────────┘
 
-      Home wifi · http://observatory.local
+      Home wifi · http://observatory.local:8000
             ▲
             │
    ┌────────┴────────┐
