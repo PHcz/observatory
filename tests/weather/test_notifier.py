@@ -9,7 +9,9 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+import httpx
 from pydantic import SecretStr
+from structlog.testing import capture_logs
 
 from observatory.weather.alerts.notifier import notify_ntfy, notify_telegram
 
@@ -175,3 +177,73 @@ class TestNtfyNonAsciiTitle:
     def test_ascii_title_left_untouched(self) -> None:
         """Plain ASCII titles must not be needlessly mangled into encoded-words."""
         assert self._post_headers("Frost warning")["Title"] == "Frost warning"
+
+
+class TestRejectedPushesAreLogged:
+    """The POST's response was never checked: Telegram answering 401 (revoked
+    token) or 400 (bad chat id) looked exactly like a delivered alert, and
+    ntfy 4xx/5xx likewise. Found while sending a test message 2026-10-20."""
+
+    @staticmethod
+    def _client_returning(response: httpx.Response) -> AsyncMock:
+        return AsyncMock(post=AsyncMock(return_value=response))
+
+    def test_telegram_rejection_is_logged_without_the_token(self) -> None:
+        req = httpx.Request("POST", "https://api.telegram.org/botSECRET:TOKEN/sendMessage")
+        resp = httpx.Response(401, json={"ok": False, "description": "Unauthorized"}, request=req)
+        with (
+            patch("observatory.weather.alerts.notifier.settings") as mock_settings,
+            patch("httpx.AsyncClient") as mock_client_class,
+            capture_logs() as logs,
+        ):
+            mock_settings.alert_telegram_enabled = True
+            mock_settings.alert_telegram_bot_token = SecretStr("SECRET:TOKEN")
+            mock_settings.alert_telegram_chat_id = "999"
+            mock_client_class.return_value.__aenter__ = AsyncMock(
+                return_value=self._client_returning(resp)
+            )
+            mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
+            asyncio.run(notify_telegram(title="T", message="m"))
+
+        rejected = [e for e in logs if e["event"] == "telegram.push_rejected"]
+        assert rejected and rejected[0]["status"] == 401
+        assert rejected[0]["detail"] == "Unauthorized"
+        assert "SECRET" not in str(logs)
+
+    def test_telegram_success_is_logged(self) -> None:
+        req = httpx.Request("POST", "https://api.telegram.org/botX/sendMessage")
+        resp = httpx.Response(200, json={"ok": True}, request=req)
+        with (
+            patch("observatory.weather.alerts.notifier.settings") as mock_settings,
+            patch("httpx.AsyncClient") as mock_client_class,
+            capture_logs() as logs,
+        ):
+            mock_settings.alert_telegram_enabled = True
+            mock_settings.alert_telegram_bot_token = SecretStr("X")
+            mock_settings.alert_telegram_chat_id = "999"
+            mock_client_class.return_value.__aenter__ = AsyncMock(
+                return_value=self._client_returning(resp)
+            )
+            mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
+            asyncio.run(notify_telegram(title="T", message="m"))
+        assert any(e["event"] == "telegram.push_sent" for e in logs)
+
+    def test_ntfy_rejection_is_logged(self) -> None:
+        req = httpx.Request("POST", "https://ntfy.sh/topic")
+        resp = httpx.Response(403, text="forbidden", request=req)
+        with (
+            patch("observatory.weather.alerts.notifier.settings") as mock_settings,
+            patch("httpx.AsyncClient") as mock_client_class,
+            capture_logs() as logs,
+        ):
+            mock_settings.alert_ntfy_enabled = True
+            mock_settings.alert_ntfy_url = "https://ntfy.sh"
+            mock_settings.alert_ntfy_topic = "topic"
+            mock_settings.alert_ntfy_token = SecretStr("")
+            mock_client_class.return_value.__aenter__ = AsyncMock(
+                return_value=self._client_returning(resp)
+            )
+            mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
+            asyncio.run(notify_ntfy(title="T", message="m"))
+        rejected = [e for e in logs if e["event"] == "ntfy.push_rejected"]
+        assert rejected and rejected[0]["status"] == 403

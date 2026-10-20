@@ -14,6 +14,7 @@ Configuration (all in settings — set on Pi .env only, never commit real values
 from __future__ import annotations
 
 from email.header import Header
+from typing import Any
 
 import structlog
 
@@ -76,9 +77,22 @@ async def notify_ntfy(
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(url, content=message.encode(), headers=headers)
+            resp = await client.post(url, content=message.encode(), headers=headers)
     except Exception as exc:
         log.warning("ntfy.push_failed", error=str(exc))
+        return
+    if resp.is_success:
+        log.info("ntfy.push_sent")
+    else:
+        log.warning("ntfy.push_rejected", status=resp.status_code)
+
+
+def _telegram_detail(resp: Any) -> str:
+    """Telegram's own error description (never contains the token)."""
+    try:
+        return str(resp.json().get("description", ""))[:200]
+    except Exception:
+        return ""
 
 
 async def notify_telegram(title: str, message: str) -> None:
@@ -110,9 +124,19 @@ async def notify_telegram(title: str, message: str) -> None:
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(url, json=payload)
+            resp = await client.post(url, json=payload)
     except Exception as exc:
-        log.warning("telegram.push_failed", error=str(exc))
+        # str(exc) never includes the URL for transport errors; the token is in it.
+        log.warning("telegram.push_failed", error=type(exc).__name__)
+        return
+    # The response used to be ignored, so a revoked token (401) or a wrong chat
+    # id (400) looked exactly like a delivered alert.
+    if resp.is_success:
+        log.info("telegram.push_sent")
+    else:
+        log.warning(
+            "telegram.push_rejected", status=resp.status_code, detail=_telegram_detail(resp)
+        )
 
 
 async def notify_all(title: str, message: str, priority: int = 4) -> None:
