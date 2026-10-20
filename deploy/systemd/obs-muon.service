@@ -6,7 +6,7 @@ Wants=chrony.service
 [Service]
 Type=notify
 User=observatory
-Group=dialout
+Group=observatory
 EnvironmentFile=/etc/observatory/observatory.env
 WorkingDirectory=/opt/observatory
 ExecStart=/opt/observatory/.venv/bin/python -m observatory.muon
@@ -20,6 +20,32 @@ SyslogIdentifier=obs-muon
 Nice=0
 IOSchedulingClass=best-effort
 IOSchedulingPriority=4
+
+# --- Sandbox (security audit 2026-10-20, F45). Tested by
+# tests/test_systemd_hardening.py; check live with `systemd-analyze security`.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0027
+# Serial access for /dev/picomuon only: dialout is not on the account any more.
+SupplementaryGroups=dialout
+DevicePolicy=closed
+DeviceAllow=char-ttyACM rw
+ReadWritePaths=/var/lib/observatory
 
 [Install]
 WantedBy=multi-user.target

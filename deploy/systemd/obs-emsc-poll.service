@@ -16,3 +16,26 @@ SyslogIdentifier=obs-emsc-poll
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
+
+# --- Sandbox (security audit 2026-10-20, F45). Tested by
+# tests/test_systemd_hardening.py; check live with `systemd-analyze security`.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0027
+PrivateDevices=yes
+ReadWritePaths=/var/lib/observatory

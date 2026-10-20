@@ -41,11 +41,12 @@ def test_disables_systemd_timesyncd() -> None:
     assert "systemctl disable systemd-timesyncd" in _text()
 
 
-def test_creates_observatory_user_with_dialout() -> None:
+def test_creates_observatory_user_without_device_groups() -> None:
     t = _text()
     assert "id -u observatory" in t
     assert "useradd --system" in t
-    assert "--groups dialout" in t
+    assert "--groups" not in t
+    assert "gpasswd -d observatory" in t
     assert "--shell /usr/sbin/nologin" in t
 
 

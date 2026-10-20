@@ -22,8 +22,34 @@ Nice=0
 IOSchedulingClass=best-effort
 IOSchedulingPriority=4
 
-# Phase 5 binds to 0.0.0.0:8000 by default — Pi LAN topology is the security
-# boundary. Phase 6 (SEC-04) may tighten to a specific interface.
+# Binds [::]:8000 dual-stack (API_BIND_HOST, default "::"); nftables admits
+# :8000 from the LAN only (deploy/nftables/observatory.nft).
+
+# --- Sandbox (security audit 2026-10-20, F45). Tested by
+# tests/test_systemd_hardening.py; check live with `systemd-analyze security`.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0027
+# vcgencmd (Pi temperature for /api/health) talks to the VideoCore mailbox.
+SupplementaryGroups=video
+DevicePolicy=closed
+DeviceAllow=/dev/vcio rw
+ReadWritePaths=/var/lib/observatory
 
 [Install]
 WantedBy=multi-user.target

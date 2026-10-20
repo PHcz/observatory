@@ -56,7 +56,13 @@ Deploy flow once the Pi is bootstrapped:
    does this (`OBS_SSH_TARGET=ph@observatory.local`).
 3. For backend changes, `rsync` `observatory/`, `picomuon/`, `migrations/`, `scripts/`, and
    `deploy/` to `/opt/observatory/` (as root, e.g. `rsync --rsync-path="sudo rsync"`), then
-   `sudo chown -R observatory:observatory` the synced dirs.
+   `sudo chown -R root:root` the synced dirs and precompile:
+   `sudo /opt/observatory/.venv/bin/python -m compileall -q /opt/observatory/observatory`.
+   The code tree is **root-owned** on purpose: the `observatory` service account must not be
+   able to rewrite the code it runs (security audit M8), and the units' `ProtectSystem=strict`
+   makes `/opt` read-only to every service anyway. If `uv.lock` changed, re-sync the venv
+   **as root**: `cd /opt/observatory && sudo env TMPDIR=/var/tmp/uv-sync UV_CACHE_DIR=/var/cache/uv-sync /usr/local/bin/uv sync --frozen --no-dev --extra analysis`.
+   Changed unit files: `sudo install -m 0644 deploy/systemd/<unit> /etc/systemd/system/ && sudo systemctl daemon-reload`.
 4. **Apply new migrations BEFORE restarting** — obs-api does NOT auto-apply. On any upgrade
    that adds one (e.g. `0008_alerts`, `0009_muon_weekly_summary`, `0010_indoor_air`):
    ```bash

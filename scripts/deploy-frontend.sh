@@ -5,9 +5,9 @@
 # Refuses to run on the Pi itself (Linux + USER=observatory) — building on
 # the Pi is explicitly out of scope per CLAUDE.md (no Node on the Pi).
 #
-# Deploys as root (--rsync-path="sudo rsync") then chowns back to
-# observatory:observatory. The bundle dir's subdirs (_app/immutable/*) are
-# observatory-owned and NOT group-writable, so a plain rsync as `ph` only
+# Deploys as root (--rsync-path="sudo rsync") then chowns to root:root -- the
+# service account must not be able to rewrite what it serves (audit M8). A
+# plain rsync as `ph` into a tree it does not own only
 # writes the top-level files it can (200.html) and PARTIALLY FAILS on the
 # subdirs (rsync exit 23) — leaving stale JS chunk hashes that the fresh
 # index.html no longer references. The browser then gets the SPA HTML
@@ -32,6 +32,12 @@ fi
 
 SSH_TARGET="${OBS_SSH_TARGET:-ph@observatory.local}"
 REMOTE_DIR="${OBS_REMOTE_BUNDLE_DIR:-/opt/observatory/frontend/build}"
+# Root rsync --delete + chown -R go into this path: only a directory strictly
+# inside /opt/observatory, no "..", is acceptable (security audit F51).
+if [[ ! "$REMOTE_DIR" =~ ^/opt/observatory/[A-Za-z0-9._/-]+$ ]] || [[ "$REMOTE_DIR" == *..* ]]; then
+  echo "[deploy-frontend] refusing unsafe OBS_REMOTE_BUNDLE_DIR: '$REMOTE_DIR'" >&2
+  exit 2
+fi
 REMOTE_HOST="${OBS_HTTP_HOST:-observatory.local}"
 
 echo "[deploy-frontend] Rsyncing $BUILD_DIR/ -> $SSH_TARGET:$REMOTE_DIR/ (as root)"
@@ -44,8 +50,8 @@ rsync -az --delete \
   "$BUILD_DIR/" \
   "$SSH_TARGET:$REMOTE_DIR/"
 
-echo "[deploy-frontend] Restoring ownership to observatory:observatory"
-ssh "$SSH_TARGET" "sudo chown -R observatory:observatory '$REMOTE_DIR'"
+echo "[deploy-frontend] Setting ownership to root:root"
+ssh "$SSH_TARGET" "sudo chown -R root:root '$REMOTE_DIR'"
 
 # Verify the deploy actually serves JS — a partial/failed sync makes the
 # served index reference a .js the bundle dir lacks, and the SPA 404 fallback

@@ -199,7 +199,7 @@ systemctl status obs-muon.service
 journalctl -u obs-muon -f
 ```
 
-The unit runs as `observatory:dialout` and opens `/dev/picomuon` (the udev symlink
+The unit runs as `observatory` (with `SupplementaryGroups=dialout`, serial devices only) and opens `/dev/picomuon` (the udev symlink
 from `deploy/udev/99-picomuon.rules`). It blocks at startup until `chronyc tracking`
 reports a sub-0.5s offset (typically <5s on a Pi that has been up for a minute).
 

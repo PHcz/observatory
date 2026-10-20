@@ -82,16 +82,20 @@ CHRONYEOF
   systemctl stop systemd-timesyncd 2>/dev/null || true
 fi
 
-# --- SECTION 3: observatory system user (no shell, member of dialout for serial) ---
+# --- SECTION 3: observatory system user (no shell, no device groups) ---
 log "Section 3: observatory user"
 if ! id -u observatory >/dev/null 2>&1; then
-  useradd --system --no-create-home --shell /usr/sbin/nologin \
-          --groups dialout,video observatory
+  useradd --system --no-create-home --shell /usr/sbin/nologin observatory
 fi
-# Idempotent group additions: dialout (for /dev/picomuon serial access — Phase 2)
-# and video (for vcgencmd in /api/health pi.* block — Phase 5). usermod -aG is
-# additive; safe to re-run.
-usermod -aG dialout,video observatory
+# Device access is granted per unit, not per account (security audit M8):
+# obs-muon gets SupplementaryGroups=dialout, obs-api gets video (vcgencmd).
+# Membership on the account let every service open the indoor node's USB
+# serial port. Strip it on re-runs of older installs.
+for grp in dialout video; do
+  if id -nG observatory | tr ' ' '\n' | grep -qx "$grp"; then
+    gpasswd -d observatory "$grp"
+  fi
+done
 
 # --- SECTION 4: directories ---
 log "Section 4: directories"
@@ -151,7 +155,9 @@ log "Section 8: repo"
 if [ ! -d "$REPO_ROOT/.git" ]; then
   git clone https://github.com/PHcz/observatory "$REPO_ROOT"
 fi
-chown -R observatory:observatory "$REPO_ROOT"
+# Root-owned code tree: a compromised service must not be able to modify the
+# code it runs or the unit files root installs from deploy/ (audit M8).
+chown -R root:root "$REPO_ROOT"
 
 # --- SECTION 9: uv sync (anchored to system Python 3.11) ---
 log "Section 9: uv sync"
@@ -161,8 +167,9 @@ cd "$REPO_ROOT"
 # command after every uv.lock change -- the venv is NOT updated by rsyncing code
 # (security audit 2026-10-20, M10). TMPDIR must be on real disk: /tmp is a 64 MB
 # tmpfs and large wheels fail there with a misleading "network" error.
-sudo -u observatory mkdir -p /home/observatory/tmp
-sudo -u observatory env TMPDIR=/home/observatory/tmp uv sync --frozen --no-dev --extra analysis --python /usr/bin/python3.11
+# Runs as root: the venv is part of the root-owned code tree.
+install -d -m 0700 /var/tmp/uv-sync
+env TMPDIR=/var/tmp/uv-sync UV_CACHE_DIR=/var/cache/uv-sync uv sync --frozen --no-dev --extra analysis --python /usr/bin/python3.11
 
 # --- SECTION 10: install deploy artifacts ---
 log "Section 10: deploy artifacts"
