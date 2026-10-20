@@ -15,6 +15,7 @@ No I/O here — all functions are pure so they unit-test without MQTT or a DB.
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass
 
 # ESPHome sensor name (topic segment) → indoor_air column.
@@ -46,6 +47,11 @@ _PLAUSIBLE: dict[str, tuple[float, float]] = {
 }
 
 
+# Room ids become node_id rows and dashboard labels: lowercase slug only, so a
+# misbehaving or compromised node cannot invent arbitrary ids (audit F20).
+_NODE_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+
+
 @dataclass(frozen=True)
 class IndoorMetric:
     """One parsed sensor-state topic."""
@@ -55,11 +61,14 @@ class IndoorMetric:
     metric: str  # raw ESPHome metric name (topic segment)
 
 
-def parse_metric_topic(topic: str) -> IndoorMetric | None:
+def parse_metric_topic(
+    topic: str, allowed_nodes: frozenset[str] | None = None
+) -> IndoorMetric | None:
     """Parse ``indoor/<node>/sensor/<metric>/state`` → IndoorMetric, else None.
 
     Returns None for status/debug topics, unknown metrics, malformed topics,
-    or an empty node id — the caller drops those silently.
+    or a node id that is malformed or (when ``allowed_nodes`` is given) not
+    allowlisted — the caller drops those silently.
     """
     parts = topic.split("/")
     if len(parts) != 5:
@@ -67,7 +76,9 @@ def parse_metric_topic(topic: str) -> IndoorMetric | None:
     prefix, node_id, kind, metric, leaf = parts
     if prefix != "indoor" or kind != "sensor" or leaf != "state":
         return None
-    if not node_id:
+    if not _NODE_ID.match(node_id):
+        return None
+    if allowed_nodes is not None and node_id not in allowed_nodes:
         return None
     column = METRIC_COLUMNS.get(metric)
     if column is None:

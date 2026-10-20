@@ -27,10 +27,16 @@ import structlog
 from observatory.config import settings
 from observatory.indoor.topic import coerce_value, parse_metric_topic
 from observatory.indoor.writer import write_reading
+from observatory.mqtt_identity import client_identifier
 
 log = structlog.get_logger(__name__)
 
-_CLIENT_IDENTIFIER = "obs-api-indoor-sub"
+
+def _allowed_nodes() -> frozenset[str] | None:
+    raw = settings.indoor_node_allowlist if settings is not None else ""
+    nodes = frozenset(n.strip() for n in raw.split(",") if n.strip())
+    return nodes or None
+
 
 # node_id, {column: value} → persist. Injectable so tests avoid a real DB.
 FlushFn = Callable[[str, "dict[str, float | int]"], Awaitable[None]]
@@ -118,7 +124,7 @@ async def _handle_message(message: aiomqtt.Message, aggregator: IndoorAggregator
     if getattr(message, "retain", False):
         return
     try:
-        parsed = parse_metric_topic(_topic_str(message))
+        parsed = parse_metric_topic(_topic_str(message), _allowed_nodes())
         if parsed is None:
             return  # status / debug / unknown metric — ignore
         value = coerce_value(parsed.column, _payload_str(message))
@@ -148,7 +154,7 @@ async def run_indoor_subscriber(stop_event: asyncio.Event, db_path: str | None =
                     port=settings.mqtt_broker_port,
                     username=settings.mqtt_username or None,
                     password=settings.mqtt_password.get_secret_value() or None,
-                    identifier=_CLIENT_IDENTIFIER,
+                    identifier=client_identifier("indoor", settings.mqtt_password),
                     clean_session=False,
                     keepalive=60,
                 ) as client:

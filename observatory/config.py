@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     # that inter-sensor gap (8 s = 4 s observed + margin) yet stay well under the
     # 60 s cadence. Otherwise the two groups flush as separate half-empty rows.
     indoor_flush_debounce_sec: float = Field(default=8.0, ge=0.1, le=60.0)
+    # Comma-separated room ids accepted from indoor nodes, e.g. "living-room".
+    # Empty = any well-formed id (lowercase slug). Audit F20.
+    indoor_node_allowlist: str = ""
 
     # --- Weather node cadence-drift early warning (Phase 8 / UI-20) ---
     # Expected upload interval for the outdoor Enviro Weather node, in seconds.
