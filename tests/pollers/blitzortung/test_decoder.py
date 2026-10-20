@@ -80,3 +80,44 @@ def test_decode_passthrough_when_no_compression_used() -> None:
 
     pure_ascii = b'{"time":1,"lat":2,"lon":3}'
     assert decode(pure_ascii) == pure_ascii
+
+
+# --- Output cap (security audit 2026-10-20, M6) ------------------------------
+# Every dictionary entry is built from the previous output (e[o] = f + c), so a
+# crafted frame whose codes always point at the newest entry grows the output
+# quadratically: a few KB in, tens of MB out, with the dictionary holding it all.
+# websockets' 1 MiB max_size limits the frame BEFORE inflation, so it did not
+# help; the Pi's 1.8 GB could be exhausted and the service OOM-killed.
+
+import time  # noqa: E402
+
+from observatory.pollers.blitzortung.decoder import (  # noqa: E402
+    MAX_DECODED_CHARS,
+    DecodeLimitError,
+    decode,
+)
+
+
+def _quadratic_frame(n: int) -> bytes:
+    """'a' then codes 256, 257, ... each resolving to the previous output + 'a'."""
+    return ("a" + "".join(chr(256 + k) for k in range(n))).encode()
+
+
+def test_quadratic_frame_is_refused_before_it_can_exhaust_memory() -> None:
+    frame = _quadratic_frame(6000)  # ~12 KB in, ~18 M chars out if uncapped
+    assert len(frame) < 20_000
+    started = time.monotonic()
+    with pytest.raises(DecodeLimitError):
+        decode(frame)
+    assert time.monotonic() - started < 2.0, "must stop early, not after building it all"
+
+
+def test_decode_limit_error_is_a_value_error() -> None:
+    """The client's frame handler drops anything decode raises; ValueError keeps
+    that true for callers that only catch the documented decode failures."""
+    assert issubclass(DecodeLimitError, ValueError)
+
+
+def test_cap_leaves_ample_room_for_real_frames() -> None:
+    """Real frames are ~9 KB; the cap must be orders of magnitude above that."""
+    assert MAX_DECODED_CHARS >= 100 * 9_000
