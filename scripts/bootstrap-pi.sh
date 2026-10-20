@@ -192,6 +192,11 @@ install -d -m 0755 /etc/mosquitto/conf.d
 sed "s#\${LAN_IP}#${MQ_LAN_IP}#" "$REPO_ROOT/deploy/mosquitto/mosquitto.conf" \
   > /etc/mosquitto/conf.d/observatory.conf
 install -m 0640 -o root -g mosquitto "$REPO_ROOT/deploy/mosquitto/acl.conf" /etc/mosquitto/acl
+# Survive the boot-time DHCP race (the broker binds the LAN IP specifically).
+install -d -m 0755 /etc/systemd/system/mosquitto.service.d
+install -m 0644 "$REPO_ROOT/deploy/mosquitto/observatory-network.conf" \
+  /etc/systemd/system/mosquitto.service.d/observatory-network.conf
+systemctl daemon-reload
 if [ ! -f /etc/mosquitto/passwords ]; then
   install -m 0640 -o mosquitto -g mosquitto /dev/null /etc/mosquitto/passwords
   log "mosquitto: empty passwords file created -- create the users per deploy/mosquitto/README.md"

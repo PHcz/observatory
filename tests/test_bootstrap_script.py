@@ -196,3 +196,18 @@ def test_mosquitto_acl_is_installed() -> None:
 def test_no_unused_mosquitto_admin_user() -> None:
     """Bootstrap created an `admin` user that no ACL entry or service uses."""
     assert "mosquitto_passwd -b /etc/mosquitto/passwords admin" not in _text()
+
+
+def test_mosquitto_survives_the_boot_network_race() -> None:
+    """The broker binds the DHCP-assigned LAN IP; at boot it started before the
+    address existed, hit systemd's start-rate limit and gave up for good,
+    silencing every sensor for 14 h (2026-07-18). The fix lived only on the Pi."""
+    dropin = (REPO_ROOT / "deploy" / "mosquitto" / "observatory-network.conf").read_text()
+    for line in (
+        "After=network-online.target",
+        "Wants=network-online.target",
+        "StartLimitIntervalSec=0",
+        "Restart=always",
+    ):
+        assert line in dropin
+    assert "/etc/systemd/system/mosquitto.service.d/observatory-network.conf" in _text()
