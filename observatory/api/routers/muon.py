@@ -22,8 +22,10 @@ from observatory.api._serializers import (
     BUCKET_SQL_STRFTIME,
     DEFAULT_WINDOW_SEC,
     MAX_ROWS,
+    MUON_LIMITS,
     AggLiteral,
     TimeSeriesResponse,
+    enforce_window_limits,
     resolve_agg,
 )
 from observatory.config import settings
@@ -71,6 +73,7 @@ def get_muon(
 
     window_sec = to - from_
     resolved = resolve_agg(window_sec, agg)
+    enforce_window_limits(window_sec, resolved, MUON_LIMITS)
     bucket_sec = BUCKET_SECONDS[resolved]
 
     with get_conn() as conn:

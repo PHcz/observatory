@@ -20,8 +20,10 @@ from observatory.api._serializers import (
     BUCKET_SQL_STRFTIME,
     DEFAULT_WINDOW_SEC,
     MAX_ROWS,
+    SPARSE_LIMITS,
     AggLiteral,
     TimeSeriesResponse,
+    enforce_window_limits,
     resolve_agg,
 )
 from observatory.config import settings
@@ -63,6 +65,7 @@ def get_weather(
 
     window_sec = to - from_
     resolved = resolve_agg(window_sec, agg)
+    enforce_window_limits(window_sec, resolved, SPARSE_LIMITS)
 
     with get_conn() as conn:
         if resolved == "raw":
