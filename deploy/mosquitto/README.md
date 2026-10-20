@@ -32,8 +32,27 @@ sudo mosquitto_passwd -c -b /etc/mosquitto/passwords \
      enviro-observatory-weather "${OBS_MQTT_PUB_PASSWORD}"
 sudo mosquitto_passwd -b /etc/mosquitto/passwords \
      obs-api-subscriber "${OBS_MQTT_SUB_PASSWORD}"
+sudo mosquitto_passwd -b /etc/mosquitto/passwords \
+     indoor-node "${OBS_MQTT_INDOOR_PASSWORD}"
 sudo systemctl reload mosquitto
 ```
+
+`/etc/observatory/secrets.env` (root, mode 0600) is the only plaintext record of
+these passwords -- mosquitto stores hashes only. Nothing reads it at runtime, but
+**do not delete it**: re-provisioning a sensor needs the password it was given.
+The publisher passwords also live on the devices themselves (the Enviro's
+`config.py`, the indoor node's `firmware/indoor-air/secrets.yaml`).
+
+### What each user may do (`acl.conf`, least privilege)
+
+| User | Access |
+|---|---|
+| `enviro-observatory-weather` | write `enviro/observatory-weather` |
+| `indoor-node` | write `indoor/#` (subscribes to nothing: no MQTT-exposed components, discovery off) |
+| `obs-api-subscriber` | read `enviro/#` and `indoor/#` |
+
+`tests/test_mqtt_acl.py` derives these needs from the code and firmware, so the
+ACL cannot silently drift from what is actually used again.
 
 The example file `passwords.example` shows the on-disk format but the
 hashes are placeholders — DO NOT copy it into place.

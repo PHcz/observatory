@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -169,3 +170,28 @@ def test_disables_unneeded_root_daemons() -> None:
     ModemManager probes /dev/ttyACM* -- where the muon detector lives."""
     t = _text()
     assert "disable --now bluetooth.service ModemManager.service" in t
+
+
+def test_mosquitto_config_installed_as_conf_d_drop_in() -> None:
+    """Bootstrap overwrote the stock /etc/mosquitto/mosquitto.conf with the
+    drop-in, contradicting deploy/mosquitto/README.md and the live Pi
+    (security audit 2026-10-20, F22/F50/C6)."""
+    t = _text()
+    assert "/etc/mosquitto/conf.d/observatory.conf" in t
+    assert 'deploy/mosquitto/mosquitto.conf" /etc/mosquitto/mosquitto.conf' not in t
+
+
+def test_mosquitto_lan_ip_placeholder_is_rendered() -> None:
+    """An unrendered `listener 1883 ${LAN_IP}` stops mosquitto from starting."""
+    assert "${LAN_IP}" in _text() and "sed" in _text()
+    assert re.search(r"sed [^\n]*\\\$\{LAN_IP\}", _text()), "bootstrap must render ${LAN_IP}"
+
+
+def test_mosquitto_acl_is_installed() -> None:
+    """mosquitto.conf names acl_file /etc/mosquitto/acl -- bootstrap never installed it."""
+    assert 'deploy/mosquitto/acl.conf" /etc/mosquitto/acl' in _text()
+
+
+def test_no_unused_mosquitto_admin_user() -> None:
+    """Bootstrap created an `admin` user that no ACL entry or service uses."""
+    assert "mosquitto_passwd -b /etc/mosquitto/passwords admin" not in _text()

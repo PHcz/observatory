@@ -72,12 +72,7 @@ def test_mosquitto_conf_sec03_directives() -> None:
     assert "persistence true" in content
 
 
-def test_mosquitto_acl_two_users() -> None:
-    content = _read("deploy/mosquitto/acl.conf")
-    assert "user enviro-observatory-weather" in content
-    assert "topic write enviro/observatory-weather" in content
-    assert "user obs-api-subscriber" in content
-    assert "topic read enviro/#" in content
+# ACL coverage moved to tests/test_mqtt_acl.py (derives needs from code + firmware).
 
 
 def test_mosquitto_passwords_example_exists_not_real() -> None:
