@@ -53,6 +53,7 @@ import json  # noqa: E402
 import sysconfig  # noqa: E402
 
 import pytest  # noqa: E402
+from pydantic import SecretStr  # noqa: E402
 
 from observatory.ops import vuln_check  # noqa: E402
 
@@ -116,7 +117,7 @@ def test_alerts_when_dependabot_is_clean_but_the_pi_is_not(
     monkeypatch.setattr(
         vuln_check,
         "settings",
-        type("S", (), {"vuln_check_github_token": "t", "vuln_check_repo": "o/r"})(),
+        type("S", (), {"vuln_check_github_token": SecretStr("t"), "vuln_check_repo": "o/r"})(),
     )
     assert asyncio.run(vuln_check._amain()) == 0
     assert len(sent) == 1 and "starlette 1.3.1" in sent[0][1]
@@ -135,7 +136,7 @@ def test_on_device_audit_still_runs_without_a_github_token(
     monkeypatch.setattr(
         vuln_check,
         "settings",
-        type("S", (), {"vuln_check_github_token": "", "vuln_check_repo": "o/r"})(),
+        type("S", (), {"vuln_check_github_token": SecretStr(""), "vuln_check_repo": "o/r"})(),
     )
     asyncio.run(vuln_check._amain())
     assert sent and "starlette" in sent[0]
@@ -157,7 +158,7 @@ def test_clean_on_both_sides_sends_nothing(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(
         vuln_check,
         "settings",
-        type("S", (), {"vuln_check_github_token": "t", "vuln_check_repo": "o/r"})(),
+        type("S", (), {"vuln_check_github_token": SecretStr("t"), "vuln_check_repo": "o/r"})(),
     )
     assert asyncio.run(vuln_check._amain()) == 0
     assert sent == []

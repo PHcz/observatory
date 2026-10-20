@@ -60,9 +60,10 @@ async def post_ingest(
         credentials.username,
         settings.observatory_ingest_basic_auth_user,
     )
-    pass_ok = bool(settings.observatory_ingest_basic_auth_password) and secrets.compare_digest(
+    expected = settings.observatory_ingest_basic_auth_password.get_secret_value()
+    pass_ok = bool(expected) and secrets.compare_digest(
         credentials.password,
-        settings.observatory_ingest_basic_auth_password,
+        expected,
     )
     if not (user_ok and pass_ok):
         log.warning("ingest_auth_failed", username=credentials.username)

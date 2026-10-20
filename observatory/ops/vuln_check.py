@@ -165,7 +165,7 @@ def summarise(alerts: list[dict[str, Any]], repo: str) -> str:
 
 
 async def _amain() -> int:
-    token = settings.vuln_check_github_token
+    token = settings.vuln_check_github_token.get_secret_value()
     repo = settings.vuln_check_repo
     failed = False
     sections: list[str] = []

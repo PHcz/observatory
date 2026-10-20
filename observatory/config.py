@@ -8,7 +8,7 @@ All services import the module-level `settings` object. Direct env access is for
 
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        # A startup ValidationError goes to the journal; without this pydantic
+        # echoes the full input -- every secret in the env file (audit F37).
+        hide_input_in_errors=True,
     )
 
     # --- Location (required) ---
@@ -44,7 +47,9 @@ class Settings(BaseSettings):
     mqtt_broker_host: str = Field(default="localhost", min_length=1)
     mqtt_broker_port: int = Field(default=1883, ge=1, le=65535)
     mqtt_username: str = Field(default="obs-api-subscriber")
-    mqtt_password: str = Field(default="")  # gitignored secret; empty allowed for dev anon broker
+    mqtt_password: SecretStr = Field(
+        default=SecretStr("")
+    )  # gitignored secret; empty allowed for dev anon broker
     # --- Weather node (Phase 3) ---
     weather_nickname: str = Field(default="observatory-weather", min_length=1)
     weather_staleness_sec: int = Field(default=1800, ge=60, le=86400)
@@ -258,7 +263,7 @@ class Settings(BaseSettings):
     alert_ntfy_url: str = Field(default="https://ntfy.sh")
     alert_ntfy_topic: str = Field(default="observatory-alerts")
     # Optional Bearer token for authenticated ntfy topics. Set on Pi only — never commit.
-    alert_ntfy_token: str = Field(default="")
+    alert_ntfy_token: SecretStr = Field(default=SecretStr(""))
 
     # --- Telegram integration (2nd alert channel) — outbound-only, off by default ---
     # Same sanctioned-outbound justification as ntfy: no inbound exposure, no tunnel.
@@ -266,7 +271,7 @@ class Settings(BaseSettings):
     # the env var — there is NO env_prefix on this Settings model).
     alert_telegram_enabled: bool = Field(default=False)
     # Bot token from @BotFather and the destination chat id. Pi .env only — never commit.
-    alert_telegram_bot_token: str = Field(default="")
+    alert_telegram_bot_token: SecretStr = Field(default=SecretStr(""))
     alert_telegram_chat_id: str = Field(default="")
 
     # --- Stale-Enviro alert (outdoor weather node offline) ---
@@ -277,7 +282,7 @@ class Settings(BaseSettings):
 
     # --- Daily Dependabot vuln check → Telegram (ops; runs on the Pi via timer) ---
     # Fine-grained PAT scoped to the repo with "Dependabot alerts: read". Pi .env only.
-    vuln_check_github_token: str = Field(default="")
+    vuln_check_github_token: SecretStr = Field(default=SecretStr(""))
     vuln_check_repo: str = Field(default="PHcz/observatory")
 
     # --- /ingest HTTP fallback basic auth (Phase 16, ENH-06) ---
@@ -287,7 +292,7 @@ class Settings(BaseSettings):
     # env vars (pydantic-settings maps FIELD_NAME -> field_name with no added prefix).
     observatory_ingest_basic_auth_user: str = Field(default="enviro")
     # Password lives only in Pi .env — never commit a real value.
-    observatory_ingest_basic_auth_password: str = Field(default="")
+    observatory_ingest_basic_auth_password: SecretStr = Field(default=SecretStr(""))
 
 
 def _load() -> Settings:

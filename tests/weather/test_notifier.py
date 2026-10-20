@@ -9,6 +9,8 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, patch
 
+from pydantic import SecretStr
+
 from observatory.weather.alerts.notifier import notify_ntfy, notify_telegram
 
 
@@ -37,7 +39,7 @@ class TestNtfySwallowsErrors:
             mock_settings.alert_ntfy_enabled = True
             mock_settings.alert_ntfy_url = "https://ntfy.sh"
             mock_settings.alert_ntfy_topic = "test-topic"
-            mock_settings.alert_ntfy_token = ""
+            mock_settings.alert_ntfy_token = SecretStr("")
 
             # Simulate a network failure
             mock_post = AsyncMock(side_effect=OSError("connection refused"))
@@ -70,7 +72,7 @@ class TestTelegramDisabled:
             patch("httpx.AsyncClient") as mock_client_class,
         ):
             mock_settings.alert_telegram_enabled = True
-            mock_settings.alert_telegram_bot_token = ""
+            mock_settings.alert_telegram_bot_token = SecretStr("")
             mock_settings.alert_telegram_chat_id = ""
             mock_post = AsyncMock()
             mock_client_class.return_value.__aenter__ = AsyncMock(
@@ -89,7 +91,7 @@ class TestTelegramSendsAndSwallows:
             patch("httpx.AsyncClient") as mock_client_class,
         ):
             mock_settings.alert_telegram_enabled = True
-            mock_settings.alert_telegram_bot_token = "123:ABC"
+            mock_settings.alert_telegram_bot_token = SecretStr("123:ABC")
             mock_settings.alert_telegram_chat_id = "999"
             mock_post = AsyncMock()
             mock_client_class.return_value.__aenter__ = AsyncMock(
@@ -112,7 +114,7 @@ class TestTelegramSendsAndSwallows:
             patch("httpx.AsyncClient") as mock_client_class,
         ):
             mock_settings.alert_telegram_enabled = True
-            mock_settings.alert_telegram_bot_token = "123:ABC"
+            mock_settings.alert_telegram_bot_token = SecretStr("123:ABC")
             mock_settings.alert_telegram_chat_id = "999"
             mock_post = AsyncMock(side_effect=OSError("connection refused"))
             mock_client_class.return_value.__aenter__ = AsyncMock(
@@ -140,7 +142,7 @@ class TestNtfyNonAsciiTitle:
             mock_settings.alert_ntfy_enabled = True
             mock_settings.alert_ntfy_url = "https://ntfy.sh"
             mock_settings.alert_ntfy_topic = "test-topic"
-            mock_settings.alert_ntfy_token = ""
+            mock_settings.alert_ntfy_token = SecretStr("")
 
             mock_post = AsyncMock()
             mock_instance = AsyncMock()

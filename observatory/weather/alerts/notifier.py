@@ -70,8 +70,9 @@ async def notify_ntfy(
         "Title": _ascii_safe_header(title),
         "Priority": str(priority),
     }
-    if settings.alert_ntfy_token:
-        headers["Authorization"] = f"Bearer {settings.alert_ntfy_token}"
+    ntfy_token = settings.alert_ntfy_token.get_secret_value()
+    if ntfy_token:
+        headers["Authorization"] = f"Bearer {ntfy_token}"
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -93,13 +94,14 @@ async def notify_telegram(title: str, message: str) -> None:
     """
     if not settings.alert_telegram_enabled:
         return
-    if not (settings.alert_telegram_bot_token and settings.alert_telegram_chat_id):
+    bot_token = settings.alert_telegram_bot_token.get_secret_value()
+    if not (bot_token and settings.alert_telegram_chat_id):
         log.warning("telegram.not_configured")
         return
 
     import httpx
 
-    url = f"https://api.telegram.org/bot{settings.alert_telegram_bot_token}/sendMessage"
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
         "chat_id": settings.alert_telegram_chat_id,
         "text": f"{title}\n{message}",

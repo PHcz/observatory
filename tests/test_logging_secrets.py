@@ -21,6 +21,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+from pydantic import SecretStr
 
 from observatory.logging import configure_logging
 
@@ -78,7 +79,7 @@ def test_telegram_notifier_never_logs_the_token(
         "settings",
         SimpleNamespace(
             alert_telegram_enabled=True,
-            alert_telegram_bot_token=FAKE_TOKEN,
+            alert_telegram_bot_token=SecretStr(FAKE_TOKEN),
             alert_telegram_chat_id="42",
         ),
     )
