@@ -439,3 +439,55 @@ journalctl -u obs-enviro-heartbeat.service -n 10 --no-pager
 
 Change the time by editing `OnCalendar=` in `/etc/systemd/system/obs-enviro-heartbeat.timer` then
 `sudo systemctl daemon-reload`.
+
+## Secrets & rotation
+
+Every secret, where it lives, and how to replace it. None of them is ever in
+git. Edit env files with an editor over `ssh -t` (for example
+`ssh -t <admin-user>@observatory.local sudo nano /etc/observatory/observatory.env`)
+so values never land in shell history or a chat. Generate new random passwords
+with `openssl rand -base64 24`.
+
+| Secret | Lives in | Used by | To rotate |
+|---|---|---|---|
+| Home wifi password | the Hub; the Pi's NetworkManager profile; the outdoor board; the indoor node (`firmware/indoor-air/secrets.yaml`, local only) | everything | see *Outdoor board lost or tampered with* below; the order matters |
+| `MQTT_PASSWORD` (broker user `obs-api-subscriber`) | `/etc/observatory/observatory.env`, copy as `OBS_MQTT_SUB_PASSWORD` in `/etc/observatory/secrets.env`, hash in `/etc/mosquitto/passwords` | obs-api | `sudo mosquitto_passwd /etc/mosquitto/passwords obs-api-subscriber` (prompts), update both env files, `sudo systemctl restart mosquitto obs-api` |
+| Outdoor board broker password (user `enviro-observatory-weather`) | `OBS_MQTT_PUB_PASSWORD` in `secrets.env`, hash in `/etc/mosquitto/passwords`, the board's config | Enviro board | `sudo mosquitto_passwd /etc/mosquitto/passwords enviro-observatory-weather`, update `secrets.env`, `sudo systemctl restart mosquitto`, re-provision the board (`deploy/enviro/PROVISIONING.md`) |
+| Indoor node broker password (user `indoor-node`) | `firmware/indoor-air/secrets.yaml` (local), hash in `/etc/mosquitto/passwords` | indoor node | `sudo mosquitto_passwd /etc/mosquitto/passwords indoor-node`, update `secrets.yaml`, reflash (OTA or USB), `sudo systemctl restart mosquitto` |
+| `ALERT_TELEGRAM_BOT_TOKEN` | `observatory.env` | obs-api alerts, obs-enviro-heartbeat, obs-vuln-check | BotFather `/revoke` → new token into `observatory.env` → `sudo systemctl restart obs-api` (the timers pick it up on their next run) |
+| `ALERT_NTFY_TOKEN` | `observatory.env` (empty unless ntfy is enabled) | obs-api alerts | regenerate in the ntfy account, update `observatory.env`, restart obs-api. Without a token the topic name is the only secret |
+| `VULN_CHECK_GITHUB_TOKEN` | `/etc/observatory/vuln-check.env` (root-only 0600, loaded only by obs-vuln-check) | obs-vuln-check | new fine-grained token (repo `PHcz/observatory`, *Dependabot alerts: read*), write it into `vuln-check.env`, `sudo systemctl start obs-vuln-check` to test, then revoke the old one on GitHub |
+| `OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD` | `observatory.env` (empty = `/ingest` refuses everything) | `/ingest` HTTP fallback, the board's HTTP config | update `observatory.env` and the board, restart obs-api |
+
+Changing the broker's `obs-api-subscriber` password also changes obs-api's MQTT
+client ids (derived from it); the broker forgets the old sessions after 14 days.
+
+### Outdoor board lost or tampered with
+
+The outdoor board stores the home wifi password and shows it to anyone who
+presses its button in the garden (provisioning mode raises an open access
+point). Keeping it on the main wifi is an accepted risk (decided 2026-10-20);
+this is the recovery. **The Pi is on wifi only, so it must learn the new wifi
+password before the Hub changes, or it drops off the network.**
+
+1. **Pi first:** `ssh -t <admin-user>@observatory.local sudo nmtui` → *Edit a
+   connection* → each home wifi profile (`nmcli -t -f NAME,TYPE connection show`
+   lists them) → set the new password → OK. Do not re-activate the connection;
+   the Pi stays connected on the old password until the Hub changes.
+2. **Indoor node:** put the new `wifi_password` in
+   `firmware/indoor-air/secrets.yaml` and flash it over the air while the old
+   network still works (see *Indoor air node* above). It drops off until step 3.
+3. **Change the wifi password on the Hub** (Hub settings → Wifi). The Pi and the
+   indoor node reconnect by themselves within a minute or two. Phones, laptops
+   and everything else on the wifi need the new password too. If the Pi does
+   not come back, plug in an Ethernet cable: `eth0` gets an address by DHCP.
+4. **Lock the board out of the broker:** rotate its password (table above), or
+   if the board is gone for good, delete its user with
+   `sudo mosquitto_passwd -D /etc/mosquitto/passwords enviro-observatory-weather`,
+   then `sudo systemctl restart mosquitto` (a restart, not a reload, drops any
+   session that is still connected).
+5. **Look for misuse:** `journalctl -u mosquitto | grep enviro-observatory-weather`
+   for connections from unexpected addresses, and check the dashboard and
+   `/api/weather` for implausible readings around the time of the incident.
+6. If the board is recovered, re-provision it with the new wifi and broker
+   passwords (`deploy/enviro/PROVISIONING.md`).
