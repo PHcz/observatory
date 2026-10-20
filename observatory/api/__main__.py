@@ -106,6 +106,10 @@ def make_listen_socket(host: str, port: int, *, backlog: int) -> socket.socket |
     the option on a socket we own and handing it to uvicorn is the only way
     through. Pinned by ``tests/api/test_dual_stack_bind.py``.
 
+    Dual-stack applies to the wildcard ``::`` (what production binds). For a
+    specific IPv6 address Linux sets IPV6_V6ONLY itself at bind time -- IPv4
+    traffic can never reach one -- so that socket is simply IPv6.
+
     Returns ``None`` for IPv4 hosts (including ``"auto"``), where uvicorn's
     own bind is already correct and needs no help.
     """

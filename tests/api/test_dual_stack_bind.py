@@ -36,9 +36,9 @@ def _try_connect(family: int, addr: tuple[str, int]) -> bool:
         sock.close()
 
 
-@pytest.mark.parametrize("host", ["::", "::0", "::1"])
-def test_ipv6_host_yields_dual_stack_socket(host: str) -> None:
-    """An IPv6 bind host must produce an AF_INET6 socket with V6ONLY cleared."""
+@pytest.mark.parametrize("host", ["::", "::0"])
+def test_wildcard_ipv6_host_yields_dual_stack_socket(host: str) -> None:
+    """The wildcard -- what production binds -- must have V6ONLY cleared."""
     sock = make_listen_socket(host, 0, backlog=16)
     assert sock is not None, f"expected a socket for IPv6 host {host!r}"
     try:
@@ -46,6 +46,23 @@ def test_ipv6_host_yields_dual_stack_socket(host: str) -> None:
         assert sock.getsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY) == 0, (
             "IPV6_V6ONLY must be 0 or IPv4 clients get ConnectionRefused"
         )
+    finally:
+        sock.close()
+
+
+def test_specific_ipv6_host_yields_an_ipv6_socket() -> None:
+    """A SPECIFIC IPv6 address is a plain IPv6 socket; dual-stack does not apply.
+
+    Linux sets IPV6_V6ONLY itself when a socket binds a specific, non-mapped IPv6
+    address -- correctly, as IPv4 traffic can never reach one. macOS does not, so
+    this case used to assert V6ONLY == 0 and passed on the dev Mac for two weeks
+    until the first Linux CI run failed it (2026-10-20). The Pi runs Linux and
+    binds the wildcard, so production was never affected.
+    """
+    sock = make_listen_socket("::1", 0, backlog=16)
+    assert sock is not None
+    try:
+        assert sock.family == socket.AF_INET6
     finally:
         sock.close()
 
