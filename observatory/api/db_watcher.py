@@ -75,6 +75,27 @@ def public_event_data(table: str, row: Any) -> dict[str, Any]:
 PER_TICK_LIMIT = 100
 
 
+def _poll_new_rows(last_seen: dict[str, int]) -> list[dict[str, Any]]:
+    """Fetch rows newer than ``last_seen`` per table; advances ``last_seen``.
+
+    Synchronous on purpose -- called via ``asyncio.to_thread``.
+    """
+    envelopes: list[dict[str, Any]] = []
+    with get_conn() as conn:
+        for tbl, evt_type in TABLE_EVENT_TYPES.items():
+            rows: list[Any] = conn.execute(
+                f"SELECT * FROM {tbl} WHERE ts > ? ORDER BY ts ASC LIMIT ?",  # nosec B608
+                (last_seen[tbl], PER_TICK_LIMIT),
+            ).fetchall()
+            envelopes.extend(
+                {"type": evt_type, "data": public_event_data(tbl, row), "ts": int(row["ts"])}
+                for row in rows
+            )
+            if rows:
+                last_seen[tbl] = int(rows[-1]["ts"])
+    return envelopes
+
+
 async def db_watcher_loop() -> None:
     """Poll 6 data tables, fan out new rows to connected WS clients.
 
@@ -113,22 +134,12 @@ async def db_watcher_loop() -> None:
         while True:
             await asyncio.sleep(settings.api_db_watcher_interval_sec)
 
-            with get_conn() as conn:
-                for tbl, evt_type in TABLE_EVENT_TYPES.items():
-                    rows: list[Any] = conn.execute(
-                        f"SELECT * FROM {tbl} WHERE ts > ? ORDER BY ts ASC LIMIT ?",  # nosec B608
-                        (last_seen[tbl], PER_TICK_LIMIT),
-                    ).fetchall()
-                    for row in rows:
-                        envelope: dict[str, Any] = {
-                            "type": evt_type,
-                            "data": public_event_data(tbl, row),
-                            "ts": int(row["ts"]),
-                        }
-                        await fanout_event(envelope)
-                    if rows:
-                        last_seen[tbl] = int(rows[-1]["ts"])
+            # The every-tick table scan runs in a worker thread (audit F12).
+            envelopes = await asyncio.to_thread(_poll_new_rows, last_seen)
+            for envelope in envelopes:
+                await fanout_event(envelope)
 
+            with get_conn() as conn:
                 # Gain-drift MIP-peak compute on configured cadence.
                 _gain_drift_ticks += 1
                 if _gain_drift_ticks >= gain_drift_threshold:

@@ -88,6 +88,11 @@ async def fanout_event(envelope: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _snapshot() -> dict[str, Any]:
+    with get_conn() as conn:
+        return build_current_snapshot(conn)
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     """WebSocket endpoint for live dashboard updates.
@@ -118,8 +123,6 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         await ws.close(code=1008)  # 1008 = policy violation
         return
 
-    await ws.accept()
-
     client_id = str(uuid.uuid4())[:8]
     state = ClientState(
         client_id=client_id,
@@ -127,8 +130,22 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         last_pong_ts=time.time(),
     )
 
+    # Cap and register atomically, before accept (audit F04).
     async with ws_lock:
-        connected_clients[client_id] = state
+        full = len(connected_clients) >= settings.api_ws_max_clients
+        if not full:
+            connected_clients[client_id] = state
+    if full:
+        log.warning("ws_capacity_reached", max_clients=settings.api_ws_max_clients)
+        await ws.close(code=1013)  # 1013 = try again later
+        return
+
+    try:
+        await ws.accept()
+    except Exception:
+        async with ws_lock:
+            connected_clients.pop(client_id, None)
+        raise
 
     log.info(
         "ws_client_connected",
@@ -137,8 +154,9 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     )
 
     # --- Snapshot on connect ---
-    with get_conn() as conn:
-        snapshot = build_current_snapshot(conn)
+    # SQLite off the event loop: a slow snapshot must not stall every other
+    # client and the systemd watchdog ping (audit F12).
+    snapshot = await asyncio.to_thread(_snapshot)
     await ws.send_json({"type": "snapshot", "data": snapshot, "ts": int(time.time())})
 
     # --- Three concurrent coroutines ---

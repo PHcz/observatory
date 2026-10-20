@@ -311,3 +311,55 @@ def test_ws_accepts_missing_origin(ws_app: FastAPI) -> None:
     with TestClient(ws_app) as client:
         with client.websocket_connect("/ws") as ws:
             assert ws.receive_json()["type"] == "snapshot"
+
+
+# ---------------------------------------------------------------------------
+# Security audit 2026-10-20, F04/F12: client cap, snapshot off the event loop
+# ---------------------------------------------------------------------------
+
+
+def test_ws_rejects_clients_beyond_the_cap(
+    ws_app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """25 concurrent foreign clients were accepted in the audit; each costs a
+    queue, three tasks and a snapshot build."""
+    from starlette.websockets import WebSocketDisconnect
+
+    from observatory.config import settings as live_settings
+
+    monkeypatch.setattr(live_settings, "api_ws_max_clients", 2, raising=False)
+    with TestClient(ws_app) as client:
+        with client.websocket_connect("/ws") as a, client.websocket_connect("/ws") as b:
+            a.receive_json()
+            b.receive_json()
+            with pytest.raises(WebSocketDisconnect) as exc_info:
+                with client.websocket_connect("/ws") as c:
+                    c.receive_json()
+            assert exc_info.value.code == 1013  # try again later
+
+
+def test_ws_snapshot_is_built_off_the_event_loop(
+    ws_app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The snapshot runs several SQLite queries; on the loop it stalls every
+    other client and the watchdog ping while it runs."""
+    import asyncio
+
+    import observatory.api.routers.ws as ws_mod
+
+    on_loop: list[bool] = []
+    real = ws_mod.build_current_snapshot
+
+    def spy(conn: Any) -> dict[str, Any]:
+        try:
+            asyncio.get_running_loop()
+            on_loop.append(True)
+        except RuntimeError:
+            on_loop.append(False)
+        return real(conn)
+
+    monkeypatch.setattr(ws_mod, "build_current_snapshot", spy)
+    with TestClient(ws_app) as client:
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+    assert on_loop == [False]

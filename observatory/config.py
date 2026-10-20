@@ -208,6 +208,9 @@ class Settings(BaseSettings):
     # --- API server (Phase 6 additions) ---
     obs_env: str = Field(default="production", pattern="^(production|development)$")
     api_ws_queue_maxsize: int = Field(default=100, ge=1, le=10000)
+    # Concurrent /ws clients; more are closed with 1013 (audit F04). A home
+    # dashboard has a handful of viewers.
+    api_ws_max_clients: int = Field(default=16, ge=1, le=256)
     api_ws_ping_interval_sec: float = Field(default=30.0, ge=0.01, le=600.0)
     api_ws_pong_timeout_sec: float = Field(default=60.0, ge=0.05, le=600.0)
     api_db_watcher_interval_sec: float = Field(default=5.0, ge=0.1, le=60.0)
