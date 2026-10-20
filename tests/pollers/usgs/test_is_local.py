@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -21,7 +22,7 @@ import observatory.pollers.usgs.__main__ as usgs_main_mod
 from observatory.pollers.usgs.__main__ import main as usgs_main
 
 
-def _feature(fid: str, lat: float, lon: float, ts_ms: int = 1700000000000) -> dict:
+def _feature(fid: str, lat: float, lon: float, ts_ms: int = 1700000000000) -> dict[str, Any]:
     return {
         "type": "Feature",
         "id": fid,
@@ -30,7 +31,7 @@ def _feature(fid: str, lat: float, lon: float, ts_ms: int = 1700000000000) -> di
     }
 
 
-def _wrap(features: list[dict]) -> bytes:
+def _wrap(features: list[dict[str, Any]]) -> bytes:
     return json.dumps({"type": "FeatureCollection", "features": features}).encode()
 
 

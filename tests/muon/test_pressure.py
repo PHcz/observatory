@@ -14,9 +14,9 @@ from observatory.muon.pressure import (
 def test_no_correction_at_reference_conditions() -> None:
     # 20 degC + 1013.25 hPa → factor 1.0 → rate unchanged.
     assert math.isclose(stp_factor(20.0, REFERENCE_PRESSURE_HPA), 1.0, rel_tol=1e-9)
-    assert math.isclose(
-        stp_corrected_rate(100.0, 20.0, REFERENCE_PRESSURE_HPA), 100.0, rel_tol=1e-9
-    )
+    corrected = stp_corrected_rate(100.0, 20.0, REFERENCE_PRESSURE_HPA)
+    assert corrected is not None, "reference conditions must yield a rate, not None"
+    assert math.isclose(corrected, 100.0, rel_tol=1e-9)
 
 
 def test_low_pressure_scales_rate_down() -> None:

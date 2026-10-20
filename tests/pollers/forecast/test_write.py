@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -56,7 +57,7 @@ def _d(ts: int) -> ForecastDaily:
     )
 
 
-def _meta(fetched_at: int = 1000) -> dict:
+def _meta(fetched_at: int = 1000) -> dict[str, Any]:
     return {"utc_offset_seconds": 3600, "timezone": "Europe/London", "fetched_at": fetched_at}
 
 

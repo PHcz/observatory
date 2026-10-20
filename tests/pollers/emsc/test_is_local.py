@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -18,7 +19,9 @@ import observatory.pollers.emsc.__main__ as emsc_main_mod
 from observatory.pollers.emsc.__main__ import main as emsc_main
 
 
-def _feature(unid: str, lat: float, lon: float, time_iso: str = "2026-01-01T00:00:00Z") -> dict:
+def _feature(
+    unid: str, lat: float, lon: float, time_iso: str = "2026-01-01T00:00:00Z"
+) -> dict[str, Any]:
     return {
         "type": "Feature",
         "properties": {
@@ -34,7 +37,7 @@ def _feature(unid: str, lat: float, lon: float, time_iso: str = "2026-01-01T00:0
     }
 
 
-def _wrap(features: list[dict]) -> bytes:
+def _wrap(features: list[dict[str, Any]]) -> bytes:
     return json.dumps({"type": "FeatureCollection", "features": features}).encode()
 
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -43,7 +44,7 @@ def patched_db(monkeypatch: pytest.MonkeyPatch, tmp_db: Path) -> Path:
     return tmp_db
 
 
-def _poller_runs(db: Path) -> list[tuple]:
+def _poller_runs(db: Path) -> list[tuple[Any, ...]]:
     return (
         sqlite3.connect(str(db))
         .execute("SELECT status FROM poller_runs WHERE source = 'nmdb'")

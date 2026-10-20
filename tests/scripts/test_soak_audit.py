@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -19,7 +20,7 @@ def test_soak_audit_summarises_seven_day_fixture(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     for day in range(1, 8):
-        snap = {
+        snap: dict[str, Any] = {
             "captured_at": f"2026-06-{day:02d}T09:00:00Z",
             "health": {"status": "healthy", "pi": {"throttled": "0x0"}},
             "health_error": None,
@@ -51,7 +52,7 @@ def test_soak_audit_handles_unhealthy_and_missing_pi_block(
 ) -> None:
     # 3 healthy, 4 unhealthy/null
     for day in range(1, 4):
-        snap = {
+        snap: dict[str, Any] = {
             "captured_at": f"2026-06-{day:02d}T09:00:00Z",
             "health": {"status": "healthy", "pi": {"throttled": "0x0"}},
             "journals": {},

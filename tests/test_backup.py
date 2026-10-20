@@ -199,7 +199,8 @@ def test_backup_accepts_live_writer_drift(
             source_open_count["n"] += 1
             if source_open_count["n"] == 2:
                 return connect_and_append(path, *args, **kwargs)
-        return orig_connect(path, *args, **kwargs)
+        fallback: sqlite3.Connection = orig_connect(path, *args, **kwargs)
+        return fallback
 
     monkeypatch.setattr("scripts.backup.sqlite3.connect", selective_connect)
 

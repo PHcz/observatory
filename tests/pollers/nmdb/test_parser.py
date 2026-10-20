@@ -63,7 +63,9 @@ def test_null_token_becomes_none_and_counts_as_failure() -> None:
     gaps = [r for r in rows if r.counts_per_sec is None]
     assert gaps, "fixture has trailing null gap rows; expected None counts_per_sec"
     # parser tracks per-row failures (null/gap) for the compute_parse_outcome threshold.
-    assert meta["failures"] >= len(gaps)
+    failures = meta["failures"]
+    assert isinstance(failures, int), f"expected an int failure count, got {failures!r}"
+    assert failures >= len(gaps)
 
 
 def test_empty_body_raises_valueerror() -> None:

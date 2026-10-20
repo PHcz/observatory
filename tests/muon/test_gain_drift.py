@@ -12,11 +12,12 @@ Tests:
 from __future__ import annotations
 
 import datetime
+from typing import Any
 
 from observatory.muon.gain_drift import compute_mip_peak_adc, iso_week_start_ts
 
 
-def _make_muon_rows(n: int, amplitude: float) -> list[dict]:
+def _make_muon_rows(n: int, amplitude: float) -> list[dict[str, Any]]:
     """Create synthetic muon event rows with amplitude clustered at a given value."""
     return [
         {

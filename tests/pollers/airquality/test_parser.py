@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -26,8 +27,9 @@ def _fixture_bytes() -> bytes:
     return FIXTURE.read_bytes()
 
 
-def _fixture_dict() -> dict:
-    return json.loads(_fixture_bytes())
+def _fixture_dict() -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(_fixture_bytes())
+    return data
 
 
 def test_parses_current_to_snapshot() -> None:

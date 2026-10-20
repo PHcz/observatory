@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -48,7 +49,7 @@ def db_path(_ensure_settings_loaded: Path) -> Path:
     return _ensure_settings_loaded
 
 
-def _make_payload(ts_iso: str | None = None) -> dict:
+def _make_payload(ts_iso: str | None = None) -> dict[str, Any]:
     """Create a valid Enviro Weather HTTP payload."""
     if ts_iso is None:
         ts_iso = "2026-06-08T12:34:56Z"

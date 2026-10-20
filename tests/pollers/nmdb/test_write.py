@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -36,7 +37,7 @@ def _counts(station: str = "OULU", base_ts: int = 1_700_000_000, n: int = 3) -> 
     ]
 
 
-def _meta(fetched_at: int = 1000, station: str = "OULU") -> dict:
+def _meta(fetched_at: int = 1000, station: str = "OULU") -> dict[str, Any]:
     return {"fetched_at": fetched_at, "station": station}
 
 

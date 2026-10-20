@@ -56,29 +56,30 @@ repos:
 
   # --- Slow hooks: pre-push only (up to ~30s OK) ---
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.1
+  - repo: local
     hooks:
+      # Runs in the PROJECT venv, not an isolated pre-commit env, so it uses the
+      # [tool.mypy] config in pyproject.toml verbatim: strict = true over
+      # observatory, tests, scripts and picomuon.
+      #
+      # It used to be the mirrors-mypy hook with `args: [--strict, observatory/]`,
+      # which checked the package ONLY while pyproject claimed four trees. Twenty
+      # type errors accumulated under tests/ completely ungated, including a
+      # math.isclose() on a `float | None` and an `int | str` compared to an int.
+      # Narrowing the gate to a subset of what the config declares is how that
+      # happens, so the gate now derives its scope from the config instead of
+      # restating it.
+      #
+      # Running in the project venv also removes the additional_dependencies list
+      # the isolated env needed (it lacked pytest/testcontainers, so it could not
+      # have checked tests/ anyway) and the pinned `rev:`, which was a second
+      # version-skew trap of the same shape as the ruff rev below.
       - id: mypy
+        name: mypy (strict; scope from pyproject [tool.mypy])
+        entry: uv run mypy
+        language: system
         stages: [pre-push]
-        args: [--strict, observatory/]
         pass_filenames: false
-        additional_dependencies:
-          - pydantic
-          - pydantic-settings
-          - structlog
-          - types-PyYAML
-          - httpx
-          - defusedxml
-          - fastapi
-          - aiomqtt
-          - uvicorn
-          - websockets
-          # analysis stack — observatory.muon.analysis_adapter imports picomuon
-          # (Phase 13), which mypy follows into; picomuon needs these to resolve.
-          - numpy
-          - polars
-          - scipy
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.8.3
