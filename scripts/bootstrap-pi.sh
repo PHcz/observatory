@@ -356,6 +356,14 @@ systemctl daemon-reload
 # apply_migrations() for 0007 BEFORE restarting obs-api or /api/nmdb 500s.
 systemctl enable obs-nmdb-poll.timer
 
+# --- SECTION 14b: Avahi — stop advertising hostname + MAC (_workstation._tcp) ---
+# observatory.local resolution uses the A/AAAA records, not this service
+# record (security audit 2026-10-20). Leave use-ipv6 alone: turning it off
+# caused 5 s lookups from macOS.
+log "Section 14b: avahi publish-workstation=no"
+sed -i 's/^#\?publish-workstation=.*/publish-workstation=no/' /etc/avahi/avahi-daemon.conf
+systemctl restart avahi-daemon
+
 # --- SECTION 15: install journald drop-in for log rotation (OPS-03) ---
 log "Section 15: journald drop-in for log rotation"
 install -d -m 755 /etc/systemd/journald.conf.d
@@ -366,7 +374,7 @@ JOURNAL_SRC="$REPO_ROOT/deploy/journald/observatory.conf"
 if [[ ! -f "$JOURNAL_DST" ]] || ! cmp -s "$JOURNAL_SRC" "$JOURNAL_DST"; then
   install -m 644 "$JOURNAL_SRC" "$JOURNAL_DST"
   systemctl restart systemd-journald
-  log "Section 15: journald restarted with new SystemMaxUse=500M, SystemKeepFree=200M, MaxFileSec=1week."
+  log "Section 15: journald restarted with new limits (RuntimeMaxUse=120M for the volatile journal)."
 else
   log "Section 15: journald drop-in already current (no restart needed)."
 fi

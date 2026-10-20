@@ -118,3 +118,19 @@ def test_operations_doc_fstab_line_is_hardened() -> None:
     line = next(ln for ln in doc.splitlines() if ln.strip().startswith("LABEL=OBS_BACKUP"))
     for opt in _HARDENED_MOUNT:
         assert opt in line, f"documented backup mount must use {opt}: {line!r}"
+
+
+def test_journald_limits_apply_to_the_volatile_journal() -> None:
+    """The Pi runs Storage=volatile (journal in RAM, sparing the SD card), where
+    System* limits are ignored and journald defaulted to ~10% of /run: about
+    43 hours of logs, broker auth logs included (security audit F49)."""
+    conf = _read("deploy/journald/observatory.conf")
+    assert "RuntimeMaxUse=120M" in conf
+    assert "RuntimeKeepFree=" in conf
+
+
+def test_bootstrap_stops_avahi_publishing_the_workstation_record() -> None:
+    """publish-workstation advertises the hostname plus the MAC address to the
+    whole LAN; observatory.local resolution does not need it."""
+    boot = _read("scripts/bootstrap-pi.sh")
+    assert "publish-workstation=no" in boot
