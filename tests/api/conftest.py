@@ -63,6 +63,13 @@ def _ensure_settings_loaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     monkeypatch.setenv("HOME_LAT", "51.5074")
     monkeypatch.setenv("HOME_LON", "-0.1278")
     monkeypatch.setenv("OBSERVATORY_DB_PATH", str(db_path))
+    # Starlette's TestClient always sends `Host: testserver` (its WebSocket path
+    # hard-codes ws://testserver), so the test env -- and only the test env --
+    # adds it to the production default for HostAllowlistMiddleware.
+    monkeypatch.setenv(
+        "API_ORIGIN_ALLOWLIST",
+        Settings.model_fields["api_origin_allowlist"].default + ",testserver",
+    )
     s = Settings()
     monkeypatch.setattr(_config_mod, "settings", s)
 

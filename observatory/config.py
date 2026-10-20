@@ -196,7 +196,7 @@ class Settings(BaseSettings):
     api_ws_pong_timeout_sec: float = Field(default=60.0, ge=0.05, le=600.0)
     api_db_watcher_interval_sec: float = Field(default=5.0, ge=0.1, le=60.0)
     api_origin_allowlist: str = Field(
-        default="192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,localhost,127.0.0.1,observatory.local"
+        default="192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,localhost,127.0.0.1,observatory.local,::1,fe80::/10"
     )
     api_static_bundle_dir: str = Field(default="/opt/observatory/frontend/build")
 

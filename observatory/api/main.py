@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from observatory.api.db_watcher import db_watcher_loop
-from observatory.api.middleware import OriginAllowlistMiddleware
+from observatory.api.middleware import HostAllowlistMiddleware, OriginAllowlistMiddleware
 from observatory.api.routers import air_quality as air_quality_router
 from observatory.api.routers import alerts as alerts_router
 from observatory.api.routers import aurora as aurora_router
@@ -76,11 +76,16 @@ app = FastAPI(
     debug=False,
     docs_url=_docs_url,
     redoc_url=None,
+    # The schema was served in production even though docs_url was gated
+    # (security audit F03/F57/F71). Same gate as the docs.
+    openapi_url="/openapi.json" if _docs_url else None,
     lifespan=lifespan,
 )
 
 # Middleware (added first → runs first on inbound).
 app.add_middleware(OriginAllowlistMiddleware)
+# Pure ASGI, so it also covers websockets (security audit M11 / H1).
+app.add_middleware(HostAllowlistMiddleware)
 
 
 @app.middleware("http")

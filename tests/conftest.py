@@ -9,8 +9,12 @@ from __future__ import annotations
 import os
 from collections.abc import Generator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from observatory.config import Settings
 
 
 @pytest.fixture
@@ -55,3 +59,18 @@ def valid_env(monkeypatch: pytest.MonkeyPatch, tmp_db_path: Path) -> None:
     monkeypatch.setenv("OBSERVATORY_DB_PATH", str(tmp_db_path))
     monkeypatch.setenv("MQTT_BROKER_HOST", "localhost")
     monkeypatch.setenv("MQTT_BROKER_PORT", "1883")
+    # Starlette's TestClient always sends `Host: testserver` (its WebSocket path
+    # hard-codes ws://testserver), so the test env -- and only the test env --
+    # adds it to the production default for HostAllowlistMiddleware.
+    monkeypatch.setenv(
+        "API_ORIGIN_ALLOWLIST",
+        _settings_cls().model_fields["api_origin_allowlist"].default + ",testserver",
+    )
+
+
+def _settings_cls() -> type[Settings]:
+    """Imported lazily: importing observatory.config at collection time would
+    build settings before the env above is in place."""
+    from observatory.config import Settings
+
+    return Settings
