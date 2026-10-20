@@ -61,6 +61,48 @@ def parse_allowlist(raw: str) -> tuple[list[ipaddress.IPv4Network], set[str]]:
     return networks, hostnames
 
 
+def hostname_allowed(
+    hostname: str,
+    networks: list[ipaddress.IPv4Network],
+    hostnames: set[str],
+) -> bool:
+    """Return True if hostname matches any allowlisted network or hostname."""
+    hostname_lower = hostname.lower()
+    try:
+        addr = ipaddress.ip_address(hostname_lower)
+        for network in networks:
+            if addr in network:
+                return True
+    except ValueError:
+        pass
+    # Exact hostname match only -- "observatory.local.attacker.com" must not pass.
+    return hostname_lower in hostnames
+
+
+def is_origin_allowed(origin: str | None, allowlist_raw: str) -> bool:
+    """The Origin decision, shared by the HTTP middleware and the /ws router.
+
+    It has to be callable from the router because OriginAllowlistMiddleware is a
+    BaseHTTPMiddleware, which Starlette never runs for `websocket` scope. Before
+    this existed, /ws accepted any Origin -- security audit 2026-10-20, H1.
+
+    - No Origin header -> allowed (non-browser clients: scripts, probes).
+    - Unparseable Origin, or one with no hostname (e.g. the literal "null" that
+      sandboxed iframes send) -> denied.
+    - Otherwise allowed only if the hostname matches the allowlist.
+    """
+    if origin is None:
+        return True
+    try:
+        hostname = urllib.parse.urlparse(origin).hostname
+    except ValueError:
+        return False
+    if not hostname:
+        return False
+    networks, hostnames = parse_allowlist(allowlist_raw)
+    return hostname_allowed(hostname, networks, hostnames)
+
+
 class OriginAllowlistMiddleware(BaseHTTPMiddleware):
     """Starlette middleware that 403s cross-origin requests not in the LAN allowlist.
 
@@ -81,18 +123,7 @@ class OriginAllowlistMiddleware(BaseHTTPMiddleware):
 
     def _is_allowed(self, hostname: str) -> bool:
         """Return True if hostname matches any network or hostname in the allowlist."""
-        hostname_lower = hostname.lower()
-        # Try to interpret as an IPv4 address first.
-        try:
-            addr = ipaddress.ip_address(hostname_lower)
-            for network in self._allowed_networks:
-                if addr in network:
-                    return True
-            # Fall through to hostname check if not in any network.
-        except ValueError:
-            pass
-        # Hostname-string match (covers "localhost", "observatory.local", etc.)
-        return hostname_lower in self._allowed_hostnames
+        return hostname_allowed(hostname, self._allowed_networks, self._allowed_hostnames)
 
     async def dispatch(
         self,

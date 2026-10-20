@@ -21,6 +21,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from observatory.api.middleware import is_origin_allowed
 from observatory.api.routers.current import build_current_snapshot
 from observatory.config import settings
 from observatory.db.connection import get_conn
@@ -104,6 +105,19 @@ async def websocket_endpoint(ws: WebSocket) -> None:
       - Server pings every settings.api_ws_ping_interval_sec.
       - Server drops client if no pong within settings.api_ws_pong_timeout_sec.
     """
+    # Enforce Origin BEFORE accepting. The HTTP OriginAllowlistMiddleware never
+    # sees websockets, and browsers apply no CORS to them, so without this any
+    # website open in a browser on the home wifi could read the snapshot.
+    origin = ws.headers.get("origin")
+    if not is_origin_allowed(origin, settings.api_origin_allowlist):
+        log.warning(
+            "ws_origin_rejected",
+            origin=origin,
+            client_host=getattr(ws.client, "host", "unknown"),
+        )
+        await ws.close(code=1008)  # 1008 = policy violation
+        return
+
     await ws.accept()
 
     client_id = str(uuid.uuid4())[:8]

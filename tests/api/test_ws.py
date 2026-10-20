@@ -257,3 +257,57 @@ def test_ws_multiple_clients_each_receive_snapshot(ws_app: FastAPI) -> None:
                 msg2 = drain_for_type(ws2, "aurora")
                 assert msg1["type"] == "aurora"
                 assert msg2["type"] == "aurora"
+
+
+# ---------------------------------------------------------------------------
+# Origin enforcement (security audit 2026-10-20, H1)
+# ---------------------------------------------------------------------------
+#
+# OriginAllowlistMiddleware is a BaseHTTPMiddleware, which Starlette never runs
+# for `websocket` scope -- so before this check, /ws accepted any Origin. A page
+# on any website, opened from a browser on the home wifi, could connect and read
+# the snapshot (whose astronomy block is derived from the home coordinates).
+# Browsers apply no CORS to WebSockets, so the router must enforce Origin itself.
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://attacker.example.com",  # an ordinary foreign site
+        "http://8.8.8.8",  # a public IP literal
+        "null",  # sent by sandboxed iframes and some redirects
+        "http://observatory.local.attacker.com",  # suffix trick: must be exact match
+    ],
+)
+def test_ws_rejects_foreign_origin(ws_app: FastAPI, origin: str) -> None:
+    """A browser Origin outside the LAN allowlist must never be accepted."""
+    from starlette.websockets import WebSocketDisconnect
+
+    with TestClient(ws_app) as client:
+        with pytest.raises(WebSocketDisconnect) as excinfo:
+            with client.websocket_connect("/ws", headers={"Origin": origin}) as ws:
+                ws.receive_json()  # would be the snapshot if (wrongly) accepted
+    assert excinfo.value.code == 1008, f"expected policy-violation close, got {excinfo.value.code}"
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://observatory.local:8000",  # the documented URL
+        "http://192.168.0.75:8000",  # browsing by LAN IP
+        "http://localhost:5173",  # the Vite dev server
+    ],
+)
+def test_ws_accepts_allowed_origin(ws_app: FastAPI, origin: str) -> None:
+    """The fix must not lock out the dashboard itself."""
+    with TestClient(ws_app) as client:
+        with client.websocket_connect("/ws", headers={"Origin": origin}) as ws:
+            msg: dict[str, Any] = ws.receive_json()
+            assert msg["type"] == "snapshot"
+
+
+def test_ws_accepts_missing_origin(ws_app: FastAPI) -> None:
+    """Non-browser clients (scripts, health probes) send no Origin and stay allowed."""
+    with TestClient(ws_app) as client:
+        with client.websocket_connect("/ws") as ws:
+            assert ws.receive_json()["type"] == "snapshot"
