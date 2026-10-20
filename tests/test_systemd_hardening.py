@@ -152,3 +152,30 @@ def test_github_token_is_readable_by_the_vuln_check_only() -> None:
             assert "vuln-check.env" not in unit.read_text(), unit.name
     example = (REPO_ROOT / ".env.example").read_text()
     assert "/etc/observatory/vuln-check.env" in example
+
+
+TELEGRAM_SENDERS = {"obs-api.service", "obs-enviro-heartbeat.service", "obs-vuln-check.service"}
+
+
+def _env_files(unit: Path) -> list[str]:
+    return [
+        line.split("=", 1)[1]
+        for line in unit.read_text().splitlines()
+        if line.startswith("EnvironmentFile=")
+    ]
+
+
+def test_telegram_token_is_readable_by_the_senders_only() -> None:
+    """The bot token sat in observatory.env, so every poller, the muon reader and
+    the backup jobs carried it (security audit F46). Only the three services
+    that send Telegram messages load the root-only telegram.env."""
+    for unit in UNITS:
+        files = _env_files(unit)
+        if unit.name in TELEGRAM_SENDERS:
+            assert "-/etc/observatory/telegram.env" in files, unit.name
+            assert files.index("-/etc/observatory/telegram.env") > files.index(
+                "/etc/observatory/observatory.env"
+            ), f"{unit.name}: telegram.env must load after observatory.env"
+        else:
+            assert "-/etc/observatory/telegram.env" not in files, unit.name
+    assert "/etc/observatory/telegram.env" in (REPO_ROOT / ".env.example").read_text()

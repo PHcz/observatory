@@ -9,6 +9,9 @@ Type=oneshot
 User=observatory
 Group=observatory
 EnvironmentFile=/etc/observatory/observatory.env
+# Telegram bot token: root-only (0600) file loaded only by the three units
+# that send Telegram messages (audit F46). Loaded after observatory.env, so it wins.
+EnvironmentFile=-/etc/observatory/telegram.env
 # The GitHub token lives in its own root-only (0600) file that no other unit
 # loads (audit F46). Loaded last, so it wins over observatory.env.
 EnvironmentFile=-/etc/observatory/vuln-check.env

@@ -9,6 +9,9 @@ Type=notify
 User=observatory
 Group=observatory
 EnvironmentFile=/etc/observatory/observatory.env
+# Telegram bot token: root-only (0600) file loaded only by the three units
+# that send Telegram messages (audit F46). Loaded after observatory.env, so it wins.
+EnvironmentFile=-/etc/observatory/telegram.env
 WorkingDirectory=/opt/observatory
 ExecStart=/opt/observatory/.venv/bin/python -m observatory.api
 Restart=on-failure

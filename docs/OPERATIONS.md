@@ -381,16 +381,20 @@ authenticated alternative to a public ntfy topic. Off by default.
 2. Send your new bot any message (e.g. `hi`) so it has a chat to reply to.
 3. Read your numeric chat id: open `https://api.telegram.org/bot<token>/getUpdates` and find
    `message.chat.id`.
-4. Set on the Pi `.env` (no `OBSERVATORY_` prefix — the var name is the field name):
+4. On the Pi, enable the channel in the shared `.env` (no `OBSERVATORY_` prefix — the var name
+   is the field name), then store the token in its own root-only file, which only the three
+   Telegram senders load. The token is typed at a hidden prompt, so it stays out of shell history:
 
 ```bash
-printf 'ALERT_TELEGRAM_ENABLED=true\nALERT_TELEGRAM_BOT_TOKEN=<token>\nALERT_TELEGRAM_CHAT_ID=<chat_id>\n' \
+printf 'ALERT_TELEGRAM_ENABLED=true\nALERT_TELEGRAM_CHAT_ID=<chat_id>\n' \
   | sudo tee -a /etc/observatory/observatory.env >/dev/null
+read -rsp "Bot token: " T; echo
+printf 'ALERT_TELEGRAM_BOT_TOKEN=%s\n' "$T" | sudo install -m 0600 -o root -g root /dev/stdin /etc/observatory/telegram.env; unset T
 sudo systemctl restart obs-api.service
 ```
 
-Both channels can run at once; either can be enabled alone. Keep the token/chat id in the Pi
-`.env` only — never commit them.
+Both channels can run at once; either can be enabled alone. Keep the token/chat id on the Pi
+only — never commit them.
 
 ## Daily Dependabot vulnerability check (Telegram)
 
@@ -399,11 +403,13 @@ queries the GitHub Dependabot **alerts** API for the repo, and — if any alert 
 Telegram message listing them worst-first. A clean run is silent. Outbound-only (no inbound
 exposure), same sanctioned-egress justification as the pollers.
 
-Set on the Pi `.env` (reuses the `ALERT_TELEGRAM_*` channel above for delivery):
+Reuses the `ALERT_TELEGRAM_*` channel above for delivery. The token goes in its own root-only
+file that only obs-vuln-check loads (hidden prompt, stays out of shell history):
 
 ```bash
-printf 'VULN_CHECK_GITHUB_TOKEN=<fine_grained_pat>\nVULN_CHECK_REPO=PHcz/observatory\n' \
-  | sudo tee -a /etc/observatory/observatory.env >/dev/null
+printf 'VULN_CHECK_REPO=PHcz/observatory\n' | sudo tee -a /etc/observatory/observatory.env >/dev/null
+read -rsp "GitHub token: " T; echo
+printf 'VULN_CHECK_GITHUB_TOKEN=%s\n' "$T" | sudo install -m 0600 -o root -g root /dev/stdin /etc/observatory/vuln-check.env; unset T
 sudo systemctl enable --now obs-vuln-check.timer
 systemctl list-timers obs-vuln-check.timer
 sudo systemctl start obs-vuln-check.service   # run once now to test
@@ -454,7 +460,7 @@ with `openssl rand -base64 24`.
 | `MQTT_PASSWORD` (broker user `obs-api-subscriber`) | `/etc/observatory/observatory.env`, copy as `OBS_MQTT_SUB_PASSWORD` in `/etc/observatory/secrets.env`, hash in `/etc/mosquitto/passwords` | obs-api | `sudo mosquitto_passwd /etc/mosquitto/passwords obs-api-subscriber` (prompts), update both env files, `sudo systemctl restart mosquitto obs-api` |
 | Outdoor board broker password (user `enviro-observatory-weather`) | `OBS_MQTT_PUB_PASSWORD` in `secrets.env`, hash in `/etc/mosquitto/passwords`, the board's config | Enviro board | `sudo mosquitto_passwd /etc/mosquitto/passwords enviro-observatory-weather`, update `secrets.env`, `sudo systemctl restart mosquitto`, re-provision the board (`deploy/enviro/PROVISIONING.md`) |
 | Indoor node broker password (user `indoor-node`) | `firmware/indoor-air/secrets.yaml` (local), hash in `/etc/mosquitto/passwords` | indoor node | `sudo mosquitto_passwd /etc/mosquitto/passwords indoor-node`, update `secrets.yaml`, reflash (OTA or USB), `sudo systemctl restart mosquitto` |
-| `ALERT_TELEGRAM_BOT_TOKEN` | `observatory.env` | obs-api alerts, obs-enviro-heartbeat, obs-vuln-check | BotFather `/revoke` → new token into `observatory.env` → `sudo systemctl restart obs-api` (the timers pick it up on their next run) |
+| `ALERT_TELEGRAM_BOT_TOKEN` | `/etc/observatory/telegram.env` (root-only 0600, loaded only by the three senders) | obs-api alerts, obs-enviro-heartbeat, obs-vuln-check | BotFather `/revoke` → new token into `telegram.env` → `sudo systemctl restart obs-api` (the timers pick it up on their next run) |
 | `ALERT_NTFY_TOKEN` | `observatory.env` (empty unless ntfy is enabled) | obs-api alerts | regenerate in the ntfy account, update `observatory.env`, restart obs-api. Without a token the topic name is the only secret |
 | `VULN_CHECK_GITHUB_TOKEN` | `/etc/observatory/vuln-check.env` (root-only 0600, loaded only by obs-vuln-check) | obs-vuln-check | new fine-grained token (repo `PHcz/observatory`, *Dependabot alerts: read*), write it into `vuln-check.env`, `sudo systemctl start obs-vuln-check` to test, then revoke the old one on GitHub |
 | `OBSERVATORY_INGEST_BASIC_AUTH_PASSWORD` | `observatory.env` (empty = `/ingest` refuses everything) | `/ingest` HTTP fallback, the board's HTTP config | update `observatory.env` and the board, restart obs-api |

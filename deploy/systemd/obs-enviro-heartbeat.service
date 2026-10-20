@@ -8,6 +8,9 @@ Type=oneshot
 User=observatory
 Group=observatory
 EnvironmentFile=/etc/observatory/observatory.env
+# Telegram bot token: root-only (0600) file loaded only by the three units
+# that send Telegram messages (audit F46). Loaded after observatory.env, so it wins.
+EnvironmentFile=-/etc/observatory/telegram.env
 ExecStart=/opt/observatory/.venv/bin/python -m observatory.ops.enviro_heartbeat
 StandardOutput=journal
 StandardError=journal
