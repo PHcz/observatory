@@ -133,11 +133,16 @@ constraint-dependencies = [
   # (path traversal in entry-point names, pip < 26.1.2 — Dependabot #16, 2026-07)
   # and PYSEC-2026-3721 (pip < 26.2 — pip-audit, 2026-08).
   "pip>=26.2",
-  # Pillow is transitive via matplotlib (analysis extra, picomuon CLI only — not
-  # deployed to the Pi). 12.3.0 is a coordinated security release clearing 13
-  # HIGH/MEDIUM advisories against < 12.3.0 (heap OOB writes, decompression-bomb
-  # bypasses, OS command injection, DoS — Dependabot, 2026-07).
-  "pillow>=12.3.0",
+  # Pillow is transitive via matplotlib (analysis extra -- installed on the Pi:
+  # bootstrap/deploy sync with --extra analysis). 12.3.0 cleared 13 HIGH/MEDIUM
+  # advisories (Dependabot, 2026-07); 13.0.0 clears 8 more CVEs against 12.3.0
+  # (CVE-2026-112395/-397/-400/-404/-895/-896/-897/-899), reported by the Pi's
+  # daily on-device audit (obs-vuln-check, 2026-10-21). matplotlib only needs
+  # pillow>=9, so the major bump resolves cleanly.
+  "pillow>=13.0.0",
+  # certifi is the CA bundle behind httpx/requests (every outbound HTTPS call).
+  # 2026.10.19 clears PYSEC-2026-4320 (obs-vuln-check on the Pi, 2026-10-21).
+  "certifi>=2026.10.19",
   # sqlparse is transitive via yoyo-migrations (statement splitting in migration
   # files). 0.6.0 clears 3 HIGH ReDoS/CPU-DoS advisories + 1 MEDIUM backslash
   # escape issue against <=0.5.6.dev0 (Dependabot, 2026-08). yoyo declares
