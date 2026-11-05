@@ -4,16 +4,16 @@ version = "0.1.0"
 description = "Home observatory: Pi 4 + weather + muon + space weather + earthquakes + aurora + dashboard"
 requires-python = ">=3.11,<3.12"
 dependencies = [
-  "pydantic>=2.14.1",
-  "pydantic-settings>=2.16.0",  # GHSA: NestedSecretsSettingsSource symlink read (Dependabot, 2026-06)
+  "pydantic>=2.14.2",
+  "pydantic-settings>=2.16.2",  # GHSA: NestedSecretsSettingsSource symlink read (Dependabot, 2026-06)
   "yoyo-migrations>=9.0",
   "structlog>=26.1.0",
   "pyserial>=3.5",
   "sdnotify>=0.3.2",
   "httpx>=0.27",
   "defusedxml>=0.7",
-  "fastapi>=0.143.2,<0.144",  # >=0.133 drops upper bound on starlette so we can pin >=1.0.1 below
-  "starlette>=1.8.0",  # floor clears PYSEC-2026-161 + CVE-2025-62727 (08-11 audit) + form() DoS / hostname-poison (Dependabot, 2026-06)
+  "fastapi>=0.162.0,<0.163",  # >=0.133 drops upper bound on starlette so we can pin >=1.0.1 below
+  "starlette>=1.10.0",  # floor clears PYSEC-2026-161 + CVE-2025-62727 (08-11 audit) + form() DoS / hostname-poison (Dependabot, 2026-06)
   "uvicorn[standard]>=0.54.0,<0.55",
   "websockets>=17.2,<18",
   "astral>=3.0",
@@ -22,10 +22,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=9.1.1",
-  "pytest-asyncio>=1.4.0",
-  "ruff>=0.17.1",
-  "mypy>=2.4.0",
+  "pytest>=9.2.0",
+  "pytest-asyncio>=1.4.1",
+  "ruff>=0.17.3",
+  "mypy>=2.4.1",
   "bandit[toml]>=1.9.4",
   "pip-audit>=2.10.1",
   "pre-commit>=4.7.0",
@@ -33,7 +33,7 @@ dev = [
   "testcontainers[mqtt]>=4.15.0,<5",
 ]
 analysis = [
-  "polars>=2.0.0",
+  "polars>=2.1.0",
   "scipy>=1.13",
   "matplotlib>=3.11.2",
   "typer>=0.27.3",
@@ -44,10 +44,10 @@ picomuon = "picomuon.cli:app"
 
 [dependency-groups]
 dev = [
-  "pytest>=9.1.1",
-  "pytest-asyncio>=1.4.0",
-  "ruff>=0.17.1",
-  "mypy>=2.4.0",
+  "pytest>=9.2.0",
+  "pytest-asyncio>=1.4.1",
+  "ruff>=0.17.3",
+  "mypy>=2.4.1",
   "bandit[toml]>=1.9.4",
   "pip-audit>=2.10.1",
   "pre-commit>=4.7.0",
@@ -128,7 +128,7 @@ skips = ["B101", "B311", "B404", "B603", "B607"]
 # Clears the high-severity OOB-read advisory (Dependabot, 2026-06); keeps it from
 # regressing on a future `uv lock`.
 constraint-dependencies = [
-  "msgpack>=1.2.1",
+  "msgpack>=1.2.3",  # 1.2.3 also clears GHSA-j586-36cw-2gc2 (HIGH, Dependabot #49, 2026-10-31)
   # pip is transitive via pip-api (pip-audit); floor clears GHSA-wf93-45jw-7689
   # (path traversal in entry-point names, pip < 26.1.2 — Dependabot #16, 2026-07)
   # and PYSEC-2026-3721 (pip < 26.2 — pip-audit, 2026-08).
@@ -161,6 +161,15 @@ constraint-dependencies = [
   # -4176 and -4177 against < 2.8.0 (pip-audit pre-push gate, 2026-10).
   "urllib3>=2.8.0",
   # virtualenv is transitive via pre-commit — dev tooling only, never on the Pi.
-  # 21.7.12 clears PYSEC-2026-4014 (pip-audit pre-push gate, 2026-10).
-  "virtualenv>=21.7.12",
+  # 21.7.12 cleared PYSEC-2026-4014 (pip-audit pre-push gate, 2026-10); 21.14.9
+  # clears 12 more advisories (4 HIGH) — Dependabot #43, 2026-10-24.
+  "virtualenv>=21.14.9",
+  # filelock is transitive via virtualenv / cachecontrol (pip-audit) — dev only.
+  # 4.2.1 clears 9 advisories (1 HIGH) — Dependabot #44, 2026-10-24. Major bump
+  # 3 -> 4; its only users here are dev tools, covered by the pre-commit/pre-push run.
+  "filelock>=4.2.1",
+  # opentelemetry-api is transitive via fastapi (>=0.150) and IS installed on the
+  # Pi. 1.45.1 clears CVE-2026-114603 / GHSA-xcq7-p3pf-p88h (unbounded tracestate
+  # parsing) — obs-vuln-check on the Pi + Dependabot, 2026-10-24.
+  "opentelemetry-api>=1.45.1",
 ]
