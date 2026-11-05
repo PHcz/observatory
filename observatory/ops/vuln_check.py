@@ -117,50 +117,105 @@ def parse_pip_audit(text: str) -> list[InstalledVuln]:
 
 
 def summarise_installed(vulns: list[InstalledVuln]) -> str:
-    """Human-readable Telegram body for advisories against installed packages."""
-    packages = {(v.package, v.version) for v in vulns}
-    lines = [f"⚠️ {len(packages)} vulnerable package(s) INSTALLED on the Pi:"]
-    for v in sorted(vulns, key=lambda v: (v.package, v.vuln_id)):
-        fix = f" (fix: {', '.join(v.fix_versions)})" if v.fix_versions else " (no fix yet)"
-        lines.append(f"• {v.package} {v.version}: {v.vuln_id}{fix}")
+    """Human-readable Telegram body for advisories against installed packages.
+
+    One line per package: a single advisory keeps its id, several are counted
+    (one line per advisory overflowed Telegram's 4096-character limit).
+    """
+    by_pkg: dict[tuple[str, str], list[InstalledVuln]] = {}
+    for v in vulns:
+        by_pkg.setdefault((v.package, v.version), []).append(v)
+    lines = [f"⚠️ {len(by_pkg)} vulnerable package(s) INSTALLED on the Pi:"]
+    for (pkg, version), group in sorted(by_pkg.items()):
+        fixes = sorted({f for v in group for f in v.fix_versions}, key=_version_key)
+        fix = f" (fix: {fixes[-1]})" if fixes else " (no fix yet)"
+        if len(group) == 1:
+            lines.append(f"• {pkg} {version}: {group[0].vuln_id}{fix}")
+        else:
+            lines.append(f"• {pkg} {version}: {len(group)} advisories{fix}")
     return "\n".join(lines)
 
 
-async def fetch_open_alerts(token: str, repo: str) -> list[dict[str, Any]]:
-    """Return the list of OPEN Dependabot alerts for ``owner/repo``.
+def _version_key(version: str) -> tuple[tuple[int, str], ...]:
+    """Sort key for version strings: numeric parts numerically, the rest as text."""
+    return tuple(
+        (int(part), "") if part.isdigit() else (-1, part)
+        for part in version.replace("-", ".").split(".")
+    )
 
+
+async def fetch_open_alerts(
+    token: str, repo: str, *, _transport: httpx.AsyncBaseTransport | None = None
+) -> list[dict[str, Any]]:
+    """Return every OPEN Dependabot alert for ``owner/repo``.
+
+    Follows the ``Link: rel="next"`` pages: GitHub returns at most 100 alerts
+    per page, and anything past the first page used to be dropped silently.
     Raises httpx.HTTPError on network failure or a non-2xx response.
     """
-    url = f"{GITHUB_API}/repos/{repo}/dependabot/alerts"
+    url: str | None = f"{GITHUB_API}/repos/{repo}/dependabot/alerts"
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-    params = {"state": "open", "per_page": "100"}
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(url, headers=headers, params=params)
-        resp.raise_for_status()
-        data = resp.json()
-    return data if isinstance(data, list) else []
+    params: dict[str, str] | None = {"state": "open", "per_page": "100"}
+    alerts: list[dict[str, Any]] = []
+    async with httpx.AsyncClient(timeout=15.0, transport=_transport) as client:
+        for _ in range(50):  # hard stop: 5000 alerts
+            if url is None:
+                break
+            resp = await client.get(url, headers=headers, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            if isinstance(data, list):
+                alerts.extend(data)
+            url = resp.links.get("next", {}).get("url")
+            params = None  # the "next" URL already carries the query
+    return alerts
 
 
 def summarise(alerts: list[dict[str, Any]], repo: str) -> str:
-    """Human-readable Telegram body listing the open alerts, worst-first."""
+    """Human-readable Telegram body: one line per package, worst first.
 
-    def sort_key(a: dict[str, Any]) -> int:
-        sev = str(a.get("security_advisory", {}).get("severity", "")).lower()
-        return _SEVERITY_ORDER.get(sev, 99)
-
-    lines = [f"⚠️ {len(alerts)} open Dependabot alert(s) on {repo}:"]
-    for a in sorted(alerts, key=sort_key):
-        adv = a.get("security_advisory", {}) or {}
-        sev = str(adv.get("severity", "?")).upper()
-        ghsa = adv.get("ghsa_id", "")
+    A package with one alert keeps the advisory summary and id; several are
+    counted with the highest patched version. One line per ALERT made a
+    9,003-character message for 71 alerts, which Telegram refused (> 4096).
+    """
+    by_pkg: dict[str, list[dict[str, Any]]] = {}
+    for a in alerts:
         pkg = (a.get("dependency", {}) or {}).get("package", {}).get("name", "?")
-        summary = adv.get("summary", "")
-        suffix = f" ({ghsa})" if ghsa else ""
-        lines.append(f"• [{sev}] {pkg}: {summary}{suffix}")
+        # PyPI names are case-insensitive; GitHub reports both "pillow" and "Pillow".
+        key = next((k for k in by_pkg if k.lower() == pkg.lower()), pkg)
+        by_pkg.setdefault(key, []).append(a)
+
+    def severity(a: dict[str, Any]) -> str:
+        return str((a.get("security_advisory", {}) or {}).get("severity", "?")).lower()
+
+    def worst(group: list[dict[str, Any]]) -> str:
+        return min((severity(a) for a in group), key=lambda s: _SEVERITY_ORDER.get(s, 99))
+
+    def patched(a: dict[str, Any]) -> str | None:
+        vuln = a.get("security_vulnerability") or {}
+        first = vuln.get("first_patched_version") or {}
+        ident = first.get("identifier")
+        return str(ident) if ident else None
+
+    lines = [f"⚠️ {len(alerts)} open Dependabot alert(s) in {len(by_pkg)} package(s) on {repo}:"]
+    ordered = sorted(
+        by_pkg.items(), key=lambda kv: (_SEVERITY_ORDER.get(worst(kv[1]), 99), kv[0].lower())
+    )
+    for pkg, group in ordered:
+        sev = worst(group).upper()
+        if len(group) == 1:
+            adv = group[0].get("security_advisory", {}) or {}
+            ghsa = adv.get("ghsa_id", "")
+            suffix = f" ({ghsa})" if ghsa else ""
+            lines.append(f"• [{sev}] {pkg}: {adv.get('summary', '')}{suffix}")
+            continue
+        fixes = sorted({f for a in group if (f := patched(a))}, key=_version_key)
+        fix = f" (fix: >= {fixes[-1]})" if fixes else " (no fix yet)"
+        lines.append(f"• [{sev}] {pkg}: {len(group)} alerts{fix}")
     return "\n".join(lines)
 
 

@@ -116,27 +116,64 @@ async def notify_telegram(title: str, message: str) -> None:
     import httpx
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        "chat_id": settings.alert_telegram_chat_id,
-        "text": f"{title}\n{message}",
-        "disable_web_page_preview": True,
-    }
+    parts = _split_for_telegram(title, message)
+    for text in parts:
+        payload = {
+            "chat_id": settings.alert_telegram_chat_id,
+            "text": text,
+            "disable_web_page_preview": True,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.post(url, json=payload)
+        except Exception as exc:
+            # str(exc) never includes the URL for transport errors; the token is in it.
+            log.warning("telegram.push_failed", error=type(exc).__name__)
+            return
+        # The response used to be ignored, so a revoked token (401) or a wrong chat
+        # id (400) looked exactly like a delivered alert.
+        if resp.is_success:
+            log.info("telegram.push_sent", parts=len(parts))
+        else:
+            log.warning(
+                "telegram.push_rejected", status=resp.status_code, detail=_telegram_detail(resp)
+            )
+            return
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.post(url, json=payload)
-    except Exception as exc:
-        # str(exc) never includes the URL for transport errors; the token is in it.
-        log.warning("telegram.push_failed", error=type(exc).__name__)
-        return
-    # The response used to be ignored, so a revoked token (401) or a wrong chat
-    # id (400) looked exactly like a delivered alert.
-    if resp.is_success:
-        log.info("telegram.push_sent")
-    else:
-        log.warning(
-            "telegram.push_rejected", status=resp.status_code, detail=_telegram_detail(resp)
-        )
+
+# Telegram refuses messages over 4096 characters ("message is too long"); the
+# daily vulnerability check hit it with 71 alerts (2026-10-31 .. 11-05).
+TELEGRAM_MAX_CHARS = 4096
+
+
+def _split_for_telegram(title: str, message: str) -> list[str]:
+    """Split into parts of at most TELEGRAM_MAX_CHARS, on line boundaries.
+
+    A single message keeps the plain title; several get "title (i/n)". A line
+    longer than a whole part is cut rather than dropped.
+    """
+    if len(title) + 1 + len(message) <= TELEGRAM_MAX_CHARS:
+        return [f"{title}\n{message}"]
+    room = TELEGRAM_MAX_CHARS - len(title) - len(" (99/99)\n")
+    chunks: list[str] = []
+    current = ""
+    for line in message.split("\n"):
+        while len(line) > room:  # a single overlong line
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.append(line[:room])
+            line = line[room:]
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > room:
+            chunks.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    n = len(chunks)
+    return [f"{title} ({i}/{n})\n{chunk}" for i, chunk in enumerate(chunks, 1)]
 
 
 async def notify_all(title: str, message: str, priority: int = 4) -> None:

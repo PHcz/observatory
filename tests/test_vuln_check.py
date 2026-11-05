@@ -17,7 +17,7 @@ def _alert(severity: str, pkg: str, summary: str, ghsa: str) -> dict[str, Any]:
 def test_summarise_header_counts_alerts() -> None:
     alerts = [_alert("high", "starlette", "DoS", "GHSA-x")]
     out = summarise(alerts, "PHcz/observatory")
-    assert "1 open Dependabot alert(s) on PHcz/observatory" in out
+    assert "1 open Dependabot alert(s) in 1 package(s) on PHcz/observatory" in out
     assert "[HIGH] starlette: DoS (GHSA-x)" in out
 
 
@@ -162,3 +162,102 @@ def test_clean_on_both_sides_sends_nothing(monkeypatch: pytest.MonkeyPatch) -> N
     )
     assert asyncio.run(vuln_check._amain()) == 0
     assert sent == []
+
+
+# ---------------------------------------------------------------------------
+# Message size (2026-11-05): 71 open alerts made a 9,003-character message;
+# Telegram refuses > 4096 and the check failed silently every day from
+# 2026-10-31 (obs-vuln-check journal: telegram.push_rejected, "message is too
+# long"). One line per PACKAGE, not per alert; the notifier splits the rest.
+# ---------------------------------------------------------------------------
+
+
+def _full_alert(pkg: str, sev: str, ghsa: str, patched: str | None) -> dict[str, Any]:
+    a = _alert(sev, pkg, f"{pkg} bug {ghsa}", ghsa)
+    a["security_vulnerability"] = {
+        "first_patched_version": {"identifier": patched} if patched else None
+    }
+    return a
+
+
+def test_summarise_groups_alerts_by_package() -> None:
+    alerts = [
+        _full_alert("filelock", s, f"GHSA-f{i}", "4.2.1")
+        for i, s in enumerate(["high", "medium", "medium", "low"])
+    ]
+    alerts += [_full_alert("msgpack", "high", "GHSA-m1", "1.2.3")]
+    out = summarise(alerts, "o/r")
+    lines = out.splitlines()
+    assert lines[0] == "⚠️ 5 open Dependabot alert(s) in 2 package(s) on o/r:"
+    assert "• [HIGH] filelock: 4 alerts (fix: >= 4.2.1)" in lines
+    # a package with a single alert keeps the advisory summary and id
+    assert "• [HIGH] msgpack: msgpack bug GHSA-m1 (GHSA-m1)" in lines
+
+
+def test_summarise_uses_the_highest_patched_version_per_package() -> None:
+    alerts = [
+        _full_alert("pillow", "high", "GHSA-a", "12.3.0"),
+        _full_alert("pillow", "critical", "GHSA-b", "13.0.0"),
+    ]
+    assert "• [CRITICAL] pillow: 2 alerts (fix: >= 13.0.0)" in summarise(alerts, "r")
+
+
+def test_todays_71_alerts_fit_one_telegram_message() -> None:
+    sizes = {
+        "Pillow": 29,
+        "pillow": 12,
+        "virtualenv": 12,
+        "filelock": 9,
+        "undici": 5,
+        "certifi": 1,
+        "msgpack": 1,
+        "opentelemetry-api": 1,
+        "deepmerge": 1,
+    }
+    alerts = [
+        _full_alert(p, "high", f"GHSA-{p}-{i}", "9.9") for p, n in sizes.items() for i in range(n)
+    ]
+    out = "Dependabot Alerts\n" + summarise(alerts, "PHcz/observatory")
+    assert len(out) < 1000
+
+
+def test_summarise_installed_groups_by_package() -> None:
+    vulns = [
+        vuln_check.InstalledVuln("pillow", "12.3.0", f"CVE-{i}", ("13.0.0",)) for i in range(8)
+    ]
+    out = vuln_check.summarise_installed(vulns)
+    assert "• pillow 12.3.0: 8 advisories (fix: 13.0.0)" in out.splitlines()
+
+
+# --- Pagination: GitHub returns at most 100 alerts per page ------------------
+
+
+def test_fetch_open_alerts_follows_every_page() -> None:
+    import httpx
+
+    pages = {
+        1: ([{"n": i} for i in range(100)], '<https://api.github.com/x?page=2>; rel="next"'),
+        2: ([{"n": 100 + i} for i in range(30)], None),
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        page = int(request.url.params.get("page", "1"))
+        body, link = pages[page]
+        headers = {"link": link} if link else {}
+        return httpx.Response(200, json=body, headers=headers)
+
+    got = asyncio.run(
+        vuln_check.fetch_open_alerts("t", "o/r", _transport=httpx.MockTransport(handler))
+    )
+    assert len(got) == 130
+
+
+def test_summarise_treats_package_names_case_insensitively() -> None:
+    """GitHub reports the same PyPI project as both "pillow" and "Pillow"."""
+    alerts = [
+        _full_alert("pillow", "high", "GHSA-a", "13.0.0"),
+        _full_alert("Pillow", "critical", "GHSA-b", "13.0.0"),
+    ]
+    out = summarise(alerts, "r")
+    assert "in 1 package(s)" in out
+    assert sum(1 for ln in out.splitlines() if "illow" in ln) == 1

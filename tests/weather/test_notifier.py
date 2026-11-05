@@ -229,7 +229,7 @@ class TestRejectedPushesAreLogged:
             )
             mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
             asyncio.run(notify_telegram(title="T", message="m"))
-        mock_log.info.assert_called_once_with("telegram.push_sent")
+        mock_log.info.assert_called_once_with("telegram.push_sent", parts=1)
         mock_log.warning.assert_not_called()
 
     def test_ntfy_rejection_is_logged(self) -> None:
@@ -250,3 +250,45 @@ class TestRejectedPushesAreLogged:
             mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
             asyncio.run(notify_ntfy(title="T", message="m"))
         mock_log.warning.assert_called_once_with("ntfy.push_rejected", status=403)
+
+
+class TestLongTelegramMessagesAreSplit:
+    """Telegram refuses messages over 4096 characters (400 "message is too
+    long"); a long message is sent as several numbered parts instead."""
+
+    def _send(self, message: str) -> list[str]:
+        sent: list[str] = []
+
+        async def post(url: str, json: dict[str, object]) -> httpx.Response:
+            sent.append(str(json["text"]))
+            return httpx.Response(200, json={"ok": True}, request=httpx.Request("POST", url))
+
+        with (
+            patch("observatory.weather.alerts.notifier.settings") as mock_settings,
+            patch("httpx.AsyncClient") as mock_client_class,
+            patch("observatory.weather.alerts.notifier.log"),
+        ):
+            mock_settings.alert_telegram_enabled = True
+            mock_settings.alert_telegram_bot_token = SecretStr("X")
+            mock_settings.alert_telegram_chat_id = "999"
+            mock_client_class.return_value.__aenter__ = AsyncMock(return_value=AsyncMock(post=post))
+            mock_client_class.return_value.__aexit__ = AsyncMock(return_value=False)
+            asyncio.run(notify_telegram(title="Report", message=message))
+        return sent
+
+    def test_short_message_is_one_part(self) -> None:
+        assert self._send("one line") == ["Report\none line"]
+
+    def test_long_message_is_split_on_line_boundaries(self) -> None:
+        lines = [f"• line {i:04d} " + "x" * 80 for i in range(120)]  # ~11 KB
+        sent = self._send("\n".join(lines))
+        assert len(sent) == 3
+        assert all(len(part) <= 4096 for part in sent)
+        assert sent[0].startswith("Report (1/3)\n") and sent[2].startswith("Report (3/3)\n")
+        body = [ln for part in sent for ln in part.splitlines()[1:]]
+        assert body == lines  # nothing lost, nothing cut mid-line
+
+    def test_a_single_overlong_line_is_cut_not_dropped(self) -> None:
+        sent = self._send("y" * 9000)
+        assert all(len(part) <= 4096 for part in sent)
+        assert sum(part.count("y") for part in sent) == 9000
