@@ -285,6 +285,10 @@ class Settings(BaseSettings):
     # Default 3600 (1 h): the Enviro publishes every ~5 min, so an hour of silence
     # means a dead battery / wifi loss, not normal jitter.
     alert_enviro_stale_sec: int = Field(default=3600, ge=300, le=86400)
+    # --- Muon-detector-silent alert ---
+    # The PicoMuon sends several events a second; 10 min of silence is a fault
+    # (its USB output stalled for 3.5 days unnoticed in 2026-11).
+    alert_muon_stale_sec: int = Field(default=600, ge=120, le=86400)
 
     # --- Daily Dependabot vuln check → Telegram (ops; runs on the Pi via timer) ---
     # Fine-grained PAT scoped to the repo with "Dependabot alerts: read". Pi .env only.

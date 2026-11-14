@@ -267,8 +267,13 @@ systemctl enable obs-backup-verify.timer
 # --- SECTION 14: install + enable obs-muon service (do NOT start) ---
 log "Section 14: obs-muon service"
 cp "$REPO_ROOT/deploy/systemd/obs-muon.service" /etc/systemd/system/
+# Root helper that resets the PicoMuon's USB device if its serial output stalls
+# (2026-11-11: 3.5 days of silence that obs-muon's reopen could not clear).
+cp "$REPO_ROOT/deploy/systemd/obs-muon-usb-reset.service" /etc/systemd/system/
+cp "$REPO_ROOT/deploy/systemd/obs-muon-usb-reset.timer"   /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable obs-muon.service
+systemctl enable obs-muon-usb-reset.timer
 # Do NOT start the service here — operator should:
 #   1. Confirm PicoMuon is plugged in (`ls /dev/picomuon`)
 #   2. Confirm chrony has converged (`chronyc tracking | grep "System time"`)

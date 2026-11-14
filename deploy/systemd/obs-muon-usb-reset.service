@@ -1,0 +1,50 @@
+[Unit]
+Description=Observatory: reset the PicoMuon USB device if its serial output stalled
+Documentation=file:///opt/observatory/observatory/ops/muon_usb_reset.py
+After=obs-muon.service
+
+[Service]
+Type=oneshot
+# Root, because only root may reset a USB device or write
+# /sys/bus/usb/devices/*/authorized. obs-muon (observatory user) must never be
+# able to do either. Everything else below is locked down.
+User=root
+Group=root
+EnvironmentFile=/etc/observatory/observatory.env
+WorkingDirectory=/opt/observatory
+ExecStart=/opt/observatory/.venv/bin/python -m observatory.ops.muon_usb_reset
+StateDirectory=obs-muon-usb-reset
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=obs-muon-usb-reset
+
+# --- Sandbox (security audit 2026-10-20, F45). Tested by
+# tests/test_systemd_hardening.py; check live with `systemd-analyze security`.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+UMask=0027
+# Differences from the other units: /sys stays writable (authorized), USB device
+# nodes only, and no network at all (AF_UNIX is for `systemctl is-active`).
+ProtectKernelTunables=no
+PrivateDevices=no
+DevicePolicy=closed
+DeviceAllow=char-usb_device rw
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+# Root here has no capabilities, so normal file permissions apply: the group
+# gives read access to /var/lib/observatory (0750). The code opens the
+# database read-only (mode=ro); nothing in that folder is writable.
+SupplementaryGroups=observatory

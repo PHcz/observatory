@@ -60,6 +60,7 @@ def _rule_title(rule_name: str) -> str:
         "frost_risk": "Frost Risk",
         "rapid_pressure_fall": "Rapid Pressure Fall",
         "enviro_stale": "Enviro Offline",
+        "muon_stale": "Muon Detector Silent",
         "indoor_co2_high": "Indoor CO₂ High",
     }.get(rule_name, rule_name.replace("_", " ").title())
 
@@ -68,6 +69,7 @@ def _recovery_message(rule_name: str) -> tuple[str, str]:
     """(title, body) for the recovery push sent when a rule resolves."""
     return {
         "enviro_stale": ("Enviro Online", "Outdoor weather node is reporting again."),
+        "muon_stale": ("Muon Detector Back", "The muon detector is sending events again."),
         "frost_risk": ("Frost Cleared", "Temperature back above the frost threshold."),
         "rapid_pressure_fall": ("Pressure Steady", "Rapid pressure fall has eased."),
     }.get(rule_name, (f"{_rule_title(rule_name)} Cleared", "Condition resolved."))

@@ -20,6 +20,7 @@ from observatory.weather.alerts.rules import (
     IndoorCo2Rule,
     PressureFallRule,
     StaleEnviroRule,
+    StaleMuonRule,
     _format_age,
     _within_alert_window,
 )
@@ -258,3 +259,44 @@ class TestIndoorCo2Rule:
         conn = self._db()
         self._insert(conn, 1100)  # above the tightened 1000 threshold
         assert IndoorCo2Rule().evaluate(conn).triggered is True
+
+
+# --- Muon detector silent (2026-11-14) ----------------------------------------
+# The PicoMuon's USB output stalled on 2026-11-11 09:33 UTC and nobody was told
+# for 3.5 days: the dashboard showed it, but no alert rule covered the muon feed.
+
+
+def _muon_db(*event_ages_sec: int) -> sqlite3.Connection:
+    conn = _make_db()
+    now = int(time.time())
+    for age in event_ages_sec:
+        conn.execute("INSERT INTO muon_events (ts, coincidence) VALUES (?, 1)", (now - age,))
+    return conn
+
+
+class TestStaleMuonRule:
+    def test_silent_detector_triggers(self) -> None:
+        """Default threshold 600 s; the detector normally sends several events a second."""
+        result = StaleMuonRule().evaluate(_muon_db(3600))
+        assert result.rule == "muon_stale"
+        assert result.triggered is True
+        assert "No muon events" in result.detail
+
+    def test_recent_events_not_triggered(self) -> None:
+        assert StaleMuonRule().evaluate(_muon_db(3600, 5)).triggered is False
+
+    def test_empty_table_not_triggered(self) -> None:
+        assert StaleMuonRule().evaluate(_make_db()).triggered is False
+
+    def test_threshold_is_config_driven(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        import observatory.config as _config_mod
+
+        monkeypatch.setattr(_config_mod.settings, "alert_muon_stale_sec", 120)
+        assert StaleMuonRule().evaluate(_muon_db(300)).triggered is True
+
+    def test_rule_is_active_with_readable_messages(self) -> None:
+        from observatory.weather.alerts.engine import _recovery_message, _rule_title
+
+        assert any(isinstance(r, StaleMuonRule) for r in _rules_mod.ACTIVE_RULES)
+        assert _rule_title("muon_stale") == "Muon Detector Silent"
+        assert _recovery_message("muon_stale")[0] == "Muon Detector Back"

@@ -1,0 +1,11 @@
+[Unit]
+Description=Observatory: check the PicoMuon for a stalled USB output every 2 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=2min
+AccuracySec=15s
+Unit=obs-muon-usb-reset.service
+
+[Install]
+WantedBy=timers.target

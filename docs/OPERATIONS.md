@@ -190,6 +190,20 @@ This step belongs to the muon-detector setup but is documented here for complete
 
 ## Muon service operator notes
 
+**Stalled USB output (seen 2026-11-11):** the PicoMuon can stay connected and keep
+counting while its USB serial output stops — `/dev/picomuon` opens but delivers
+0 bytes. obs-muon's reopen after 60 s of silence cannot clear that. The root
+helper `obs-muon-usb-reset.timer` (every 2 min) resets **only** the PicoMuon's USB
+device (id 2e8a:000a) when no muon event has arrived for 3 minutes and obs-muon is
+running, at most once every 15 minutes. If that does not help, the `muon_stale`
+alert (`ALERT_MUON_STALE_SEC`, default 600 s) sends a Telegram message. Check:
+
+```bash
+journalctl -u obs-muon-usb-reset --since today -o cat | grep -v '"action": "ok"'
+```
+
+Stopping obs-muon (for example to flash the Pico) pauses the automatic reset.
+
 The `obs-muon.service` systemd unit is installed and enabled by `bootstrap-pi.sh`
 but not started automatically. To bring it up:
 

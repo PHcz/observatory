@@ -52,18 +52,51 @@ def test_units_found() -> None:
     assert len(UNITS) >= 15
 
 
+# The one root unit: it resets the PicoMuon's USB device (needs /dev/bus/usb and
+# writes to /sys), which the observatory account must never be able to do.
+USB_RESET_UNIT = "obs-muon-usb-reset.service"
+_ROOT_UNIT_EXCEPTIONS = {"ProtectKernelTunables", "RestrictAddressFamilies"}
+
+
 @pytest.mark.parametrize("unit", UNITS, ids=lambda p: p.name)
 def test_common_sandbox(unit: Path) -> None:
     svc = _service(unit)
+    root_unit = unit.name == USB_RESET_UNIT
     for key, value in COMMON.items():
+        if root_unit and key in _ROOT_UNIT_EXCEPTIONS:
+            continue
         assert svc.get(key) == value, f"{unit.name}: {key}={svc.get(key)!r}, want {value!r}"
+    if root_unit:
+        return
     assert "/var/lib/observatory" in svc.get("ReadWritePaths", "").split()
     assert svc.get("User") == "observatory" and svc.get("Group") == "observatory"
 
 
+def test_usb_reset_unit_is_root_but_reaches_only_usb_devices() -> None:
+    svc = _service(REPO_ROOT / "deploy" / "systemd" / USB_RESET_UNIT)
+    assert svc["User"] == "root"
+    assert svc["DevicePolicy"] == "closed"
+    assert svc["DeviceAllow"] == "char-usb_device rw"
+    assert svc["PrivateDevices"] == "no"
+    assert svc["ProtectKernelTunables"] == "no"  # writes /sys/.../authorized
+    assert svc["RestrictAddressFamilies"] == "AF_UNIX"  # systemctl only; no network
+    assert svc["IPAddressDeny"] == "any"
+    assert svc["StateDirectory"] == "obs-muon-usb-reset"
+    # Root without capabilities obeys normal file permissions: the observatory
+    # group gives read access to the 0750 data folder; nothing there is writable.
+    assert svc["SupplementaryGroups"] == "observatory"
+    assert "ReadWritePaths" not in svc
+    src = (REPO_ROOT / "observatory" / "ops" / "muon_usb_reset.py").read_text()
+    assert "?mode=ro" in src
+    timer = (REPO_ROOT / "deploy" / "systemd" / "obs-muon-usb-reset.timer").read_text()
+    assert "OnUnitActiveSec=2min" in timer
+    boot = (REPO_ROOT / "scripts" / "bootstrap-pi.sh").read_text()
+    assert "systemctl enable obs-muon-usb-reset.timer" in boot
+
+
 @pytest.mark.parametrize(
     "unit",
-    [u for u in UNITS if u.name not in ("obs-muon.service", "obs-api.service")],
+    [u for u in UNITS if u.name not in ("obs-muon.service", "obs-api.service", USB_RESET_UNIT)],
     ids=lambda p: p.name,
 )
 def test_no_device_access_by_default(unit: Path) -> None:

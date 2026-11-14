@@ -206,6 +206,40 @@ class StaleEnviroRule:
         return AlertResult(rule=self.rule, severity="alert", detail=detail, triggered=triggered)
 
 
+class StaleMuonRule:
+    """PicoMuon detector silent rule (2026-11-14).
+
+    Triggered when the newest muon event is older than
+    settings.alert_muon_stale_sec (default 600 s). The detector sends several
+    events a second, so ten minutes of silence is always a fault. On 2026-11-11
+    its USB output stalled and the outage went unnoticed for 3.5 days. The
+    obs-muon-usb-reset timer normally clears a stall within minutes; this alert
+    covers the case where that does not help.
+
+    Empty table is not triggered (fresh install). Time-based like
+    StaleEnviroRule, so it fires while data is absent.
+    """
+
+    rule = "muon_stale"
+
+    def evaluate(self, conn: sqlite3.Connection) -> AlertResult:
+        import time
+
+        threshold = _config_mod.settings.alert_muon_stale_sec
+        row = conn.execute("SELECT MAX(ts) FROM muon_events").fetchone()
+        if row is None or row[0] is None:
+            return AlertResult(
+                rule=self.rule, severity="alert", detail="No muon data yet", triggered=False
+            )
+        last_ts = int(row[0])
+        age = int(time.time()) - last_ts
+        last_local = time.strftime("%Y-%m-%d %H:%M", time.localtime(last_ts))
+        detail = f"No muon events for {_format_age(age)} (last: {last_local})"
+        return AlertResult(
+            rule=self.rule, severity="alert", detail=detail, triggered=age > threshold
+        )
+
+
 def _current_hour() -> int:
     """Local wall-clock hour 0-23 (indirected so tests can monkeypatch it)."""
     import time
@@ -258,9 +292,11 @@ class IndoorCo2Rule:
 # StaleEnviroRule added 2026-06-24 by explicit request (battery-outage alerting),
 # overriding the original Phase-16 deferral of stale-source rules.
 # IndoorCo2Rule added 2026-07-10 (indoor CO2 red-band alert, waking hours only).
+# StaleMuonRule added 2026-11-14 (PicoMuon USB stall went unnoticed for 3.5 days).
 ACTIVE_RULES: list[AlertRule] = [
     FrostRule(),
     PressureFallRule(),
     StaleEnviroRule(),
     IndoorCo2Rule(),
+    StaleMuonRule(),
 ]
