@@ -80,7 +80,7 @@ def test_least_privilege() -> None:
     subscriber = Settings.model_fields["mqtt_username"].default
     for user, entries in _grants().items():
         accesses = {a for a, _ in entries}
-        if user == subscriber:
+        if user in (subscriber, HEALTH_USER):
             assert accesses == {"read"}, f"{user} should only read: {entries}"
         else:
             assert accesses == {"write"}, f"publisher {user} should only write: {entries}"
@@ -91,3 +91,30 @@ def test_every_acl_user_is_in_the_password_instructions() -> None:
     readme = README.read_text()
     for user in _grants():
         assert user in readme, f"{user} has ACL grants but no mosquitto_passwd instruction"
+
+
+# --- Health monitor for the xmas-lights project (2026-11-14) -----------------
+# A second project on the same Pi proves, before and after each of its hardware
+# steps, that the observatory loses no MQTT messages. It gets its own read-only
+# user: broker statistics plus one fixed-interval and one irregular topic. It can
+# never publish, so it can never inject or overwrite observatory data.
+
+HEALTH_USER = "xmas-health"
+HEALTH_TOPICS = (
+    "$SYS/broker/uptime",
+    "$SYS/broker/publish/messages/received",
+    "$SYS/broker/publish/messages/dropped",
+    "indoor/living-room/sensor/co2/state",
+    "enviro/observatory-weather",
+)
+
+
+def test_health_monitor_reads_only_what_it_needs() -> None:
+    entries = _grants()[HEALTH_USER]
+    assert {a for a, _ in entries} == {"read"}, f"{HEALTH_USER} must only read: {entries}"
+    for topic in HEALTH_TOPICS:
+        assert _can(HEALTH_USER, "read", topic), topic
+    for topic in ("indoor/living-room/sensor/temperature/state", "indoor/#", "#"):
+        assert not _can(HEALTH_USER, "read", topic), f"{HEALTH_USER} should not read {topic}"
+    for topic in ("enviro/observatory-weather", "indoor/living-room/sensor/co2/state"):
+        assert not _can(HEALTH_USER, "write", topic)

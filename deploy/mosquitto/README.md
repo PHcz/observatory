@@ -34,6 +34,10 @@ sudo mosquitto_passwd -b /etc/mosquitto/passwords \
      obs-api-subscriber "${OBS_MQTT_SUB_PASSWORD}"
 sudo mosquitto_passwd -b /etc/mosquitto/passwords \
      indoor-node "${OBS_MQTT_INDOOR_PASSWORD}"
+# Optional, read-only health monitor for the xmas-lights project (see acl.conf).
+# Its password lives on the dev Mac in ~/.config/xmas/mosquitto_sub (0600).
+sudo mosquitto_passwd -b /etc/mosquitto/passwords \
+     xmas-health "${XMAS_HEALTH_PASSWORD}"
 sudo systemctl reload mosquitto
 ```
 
