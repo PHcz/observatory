@@ -38,6 +38,12 @@ sudo mosquitto_passwd -b /etc/mosquitto/passwords \
 # Its password lives on the dev Mac in ~/.config/xmas/mosquitto_sub (0600).
 sudo mosquitto_passwd -b /etc/mosquitto/passwords \
      xmas-health "${XMAS_HEALTH_PASSWORD}"
+# Christmas lights project users (see acl.conf). Their logins are kept on the Pi
+# in /etc/xmas/mqtt.secret (xmas-display), mqtt-remote.secret (xmas-remote) and
+# mqtt-voice.secret (xmas-voice): two lines, user name then password, root-only.
+sudo mosquitto_passwd -b /etc/mosquitto/passwords xmas-display "${XMAS_DISPLAY_PASSWORD}"
+sudo mosquitto_passwd -b /etc/mosquitto/passwords xmas-remote "${XMAS_REMOTE_PASSWORD}"
+sudo mosquitto_passwd -b /etc/mosquitto/passwords xmas-voice "${XMAS_VOICE_PASSWORD}"
 sudo systemctl reload mosquitto
 ```
 

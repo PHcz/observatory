@@ -80,6 +80,8 @@ def test_least_privilege() -> None:
     subscriber = Settings.model_fields["mqtt_username"].default
     for user, entries in _grants().items():
         accesses = {a for a, _ in entries}
+        if user in XMAS_GRANTS:
+            continue  # the lights project's own users: see test_xmas_users_*
         if user in (subscriber, HEALTH_USER):
             assert accesses == {"read"}, f"{user} should only read: {entries}"
         else:
@@ -118,3 +120,53 @@ def test_health_monitor_reads_only_what_it_needs() -> None:
         assert not _can(HEALTH_USER, "read", topic), f"{HEALTH_USER} should not read {topic}"
     for topic in ("enviro/observatory-weather", "indoor/living-room/sensor/co2/state"):
         assert not _can(HEALTH_USER, "write", topic)
+
+
+# --- Christmas lights project users (2026-11-17) ------------------------------
+# The second project on this Pi runs its own MQTT clients on the shared broker.
+# Exact topics only, all under xmas/ -- they can never read or write an
+# observatory topic. Requested by the xmas-lights session with the owner's yes.
+
+XMAS_GRANTS: dict[str, set[tuple[str, str]]] = {
+    "xmas-display": {
+        ("read", "xmas/scene"),
+        ("read", "xmas/color"),
+        ("read", "xmas/brightness"),
+        ("read", "xmas/power"),
+        ("write", "xmas/status"),  # includes its last will
+    },
+    "xmas-remote": {
+        ("write", "xmas/scene"),
+        ("write", "xmas/color"),
+        ("write", "xmas/brightness"),
+        ("write", "xmas/power"),
+        ("read", "xmas/status"),
+    },
+    "xmas-voice": {
+        ("write", "xmas/voice/heard"),
+        ("write", "xmas/voice/status"),
+        ("read", "xmas/status"),
+    },
+}
+
+
+def test_xmas_users_have_exactly_the_requested_rules() -> None:
+    grants = _grants()
+    for user, wanted in XMAS_GRANTS.items():
+        assert set(grants.get(user, [])) == wanted, user
+
+
+def test_xmas_users_stay_inside_their_prefix() -> None:
+    for user in XMAS_GRANTS:
+        for access, pattern in _grants().get(user, []):
+            assert pattern.startswith("xmas/"), f"{user} has {access} on {pattern}"
+            assert "#" not in pattern and "+" not in pattern, f"{user}: wildcard {pattern}"
+            assert access in ("read", "write"), f"{user}: {access} on {pattern}"
+
+
+def test_no_observatory_user_touches_xmas_topics() -> None:
+    for user, entries in _grants().items():
+        if user in XMAS_GRANTS:
+            continue
+        for _access, pattern in entries:
+            assert not pattern.startswith("xmas/"), f"{user} reaches {pattern}"
