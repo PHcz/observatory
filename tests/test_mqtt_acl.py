@@ -134,6 +134,8 @@ XMAS_GRANTS: dict[str, set[tuple[str, str]]] = {
         ("read", "xmas/brightness"),
         ("read", "xmas/power"),
         ("write", "xmas/status"),  # includes its last will
+        ("read", "xmas/voice/heard"),  # Phase 5 voice code words (2026-11-20)
+        ("read", "xmas/voice/status"),
     },
     "xmas-remote": {
         ("write", "xmas/scene"),
